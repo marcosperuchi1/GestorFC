@@ -11,7 +11,7 @@ EXPECTED_MIN_PLAYERS=70000
 def fail(msg): raise RuntimeError(msg)
 
 def script_block(html, script_id):
-    pat=re.compile(r'(<script\\b[^>]*\\bid=["\\']'+re.escape(script_id)+r'["\\'][^>]*>)(.*?)(</script>)',re.I|re.S)
+    pat=re.compile(r"(<script\\b[^>]*\\bid=(?:\\\"|')"+re.escape(script_id)+r"(?:\\\"|')[^>]*>)(.*?)(</script>)",re.I|re.S)
     m=pat.search(html)
     if not m: fail(f'script {script_id} not found')
     return m
