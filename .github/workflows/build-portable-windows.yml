@@ -76,10 +76,93 @@ jobs:
           }
           Write-Host 'Executavel Windows configurado sem console externo.'
 
+          # Desktop RC: comandos nativos para sincronizacao em lote, compra externa e fechar o jogo.
+          $libRs = Join-Path $project 'src-tauri/src/lib.rs'
+          $lib = [System.IO.File]::ReadAllText($libRs)
+          $lib = $lib.Replace('use serde::Serialize;', 'use serde::{Deserialize, Serialize};')
+          $lib = $lib.Replace(
+            'struct DesktopDb(Mutex<Connection>);',
+            'struct DesktopDb(Mutex<Connection>);' + [Environment]::NewLine + [Environment]::NewLine +
+            '#[derive(Deserialize)]' + [Environment]::NewLine +
+            'struct KvWrite {' + [Environment]::NewLine +
+            '    key: String,' + [Environment]::NewLine +
+            '    value: serde_json::Value,' + [Environment]::NewLine +
+            '}'
+          )
+
+          $nativeCommands = @'
+#[tauri::command]
+fn kv_put_many(entries: Vec<KvWrite>, db: State<'_, DesktopDb>) -> Result<(), String> {
+    let mut conn = db.0.lock().map_err(|_| "Banco ocupado".to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    {
+        let mut stmt = tx.prepare(
+            "INSERT INTO kv(key,value,updated_at) VALUES(?1,?2,unixepoch('now')*1000)
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at"
+        ).map_err(|e| e.to_string())?;
+        for entry in entries {
+            let value = serde_json::to_string(&entry.value).map_err(|e| e.to_string())?;
+            stmt.execute(params![entry.key, value]).map_err(|e| e.to_string())?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let lower = url.to_ascii_lowercase();
+    if !(lower == "https://futbrmanager.com.br"
+        || lower.starts_with("https://futbrmanager.com.br/")) {
+        return Err("Endereco externo nao permitido.".to_string());
+    }
+    open::that(url).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn close_game(app: AppHandle) -> Result<(), String> {
+    app.exit(0);
+    Ok(())
+}
+
+'@
+          $lib = $lib.Replace('#[tauri::command]' + [Environment]::NewLine + 'fn desktop_info', $nativeCommands + '#[tauri::command]' + [Environment]::NewLine + 'fn desktop_info')
+          $lib = $lib.Replace(
+            '            kv_commit_manifest,' + [Environment]::NewLine + '            desktop_info,',
+            '            kv_commit_manifest,' + [Environment]::NewLine +
+            '            kv_put_many,' + [Environment]::NewLine +
+            '            open_external_url,' + [Environment]::NewLine +
+            '            close_game,' + [Environment]::NewLine +
+            '            desktop_info,'
+          )
+          [System.IO.File]::WriteAllText($libRs, $lib, [System.Text.UTF8Encoding]::new($false))
+          Write-Host 'Comandos nativos de performance/compra/fechamento adicionados.'
+
           # Corrige o frame desktop: algumas sequencias literais "\n" do empacotamento
           # estavam criando text nodes fora do #app e aumentando a altura do body.
           $indexHtml = Join-Path $project 'src/index.html'
           $html = [System.IO.File]::ReadAllText($indexHtml)
+
+          # Performance: IndexedDB volta a ser o armazenamento quente da simulacao.
+          # SQLite nativo fica para sincronizacao de saves manuais, evitando IPC/disco em cada rodada.
+          $html = $html.Replace('window.FutBRDesktop?.available', 'window.FutBRDesktop?.directStorage')
+          $html = $html.Replace('if(!window.FutBRDesktop?.directStorage)return;' + [Environment]::NewLine + ' const baseUpdate', 'if(!window.FutBRDesktop?.available)return;' + [Environment]::NewLine + ' const baseUpdate')
+          $html = $html.Replace(' const api={' + [Environment]::NewLine + '  available,', ' const api={' + [Environment]::NewLine + '  available,' + [Environment]::NewLine + '  directStorage:false,')
+          $html = $html.Replace(
+            '  openDataFolder:()=>call(''open_data_folder'')',
+            '  openDataFolder:()=>call(''open_data_folder''),' + [Environment]::NewLine +
+            '  writeMany:entries=>call(''kv_put_many'',{entries:entries||[]}),' + [Environment]::NewLine +
+            '  openUrl:url=>call(''open_external_url'',{url:String(url)}),' + [Environment]::NewLine +
+            '  closeGame:()=>call(''close_game'')'
+          )
+
+          # Comercial: preco atual e compra no navegador padrao.
+          $html = $html.Replace("const PRICE = 'R$ 24,99';", "const PRICE = 'R$ 19,90';")
+          $html = $html.Replace('purchasePriceBRL: 24.99', 'purchasePriceBRL: 19.90')
+          $html = $html.Replace('Esta edição grava a carreira no SQLite nativo do computador. F11 alterna a tela cheia.', 'Esta edição usa armazenamento local rápido durante o jogo e sincroniza os saves manuais com o disco. F11 alterna a tela cheia.')
+          $html = $html.Replace("icon('clock',12)+' Salvando no disco...'", "icon('clock',12)+' Salvando...'")
+          $html = $html.Replace("icon('check',12)+' Disco local &middot; '", "icon('check',12)+' Salvo &middot; '")
           $html = $html.Replace('<body class="">\n<script id="futbr-desktop-native-bridge">', '<body class=""><script id="futbr-desktop-native-bridge">')
           $html = $html.Replace('</script>\n' + [Environment]::NewLine + '<div id="app"', '</script>' + [Environment]::NewLine + '<div id="app"')
           $html = $html.Replace('\n<style id="futbr-desktop-native-style">', '<style id="futbr-desktop-native-style">')
@@ -124,6 +207,96 @@ html.futbr-desktop .main-wrap{
 </style>
 '@
           $html = $html.Replace('</head>', $desktopFrameCss + [Environment]::NewLine + '</head>')
+          $desktopPerformanceUi = @'
+<style id="futbr-desktop-rc-performance-ui">
+html.futbr-desktop .futbr-desktop-close-auth{margin-top:14px;padding-top:12px;border-top:1px solid var(--line,#ffffff22)}
+html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
+</style>
+<script id="futbr-desktop-rc-performance-ui">
+(()=>{
+ if(!window.FutBRDesktop?.available)return;
+ const BASE='gestor_fc_mundo_v205_clean';
+ const INDEX=BASE+':futbr125:index';
+ const PURCHASE_URL='https://futbrmanager.com.br/#planos';
+ let nativeSync=null;
+
+ function localGet(key){
+   return openDB().then(db=>new Promise((resolve,reject)=>{
+     const r=db.transaction('saves','readonly').objectStore('saves').get(key);
+     r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+   }));
+ }
+ function manifestKeys(m){
+   if(!m||m.format!=='GFC_SHARDED_171')return [];
+   return Object.values(m.collections||{}).flatMap(spec=>Array.isArray(spec?.keys)?spec.keys:[]);
+ }
+ async function syncActiveSaveToDisk(){
+   if(nativeSync)return nativeSync;
+   nativeSync=(async()=>{
+     const manifest=await localGet(BASE).catch(()=>null);
+     if(!manifest)return false;
+     const keys=[INDEX,BASE,BASE+':meta',BASE+':previous',...manifestKeys(manifest)];
+     const unique=[...new Set(keys)];
+     for(let i=0;i<unique.length;i+=6){
+       const entries=[];
+       for(const key of unique.slice(i,i+6)){
+         const value=await localGet(key).catch(()=>undefined);
+         if(value!==undefined)entries.push({key,value});
+       }
+       if(entries.length)await window.FutBRDesktop.writeMany(entries);
+       if(i+6<unique.length)await new Promise(r=>setTimeout(r,0));
+     }
+     return true;
+   })().finally(()=>{nativeSync=null;});
+   return nativeSync;
+ }
+ window.FutBRDesktop.syncActiveSave=syncActiveSaveToDisk;
+
+ // Depois do clique real de salvar, espera o checkpoint local terminar e espelha no SQLite.
+ document.addEventListener('click',event=>{
+   const action=event.target?.closest?.('[data-action]')?.dataset?.action;
+   if(action!=='futbr125-save-current'&&action!=='futbr125-save-and-exit')return;
+   setTimeout(async()=>{
+     for(let n=0;n<80;n++){
+       if(!(typeof busy!=='undefined'&&busy) && !(typeof v52SavePromise!=='undefined'&&v52SavePromise) && !(typeof v52SaveDirty!=='undefined'&&v52SaveDirty))break;
+       await new Promise(r=>setTimeout(r,150));
+     }
+     syncActiveSaveToDisk().catch(e=>console.warn('[FutBR Desktop] espelhamento SQLite:',e));
+   },150);
+ },true);
+
+ function decorateCloseButton(){
+   const card=document.querySelector('.v548-auth .v548-auth-card');
+   if(!card||card.querySelector('[data-futbr-desktop-close]'))return;
+   card.insertAdjacentHTML('beforeend','<div class="futbr-desktop-close-auth"><button type="button" class="btn ghost" data-futbr-desktop-close="1">Fechar o jogo</button></div>');
+ }
+ if(typeof v548RenderAuth==='function'){
+   const baseRenderAuth=v548RenderAuth;
+   v548RenderAuth=function(){const out=baseRenderAuth.apply(this,arguments);queueMicrotask(decorateCloseButton);return out;};
+ }
+ decorateCloseButton();
+
+ document.addEventListener('click',event=>{
+   const close=event.target?.closest?.('[data-futbr-desktop-close]');
+   if(close){
+     event.preventDefault();event.stopImmediatePropagation();
+     Promise.resolve(window.FutBRDesktop.syncActiveSave?.()).catch(()=>{}).finally(()=>window.FutBRDesktop.closeGame());
+     return;
+   }
+   const buy=event.target?.closest?.('[data-futbr-buy-premium]');
+   if(buy){
+     event.preventDefault();event.stopImmediatePropagation();
+     window.FutBRDesktop.openUrl(PURCHASE_URL).catch(()=>alert('Não foi possível abrir o navegador. Acesse https://futbrmanager.com.br/'));
+   }
+ },true);
+
+ // Sinaliza que o armazenamento quente usa o mesmo caminho rápido da versão HTML.
+ document.documentElement.dataset.futbrStorage='indexeddb-hot-sqlite-manual-sync';
+})();
+</script>
+'@
+          $html = $html.Replace('</body>', $desktopPerformanceUi + [Environment]::NewLine + '</body>')
+
           [System.IO.File]::WriteAllText($indexHtml, $html, [System.Text.UTF8Encoding]::new($false))
           Write-Host 'Viewport desktop corrigida: sem scroll externo; rolagem permanece nos paineis internos.'
 
