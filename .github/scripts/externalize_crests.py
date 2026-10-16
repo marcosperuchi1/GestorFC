@@ -123,6 +123,9 @@ def patch_runtime(html: str) -> str:
 
     html = html.replace("v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};",
                         "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||r?.url||'';};")
+    while "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
+        html = html.replace("v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};",
+                            "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||r?.url||'';};",1)
     html = html.replace("function v4CrestURL(t){const record=EmbeddedCrests[t.id]||v4CrestCache[t.id];if(record?.data)return record.data;if(record?.url)return record.url;if(t.crestVerified&&t.providerId)return \`https://a.espncdn.com/i/teamlogos/soccer/500/\${t.providerId}.png\`;return '';}",
                         "function v4CrestURL(t){const record=EmbeddedCrests[t.id]||v4CrestCache[t.id];if(record?.data)return record.data;if(record?.url)return record.url;if(t.crestVerified&&t.providerId)return \`https://a.espncdn.com/i/teamlogos/soccer/500/\${t.providerId}.png\`;return '';}")
     return html
