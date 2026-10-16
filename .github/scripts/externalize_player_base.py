@@ -76,6 +76,8 @@ def main():
     blob=sm.group(2)
     roster_index=extract_json_const(html,'V310_ROSTER_INDEX')
     players,sample=validate_blob(blob,roster_index)
+    t6_start,t6_len=map(int,roster_index['t6'])
+    t6_bootstrap=json.loads(blob[t6_start:t6_start+t6_len])
     blob_bytes=blob.encode('utf-8')
     blob_sha=hashlib.sha256(blob_bytes).hexdigest()
 
@@ -87,7 +89,9 @@ def main():
     html=html[:sm.start(2)] + marker + html[sm.end(2):]
 
     old_decl="const v310RosterNode=document.getElementById('gfc-roster-blob')?.firstChild||null;"
-    new_decl=f"""const V310_ROSTER_ASSET='{ASSET_REL}',V310_ROSTER_EXPECTED_BYTES={len(blob_bytes)};
+    bootstrap=json.dumps({'t6':t6_bootstrap},ensure_ascii=False,separators=(',',':'))
+    new_decl=f"""const V310_BOOTSTRAP_ROSTERS={bootstrap};
+const V310_ROSTER_ASSET='{ASSET_REL}',V310_ROSTER_EXPECTED_BYTES={len(blob_bytes)};
 let v310RosterText='',v310RosterLoadPromise=null,v310RosterLoadError=null;
 function v310AcceptRosterText(text){{
  if(typeof text!=='string'||new TextEncoder().encode(text).byteLength!==V310_ROSTER_EXPECTED_BYTES)throw Error('Base local de jogadores incompleta.');
@@ -122,14 +126,14 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
     html=replace_once(
         html,
         "try{if(x&&v310RosterNode)r=v310DecodeCompactRoster(JSON.parse(v310RosterNode.data.slice(x[0],x[0]+x[1])));else{const t=V310_TEAM_BY_ID.get(id);if(t)r=v205FallbackRoster(t);}}catch(e){r=undefined;}",
-        "try{if(x)r=v310DecodeCompactRoster(JSON.parse(v310RosterSlice(x[0],x[1])));else{const t=V310_TEAM_BY_ID.get(id);if(t)r=v205FallbackRoster(t);}}catch(e){if(x)throw e;r=undefined;}",
+        "try{if(V310_BOOTSTRAP_ROSTERS[id])r=v310DecodeCompactRoster(V310_BOOTSTRAP_ROSTERS[id]);else if(x)r=v310DecodeCompactRoster(JSON.parse(v310RosterSlice(x[0],x[1])));else{const t=V310_TEAM_BY_ID.get(id);if(t)r=v205FallbackRoster(t);}}catch(e){if(x)throw e;r=undefined;}",
         'patch roster record'
     )
     html=replace_once(html,"function v310RosterRawBytes(){if(!v310RosterNode)return null;return new TextEncoder().encode(v310RosterNode.data).buffer;}",'','remove old raw bytes')
     html=replace_once(
         html,
         "const bounds=V310_ROSTER_INDEX[id];if(!bounds||!v310RosterNode)return null;\n let item=null;\n try{item=v310DecodeCompactRoster(JSON.parse(v310RosterNode.data.slice(bounds[0],bounds[0]+bounds[1])));}catch(e){console.warn('[FutBR] Roster source error',id,e?.message||e);}",
-        "const bounds=V310_ROSTER_INDEX[id];if(!bounds)return null;\n let item=null;\n try{item=v310DecodeCompactRoster(JSON.parse(v310RosterSlice(bounds[0],bounds[1])));}catch(e){console.warn('[FutBR] Roster source error',id,e?.message||e);throw e;}",
+        "const bounds=V310_ROSTER_INDEX[id];if(!bounds)return null;\n let item=null;\n try{item=V310_BOOTSTRAP_ROSTERS[id]?v310DecodeCompactRoster(V310_BOOTSTRAP_ROSTERS[id]):v310DecodeCompactRoster(JSON.parse(v310RosterSlice(bounds[0],bounds[1])));}catch(e){console.warn('[FutBR] Roster source error',id,e?.message||e);throw e;}",
         'patch original roster'
     )
     html=replace_once(
@@ -168,7 +172,7 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
         'records':len(roster_index),'players':players,'sample':sample,'engine_sha256':engine_before,
         'html_bytes_before':before_size,'html_bytes_after':index_path.stat().st_size,
         'html_bytes_saved':before_size-index_path.stat().st_size,'worker_decoder':'lazy-lru-96',
-        'authoritative_career_state':'unchanged'
+        'authoritative_career_state':'unchanged','bootstrap_records':['t6']
     }
     (project/'src'/MANIFEST_REL).write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(manifest,ensure_ascii=False))
