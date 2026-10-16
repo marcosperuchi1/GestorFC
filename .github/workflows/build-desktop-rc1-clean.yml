@@ -21,6 +21,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Validar sintaxe dos scripts Python
+        shell: pwsh
+        run: |
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/validate_desktop_architecture.py
+
       - name: Remontar pacote fonte
         shell: pwsh
         run: |
