@@ -119,7 +119,12 @@ function v310StartRosterLoad(){{
  const nativeLoad=globalThis.FutBRDesktop?.loadPlayerBase
   ?globalThis.FutBRDesktop.loadPlayerBase()
   :(globalThis.__TAURI__?.core?.invoke?globalThis.__TAURI__.core.invoke('load_player_base'):null);
- const source=early||nativeLoad||fetch(V310_ROSTER_ASSET,{{cache:'force-cache'}}).then(r=>{{if(!r.ok)throw Error('Falha ao abrir a base local de jogadores ('+r.status+').');return r.text();}});
+ if(!early&&!nativeLoad){{
+  const e=Error('Bridge nativo da base de jogadores indisponível.');
+  v310RosterLoadError=e;
+  return Promise.reject(e);
+ }}
+ const source=early||nativeLoad;
  v310RosterLoadPromise=Promise.resolve(source)
   .then(v310AcceptRosterText)
   .catch(e=>{{v310RosterLoadError=e;v310RosterLoadPromise=null;throw e;}});
