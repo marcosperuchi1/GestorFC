@@ -11,10 +11,25 @@ EXPECTED_MIN_PLAYERS=70000
 def fail(msg): raise RuntimeError(msg)
 
 def script_block(html, script_id):
-    pat=re.compile(r"(<script\\b[^>]*\\bid=(?:\\\"|')"+re.escape(script_id)+r"(?:\\\"|')[^>]*>)(.*?)(</script>)",re.I|re.S)
-    m=pat.search(html)
-    if not m: fail(f'script {script_id} not found')
-    return m
+    markers = (f'id="{script_id}"', f"id='{script_id}'")
+    pos = -1
+    for marker in markers:
+        pos = html.find(marker)
+        if pos >= 0:
+            break
+    if pos < 0:
+        fail(f'script {script_id} not found')
+    tag_start = html.rfind('<script', 0, pos)
+    if tag_start < 0:
+        fail(f'script start for {script_id} not found')
+    content_start = html.find('>', pos)
+    if content_start < 0:
+        fail(f'script open tag for {script_id} is incomplete')
+    content_start += 1
+    content_end = html.find('</script>', content_start)
+    if content_end < 0:
+        fail(f'script end for {script_id} not found')
+    return content_start, content_end
 
 def engine_bytes(html):
     a=html.find('const Engine = (() => {')
@@ -23,7 +38,7 @@ def engine_bytes(html):
     return html[a:b].encode('utf-8')
 
 def extract_json_const(html,name):
-    m=re.search(r'const\\s+'+re.escape(name)+r'\\s*=\\s*',html)
+    m=re.search(r'const\s+'+re.escape(name)+r'\s*=\s*',html)
     if not m: fail(f'{name} not found')
     pos=m.end()
     if pos>=len(html) or html[pos]!='{': fail(f'{name} is not object')
@@ -72,8 +87,8 @@ def main():
     before_size=len(html.encode('utf-8'))
     engine_before=hashlib.sha256(engine_bytes(html)).hexdigest()
 
-    sm=script_block(html,ROSTER_SCRIPT_ID)
-    blob=sm.group(2)
+    content_start,content_end=script_block(html,ROSTER_SCRIPT_ID)
+    blob=html[content_start:content_end]
     roster_index=extract_json_const(html,'V310_ROSTER_INDEX')
     players,sample=validate_blob(blob,roster_index)
     t6_start,t6_len=map(int,roster_index['t6'])
@@ -86,7 +101,7 @@ def main():
     asset.write_bytes(blob_bytes)
 
     marker=json.dumps({'external':ASSET_REL,'sha256':blob_sha,'bytes':len(blob_bytes),'records':len(roster_index),'players':players},separators=(',',':'))
-    html=html[:sm.start(2)] + marker + html[sm.end(2):]
+    html=html[:content_start] + marker + html[content_end:]
 
     old_decl="const v310RosterNode=document.getElementById('gfc-roster-blob')?.firstChild||null;"
     bootstrap=json.dumps({'t6':t6_bootstrap},ensure_ascii=False,separators=(',',':'))
