@@ -46,6 +46,8 @@ def main():
     # Native commands
     lib_path=project/"src-tauri"/"src"/"lib.rs"
     lib=lib_path.read_text(encoding="utf-8")
+    lib=lib.replace("use std::{fs, path::{Path, PathBuf}, sync::Mutex};",
+                    "use std::{collections::HashMap, fs, path::{Path, PathBuf}, sync::Mutex};")
     lib=replace_once(lib,"use serde::Serialize;","use serde::{Deserialize, Serialize};","serde imports")
     if "struct KvWrite" not in lib:
         lib=replace_once(
@@ -72,7 +74,7 @@ struct SupabaseProxyRequest {
 struct SupabaseProxyResponse {
     status: u16,
     body: String,
-    content_type: String,
+    headers: HashMap<String, String>,
 }""",
             "KvWrite"
         )
@@ -149,48 +151,72 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
         return Err("Caminho Supabase invalido.".to_string());
     }
     let allowed = request.path.starts_with("/auth/v1/")
-        || request.path.starts_with("/functions/v1/")
-        || request.path.starts_with("/rest/v1/")
-        || request.path.starts_with("/storage/v1/");
+        || request.path.starts_with("/functions/v1/validate-license");
     if !allowed {
         return Err("Endpoint Supabase nao permitido.".to_string());
     }
 
     let method_text = request.method.unwrap_or_else(|| "GET".to_string()).to_uppercase();
-    let method = reqwest::Method::from_bytes(method_text.as_bytes()).map_err(|e| e.to_string())?;
-    if !matches!(method_text.as_str(), "GET" | "POST" | "PUT" | "PATCH" | "DELETE") {
+    if !matches!(method_text.as_str(), "GET" | "POST") {
         return Err("Metodo HTTP nao permitido.".to_string());
     }
+    let method = reqwest::Method::from_bytes(method_text.as_bytes()).map_err(|e| e.to_string())?;
 
     let client = reqwest::Client::builder()
         .https_only(true)
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(25))
         .build()
         .map_err(|e| e.to_string())?;
+
     let mut builder = client.request(method, format!("{BASE}{}", request.path))
         .header("apikey", APIKEY)
         .header("accept", "application/json");
 
+    let mut has_content_type = false;
     if let Some(headers) = request.headers {
         for (name, value) in headers {
             let lower = name.to_ascii_lowercase();
-            if lower == "authorization" || lower == "content-type" || lower == "prefer" {
-                builder = builder.header(name, value);
+            match lower.as_str() {
+                "authorization" => builder = builder.header("authorization", value),
+                "content-type" => {
+                    has_content_type = true;
+                    builder = builder.header("content-type", value);
+                }
+                "prefer" => builder = builder.header("prefer", value),
+                "x-client-info" => builder = builder.header("x-client-info", value),
+                "x-supabase-api-version" => builder = builder.header("x-supabase-api-version", value),
+                _ => {}
             }
         }
     }
+
     if let Some(body) = request.body {
+        if !has_content_type {
+            builder = builder.header("content-type", "application/json");
+        }
         builder = builder.body(body);
     }
 
-    let response = builder.send().await.map_err(|e| format!("Falha de conexao com Supabase: {e}"))?;
+    let response = builder
+        .send()
+        .await
+        .map_err(|e| format!("Falha de conexao segura com Supabase: {e}"))?;
+
     let status = response.status().as_u16();
-    let content_type = response.headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("application/json")
-        .to_string();
+    let mut response_headers = HashMap::new();
+    for name in ["content-type", "content-range", "x-supabase-api-version", "retry-after"] {
+        if let Some(value) = response.headers().get(name).and_then(|v| v.to_str().ok()) {
+            response_headers.insert(name.to_string(), value.to_string());
+        }
+    }
     let body = response.text().await.map_err(|e| e.to_string())?;
-    Ok(SupabaseProxyResponse { status, body, content_type })
+
+    Ok(SupabaseProxyResponse {
+        status,
+        body,
+        headers: response_headers,
+    })
 }
 
 '''
@@ -206,7 +232,13 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
     # Frontend patch
     index_path=project/"src"/"index.html"
     html=index_path.read_text(encoding="utf-8")
-    html=html.replace("img-src data: blob: https:;", "img-src 'self' data: blob: https:;")
+    csp_tag=re.search(r'<meta[^>]*http-equiv=["\']Content-Security-Policy["\'][^>]*>',html,re.I)
+    if not csp_tag:
+        raise RuntimeError("Meta CSP nao encontrada")
+    patched_csp=csp_tag.group(0)
+    if "img-src 'self'" not in patched_csp:
+        patched_csp=patched_csp.replace("img-src ","img-src 'self' ",1)
+    html=html[:csp_tag.start()]+patched_csp+html[csp_tag.end():]
 
     # remove literal backslash-n artifacts near desktop bridge
     html=html.replace('<body class="">\\n<script id="futbr-desktop-native-bridge">','<body class=""><script id="futbr-desktop-native-bridge">')
@@ -330,35 +362,29 @@ html.futbr-desktop .welcome.v570-career-start .v658-career-hero img.futbr125-her
     if 'futbr-desktop-start-green' not in html:
         html=replace_once(html,'</head>',start_theme+'\\n</head>','green start theme')
 
-    supabase_proxy=r'''
-<script id="futbr-desktop-supabase-proxy">
-(()=>{
- if(!window.FutBRDesktop?.available||!window.FutBRDesktop?.supabaseRequest)return;
- const BASE='https://ticwckvvxswturovwlqu.supabase.co';
- const nativeFetch=window.fetch.bind(window);
- window.fetch=async function(input,init={}){
-   const url=typeof input==='string'?input:(input instanceof URL?input.href:input?.url);
-   if(!url||!url.startsWith(BASE+'/'))return nativeFetch(input,init);
-   const source=input instanceof Request?input:null;
-   const headers=new Headers(source?.headers||undefined);
-   new Headers(init?.headers||undefined).forEach((v,k)=>headers.set(k,v));
-   let body=init?.body;
-   if(body==null&&source&&source.method!=='GET'&&source.method!=='HEAD'){
-     try{body=await source.clone().text();}catch(_){}
-   }
-   const result=await window.FutBRDesktop.supabaseRequest({
-     path:url.slice(BASE.length),
-     method:String(init?.method||source?.method||'GET'),
-     headers:Object.fromEntries(headers.entries()),
-     body:body==null?null:String(body)
-   });
-   return new Response(result.body,{status:Number(result.status)||500,headers:{'content-type':result.contentType||'application/json'}});
- };
-})();
-</script>
-'''
-    if 'futbr-desktop-supabase-proxy' not in html:
-        html=replace_once(html,'</body>',supabase_proxy+'\\n</body>','supabase desktop proxy')
+    auth_fetch_old="""async function v580Fetch(path,{method='POST',token=null,body=null}={}){
+ const headers={'apikey':V580_SUPABASE_KEY,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
+ const res=await fetch(V580_SUPABASE_URL+path,{method,headers,body:body==null?undefined:JSON.stringify(body)});
+ let data={};try{data=await res.json();}catch(e){}
+ if(!res.ok){const msg=data?.msg||data?.message||data?.error_description||data?.error||('Falha de comunicação ('+res.status+').');const err=Error(msg);err.status=res.status;err.data=data;throw err;}return data;
+}"""
+    auth_fetch_new="""async function v580Fetch(path,{method='POST',token=null,body=null}={}){
+ const headers={'apikey':V580_SUPABASE_KEY,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
+ let res;
+ if(window.FutBRDesktop?.supabaseRequest){
+  const native=await window.FutBRDesktop.supabaseRequest({
+   path,method,headers,body:body==null?null:JSON.stringify(body)
+  });
+  res=new Response(native.body,{status:Number(native.status)||500,headers:native.headers||{'content-type':'application/json'}});
+ }else{
+  res=await fetch(V580_SUPABASE_URL+path,{method,headers,body:body==null?undefined:JSON.stringify(body)});
+ }
+ let data={};try{data=await res.json();}catch(e){}
+ if(!res.ok){const msg=data?.msg||data?.message||data?.error_description||data?.error||('Falha de comunicação ('+res.status+').');const err=Error(msg);err.status=res.status;err.data=data;throw err;}return data;
+}"""
+    if auth_fetch_old not in html:
+        raise RuntimeError("v580Fetch original nao encontrado")
+    html=html.replace(auth_fetch_old,auth_fetch_new,1)
 
     performance=r'''
 <style id="futbr-desktop-rc-performance-ui">
