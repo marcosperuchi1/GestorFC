@@ -143,7 +143,14 @@ async function v310RosterRawBytes(){{
  if(b.byteLength!==V310_ROSTER_EXPECTED_BYTES)throw Error('Base local de jogadores com tamanho inválido.');
  return b;
 }}
-function v310ReleaseRosterSource(){{v310RosterText='';v310RosterLoadPromise=null;v310RosterCache.clear();try{{delete globalThis.__FUTBR_ROSTER_PRELOAD__;}}catch(e){{}}}}
+function v310ReleaseRosterSource(){{
+ // Mantemos a fonte compacta local durante toda a carreira porque algumas
+ // rotinas de temporada, validacao e salvamento ainda consultam os elencos
+ // iniciais de forma sincrona. O que e liberado aqui e somente o cache
+ // decodificado; a copia completa do Worker continua sendo descartada.
+ v310RosterCache.clear();
+ try{{delete globalThis.__FUTBR_ROSTER_PRELOAD__;}}catch(e){{}}
+}}
 v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',e?.message||e));"""
     html=replace_once(html,old_decl,new_decl,'replace roster node')
 
@@ -196,7 +203,7 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
         'records':len(roster_index),'players':players,'sample':sample,'engine_sha256':engine_before,
         'html_bytes_before':before_size,'html_bytes_after':index_path.stat().st_size,
         'html_bytes_saved':before_size-index_path.stat().st_size,'worker_decoder':'lazy-lru-96',
-        'authoritative_career_state':'unchanged','bootstrap_records':['t6']
+        'authoritative_career_state':'unchanged','bootstrap_records':['t6'],'roster_source_retained_for_sync_reads':True
     }
     (project/'src'/MANIFEST_REL).write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(manifest,ensure_ascii=False))
