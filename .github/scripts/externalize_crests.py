@@ -24,7 +24,7 @@ def extract_data_uri(data: str, root: Path, source: str, club_id: str):
     return rel.as_posix(), len(raw)
 
 def script_match(html: str, script_id: str):
-    pat = re.compile(r'(<script\\b[^>]*\\bid=["\\']' + re.escape(script_id) + r'["\\'][^>]*>)(.*?)(</script>)', re.I | re.S)
+    pat = re.compile(r"(<script\\b[^>]*\\bid=(?:\\\"|')"+re.escape(script_id)+r"(?:\\\"|')[^>]*>)(.*?)(</script>)", re.I | re.S)
     m = pat.search(html)
     if not m:
         raise RuntimeError(f'Script {script_id} not found')
