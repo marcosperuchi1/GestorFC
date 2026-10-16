@@ -100,35 +100,30 @@ def externalize_portable_base(html: str, root: Path):
     return html, count, raw_bytes
 
 def patch_runtime(html: str) -> str:
-    html = re.sub(
-        r"v1894PortableCrestLookup=id=>\\{\\s*const r=v1894PortableRecord\\(id\\);\\s*return r&&typeof r\\.data==='string'&&/\\^data:image\\\\/\\(png\\|jpeg\\|webp\\);base64,\\[a-z0-9\\+/=\\]\\+\\$/i\\.test\\(r\\.data\\)\\?r:undefined;\\s*\\};",
-        """v1894PortableCrestLookup=id=>{
+    old = """v1894PortableCrestLookup=id=>{
+ const r=v1894PortableRecord(id);
+ return r&&typeof r.data==='string'&&/^data:image\\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(r.data)?r:undefined;
+};"""
+    new = """v1894PortableCrestLookup=id=>{
  const r=v1894PortableRecord(id);
  return r&&((typeof r.data==='string'&&/^data:image\\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(r.data))||(typeof r.url==='string'&&r.url))?r:undefined;
-};""",
-        html,
-        count=1,
-    )
-    html = html.replace(
-        "if(Object.prototype.hasOwnProperty.call(v300CrestOverrides,id)&&v300CrestOverrides[id]?.data)return v300CrestOverrides[id];",
-        "if(Object.prototype.hasOwnProperty.call(v300CrestOverrides,id)&&(v300CrestOverrides[id]?.data||v300CrestOverrides[id]?.url))return v300CrestOverrides[id];",
-        1,
-    )
-    html = html.replace(
-        "if(!v1894PortableCrestDeleted.has(id)&&v1894PortableCrestLookup){const portable=v1894PortableCrestLookup(id);if(portable?.data)return portable;}",
-        "if(!v1894PortableCrestDeleted.has(id)&&v1894PortableCrestLookup){const portable=v1894PortableCrestLookup(id);if(portable?.data||portable?.url)return portable;}",
-        1,
-    )
-    html = html.replace(
-        "if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data)return linked;}",
-        "if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data||linked?.url)return linked;}",
-        1,
-    )
-    # Escudos locais nao devem esperar o gatilho de lazy loading da viewport.
-    html = html.replace(
-        'loading="lazy" referrerpolicy="no-referrer" onerror=',
-        'loading="eager" decoding="async" fetchpriority="high" referrerpolicy="no-referrer" onerror='
-    )
+};"""
+    if old not in html:
+        raise RuntimeError('v1894PortableCrestLookup pattern not found')
+    html = html.replace(old, new, 1)
+    replacements = [
+        ("if(Object.prototype.hasOwnProperty.call(v300CrestOverrides,id)&&v300CrestOverrides[id]?.data)return v300CrestOverrides[id];",
+         "if(Object.prototype.hasOwnProperty.call(v300CrestOverrides,id)&&(v300CrestOverrides[id]?.data||v300CrestOverrides[id]?.url))return v300CrestOverrides[id];"),
+        ("if(!v1894PortableCrestDeleted.has(id)&&v1894PortableCrestLookup){const portable=v1894PortableCrestLookup(id);if(portable?.data)return portable;}",
+         "if(!v1894PortableCrestDeleted.has(id)&&v1894PortableCrestLookup){const portable=v1894PortableCrestLookup(id);if(portable?.data||portable?.url)return portable;}"),
+        ("if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data)return linked;}",
+         "if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data||linked?.url)return linked;}")
+    ]
+    for old_text,new_text in replacements:
+        if old_text in html:
+            html = html.replace(old_text,new_text,1)
+    html = html.replace('loading="lazy" referrerpolicy="no-referrer" onerror=',
+                        'loading="eager" decoding="async" fetchpriority="high" referrerpolicy="no-referrer" onerror=')
     return html
 
 def main():
