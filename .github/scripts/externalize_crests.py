@@ -120,6 +120,11 @@ def patch_runtime(html: str) -> str:
         "if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data)return linked;}",
         "if(origin&&origin!==id){const linked=v300CrestRecord(origin);if(linked?.data||linked?.url)return linked;}")
     html = html.replace('loading="lazy" referrerpolicy="no-referrer" onerror=', 'loading="eager" decoding="async" fetchpriority="high" referrerpolicy="no-referrer" onerror=')
+
+    html = html.replace("v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};",
+                        "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||r?.url||'';};")
+    html = html.replace("function v4CrestURL(t){const record=EmbeddedCrests[t.id]||v4CrestCache[t.id];if(record?.data)return record.data;if(record?.url)return record.url;if(t.crestVerified&&t.providerId)return \`https://a.espncdn.com/i/teamlogos/soccer/500/\${t.providerId}.png\`;return '';}",
+                        "function v4CrestURL(t){const record=EmbeddedCrests[t.id]||v4CrestCache[t.id];if(record?.data)return record.data;if(record?.url)return record.url;if(t.crestVerified&&t.providerId)return \`https://a.espncdn.com/i/teamlogos/soccer/500/\${t.providerId}.png\`;return '';}")
     return html
 
 def main():
