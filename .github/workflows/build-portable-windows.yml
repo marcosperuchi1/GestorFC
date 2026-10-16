@@ -67,6 +67,15 @@ jobs:
           Set-Content -LiteralPath $tauriConfig -Value $cfg -Encoding utf8
           Write-Host 'Configuracao NSIS ajustada para installMode=currentUser.'
 
+          # No Windows release, usa o subsistema grafico para nao abrir uma janela de console junto com o jogo.
+          $mainRs = Join-Path $project 'src-tauri/src/main.rs'
+          $main = [System.IO.File]::ReadAllText($mainRs)
+          if ($main -notmatch 'windows_subsystem\s*=\s*"windows"') {
+            $main = '#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]' + [Environment]::NewLine + $main
+            [System.IO.File]::WriteAllText($mainRs, $main, [System.Text.UTF8Encoding]::new($false))
+          }
+          Write-Host 'Executavel Windows configurado sem console externo.'
+
           # Corrige o frame desktop: algumas sequencias literais "\n" do empacotamento
           # estavam criando text nodes fora do #app e aumentando a altura do body.
           $indexHtml = Join-Path $project 'src/index.html'
