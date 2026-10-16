@@ -16,6 +16,11 @@ jobs:
       - name: Baixar arquivos do repositorio
         uses: actions/checkout@v4
 
+      - name: Preparar Python para validacoes
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Remontar e extrair pacote Desktop RC1
         shell: pwsh
         run: |
@@ -389,6 +394,22 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
           if (-not (Test-Path $manifest)) { throw 'Manifesto de escudos locais nao foi gerado.' }
           Get-Content $manifest
 
+      - name: Externalizar base inicial de jogadores
+        shell: pwsh
+        run: |
+          python .github/scripts/externalize_player_base.py "$env:FUTBR_PROJECT"
+          $manifest = Join-Path $env:FUTBR_PROJECT 'src/assets/data/player-base-manifest.json'
+          if (-not (Test-Path $manifest)) { throw 'Manifesto da base externa de jogadores nao foi gerado.' }
+          Get-Content $manifest
+
+      - name: Validar arquitetura antes da compilacao
+        shell: pwsh
+        run: |
+          python .github/scripts/validate_desktop_architecture.py "$env:FUTBR_PROJECT"
+          $report = Join-Path $env:FUTBR_PROJECT 'architecture-validation.json'
+          if (-not (Test-Path $report)) { throw 'Relatorio de validacao estrutural nao foi gerado.' }
+          Get-Content $report
+
       - name: Preparar Node 22
         uses: actions/setup-node@v4
         with:
@@ -398,6 +419,11 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+
+      - name: Fixar dependencias Rust desta compilacao
+        shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
