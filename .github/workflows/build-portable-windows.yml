@@ -16,13 +16,41 @@ jobs:
       - name: Baixar arquivos do repositorio
         uses: actions/checkout@v4
 
-      - name: Extrair pacote Desktop RC1
+      - name: Remontar e extrair pacote Desktop RC1
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $pacote = 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip'
+
           if (-not (Test-Path -LiteralPath $pacote)) {
-            throw "Envie $pacote para a raiz do repositorio antes de executar este workflow."
+            $partes = Get-ChildItem -File 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*' | Sort-Object Name
+            if (-not $partes -or $partes.Count -eq 0) {
+              throw 'Envie o ZIP completo ou todas as partes .part01, .part02, etc. para a raiz do repositorio.'
+            }
+
+            Write-Host "Remontando $pacote a partir de $($partes.Count) partes..."
+            $saida = [System.IO.File]::Open($pacote, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+            try {
+              foreach ($parte in $partes) {
+                Write-Host "Adicionando $($parte.Name) - $($parte.Length) bytes"
+                $entrada = [System.IO.File]::OpenRead($parte.FullName)
+                try { $entrada.CopyTo($saida) } finally { $entrada.Dispose() }
+              }
+            } finally {
+              $saida.Dispose()
+            }
           }
+
+          $hashFile = 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt'
+          if (Test-Path -LiteralPath $hashFile) {
+            $esperado = ((Get-Content -LiteralPath $hashFile -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+            $obtido = (Get-FileHash -LiteralPath $pacote -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($obtido -ne $esperado) {
+              throw "Falha de integridade: SHA-256 esperado $esperado, obtido $obtido."
+            }
+            Write-Host "SHA-256 validado: $obtido"
+          }
+
           $work = Join-Path $env:RUNNER_TEMP 'futbr-desktop-rc1'
           if (Test-Path $work) { Remove-Item $work -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $work | Out-Null
