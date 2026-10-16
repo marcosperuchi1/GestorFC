@@ -116,23 +116,27 @@ function v310StartRosterLoad(){{
  if(v310RosterText)return Promise.resolve(v310RosterText);
  if(v310RosterLoadPromise)return v310RosterLoadPromise;
  const early=globalThis.__FUTBR_ROSTER_PRELOAD__;
- v310RosterLoadPromise=(early||fetch(V310_ROSTER_ASSET,{{cache:'force-cache'}}).then(r=>{{if(!r.ok)throw Error('Falha ao abrir a base local de jogadores ('+r.status+').');return r.text();}}))
-  .then(v310AcceptRosterText).catch(e=>{{v310RosterLoadError=e;v310RosterLoadPromise=null;throw e;}});
+ const nativeLoad=globalThis.FutBRDesktop?.loadPlayerBase
+  ?globalThis.FutBRDesktop.loadPlayerBase()
+  :(globalThis.__TAURI__?.core?.invoke?globalThis.__TAURI__.core.invoke('load_player_base'):null);
+ const source=early||nativeLoad||fetch(V310_ROSTER_ASSET,{{cache:'force-cache'}}).then(r=>{{if(!r.ok)throw Error('Falha ao abrir a base local de jogadores ('+r.status+').');return r.text();}});
+ v310RosterLoadPromise=Promise.resolve(source)
+  .then(v310AcceptRosterText)
+  .catch(e=>{{v310RosterLoadError=e;v310RosterLoadPromise=null;throw e;}});
  try{{delete globalThis.__FUTBR_ROSTER_PRELOAD__;}}catch(e){{}}
  return v310RosterLoadPromise;
 }}
 function v310EnsureRosterTextSync(){{
  if(v310RosterText)return v310RosterText;
- try{{
-  const x=new XMLHttpRequest();x.open('GET',V310_ROSTER_ASSET,false);x.send(null);
-  if((x.status>=200&&x.status<300)||x.status===0)return v310AcceptRosterText(x.responseText||'');
-  throw Error('HTTP '+x.status);
- }}catch(e){{v310RosterLoadError=e;throw Error('A base local de jogadores não pôde ser carregada. Reinstale ou extraia novamente o FutBR Manager.');}}
+ if(v310RosterLoadError)throw v310RosterLoadError;
+ throw Error('A base local de jogadores ainda está sendo preparada.');
 }}
 function v310RosterSlice(start,length){{return v310EnsureRosterTextSync().slice(start,start+length);}}
 async function v310RosterRawBytes(){{
- const r=await fetch(V310_ROSTER_ASSET,{{cache:'force-cache'}});if(!r.ok)throw Error('Falha ao ler a base local de jogadores ('+r.status+').');
- const b=await r.arrayBuffer();if(b.byteLength!==V310_ROSTER_EXPECTED_BYTES)throw Error('Base local de jogadores com tamanho inválido.');return b;
+ const text=await v310StartRosterLoad();
+ const b=new TextEncoder().encode(text).buffer;
+ if(b.byteLength!==V310_ROSTER_EXPECTED_BYTES)throw Error('Base local de jogadores com tamanho inválido.');
+ return b;
 }}
 function v310ReleaseRosterSource(){{v310RosterText='';v310RosterLoadPromise=null;v310RosterCache.clear();try{{delete globalThis.__FUTBR_ROSTER_PRELOAD__;}}catch(e){{}}}}
 v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',e?.message||e));"""
