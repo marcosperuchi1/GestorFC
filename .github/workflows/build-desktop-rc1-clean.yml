@@ -1,0 +1,129 @@
+name: Build FutBR Manager Desktop RC1 Clean
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Tauri Windows x64 - portatil e instalador
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Remontar pacote fonte
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip'
+          if (-not (Test-Path $zip)) {
+            $parts = Get-ChildItem -File 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*' | Sort-Object Name
+            if (-not $parts) { throw 'Partes do pacote fonte nao encontradas.' }
+            $out = [System.IO.File]::Open($zip,[System.IO.FileMode]::Create,[System.IO.FileAccess]::Write)
+            try {
+              foreach ($part in $parts) {
+                $input = [System.IO.File]::OpenRead($part.FullName)
+                try { $input.CopyTo($out) } finally { $input.Dispose() }
+              }
+            } finally { $out.Dispose() }
+          }
+          if (Test-Path 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt') {
+            $expected = ((Get-Content 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt' -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+            $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) { throw "SHA-256 invalido: $actual" }
+          }
+          $work = Join-Path $env:RUNNER_TEMP 'futbr-desktop-rc1'
+          if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          Expand-Archive -LiteralPath $zip -DestinationPath $work -Force
+          $project = Join-Path $work 'FutBR_Manager_Desktop_RC1'
+          if (-not (Test-Path (Join-Path $project 'src-tauri/tauri.conf.json'))) { throw 'Projeto Tauri invalido.' }
+          "FUTBR_PROJECT=$project" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Preparar projeto desktop
+        shell: pwsh
+        run: python .github/scripts/prepare_desktop_project.py "$env:FUTBR_PROJECT"
+
+      - name: Externalizar escudos
+        shell: pwsh
+        run: python .github/scripts/externalize_crests.py "$env:FUTBR_PROJECT"
+
+      - name: Externalizar base inicial de jogadores
+        shell: pwsh
+        run: python .github/scripts/externalize_player_base.py "$env:FUTBR_PROJECT"
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validar arquitetura antes do Rust
+        shell: pwsh
+        run: python .github/scripts/validate_desktop_architecture.py "$env:FUTBR_PROJECT"
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ env.FUTBR_PROJECT }}/src-tauri -> target
+
+      - name: Instalar Tauri CLI
+        shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: npm install
+
+      - name: Compilar Tauri
+        shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: npm run tauri build -- --bundles nsis
+
+      - name: Montar artifacts
+        shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          New-Item -ItemType Directory -Force -Path portable | Out-Null
+          $exe = 'src-tauri/target/release/futbr-manager.exe'
+          if (-not (Test-Path $exe)) { throw 'EXE final nao encontrado.' }
+          Copy-Item $exe 'portable/FutBR Manager.exe'
+          Set-Content 'portable/portable.flag' 'FutBR Manager portable mode' -Encoding ascii
+          Set-Content 'portable/LEIA-ME.txt' @(
+            'FUTBR MANAGER - DESKTOP RC1 PORTATIL',
+            '',
+            'Extraia a pasta inteira e execute FutBR Manager.exe.',
+            'Nao apague portable.flag.',
+            'Os saves ficam em FutBR Manager Data\\saves ao lado do EXE.',
+            'F11 alterna tela cheia. Alt+F4 fecha o jogo.'
+          ) -Encoding utf8
+          Compress-Archive -Path 'portable/*' -DestinationPath 'artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip' -Force
+          $nsis = Get-ChildItem 'src-tauri/target/release/bundle/nsis' -Filter '*.exe' | Select-Object -First 1
+          if (-not $nsis) { throw 'Instalador NSIS nao encontrado.' }
+          Copy-Item $nsis.FullName 'artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
+          Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json'
+          Copy-Item 'src/assets/data/player-base-manifest.json' 'artifacts/player-base-manifest.json'
+          Copy-Item 'src/assets/crests/manifest.json' 'artifacts/crest-assets-manifest.json'
+          Get-ChildItem artifacts | Format-Table Name,Length
+
+      - name: Publicar artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-Desktop-RC1-Windows
+          path: ${{ env.FUTBR_PROJECT }}/artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
