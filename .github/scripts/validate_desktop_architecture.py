@@ -67,6 +67,12 @@ def main():
     if 'indexeddb-hot-sqlite-manual-sync' not in html: die('Camada hibrida de persistencia nao encontrada')
     if 'futbr-desktop-viewport-lock' not in html: die('Trava de viewport desktop ausente')
     if 'futbr-desktop-crest-warmup' not in html: die('Preaquecimento de escudos ausente')
+    if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||r?.url||'';};" not in html:
+        die('Resolvedor final de escudos nao aceita arquivos locais externos')
+    if 'futbr-player-base-preload' in html:
+        die('Preload antigo da base de jogadores ainda existe no head')
+    if "load_player_base" not in html:
+        die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
 
     manifest_path=src/'assets/data/player-base-manifest.json'
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
