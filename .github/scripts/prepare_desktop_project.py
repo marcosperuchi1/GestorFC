@@ -21,7 +21,6 @@ def main():
     if nsis.get("installMode")=="perUser":
         nsis["installMode"]="currentUser"
     nsis["installerIcon"]="icons/icon.ico"
-    nsis["uninstallerIcon"]="icons/icon.ico"
     resources=bundle.get("resources")
     if not isinstance(resources,dict):
         resources={}
