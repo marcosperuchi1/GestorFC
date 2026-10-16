@@ -24,7 +24,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -71,6 +71,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Endurecer salvamento de temporada
+        shell: pwsh
+        run: python .github/scripts/harden_save_storage.py "$env:FUTBR_PROJECT"
 
       - name: Validar arquitetura antes do Rust
         shell: pwsh
