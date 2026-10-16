@@ -106,12 +106,13 @@ jobs:
           $exe = 'src-tauri/target/release/futbr-manager.exe'
           if (-not (Test-Path $exe)) { throw 'EXE final nao encontrado.' }
           Copy-Item $exe 'portable/FutBR Manager.exe'
+          Copy-Item 'src/assets/data/rosters.v310.bin' 'portable/rosters.v310.bin'
           Set-Content 'portable/portable.flag' 'FutBR Manager portable mode' -Encoding ascii
           Set-Content 'portable/LEIA-ME.txt' @(
             'FUTBR MANAGER - DESKTOP RC1 PORTATIL',
             '',
             'Extraia a pasta inteira e execute FutBR Manager.exe.',
-            'Nao apague portable.flag.',
+            'Nao apague portable.flag nem rosters.v310.bin.',
             'Os saves ficam em FutBR Manager Data\\saves ao lado do EXE.',
             'F11 alterna tela cheia. Alt+F4 fecha o jogo.'
           ) -Encoding utf8
