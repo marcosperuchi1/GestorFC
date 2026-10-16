@@ -16,9 +16,17 @@ def main():
     # Tauri config
     cfg_path=project/"src-tauri"/"tauri.conf.json"
     cfg=json.loads(cfg_path.read_text(encoding="utf-8-sig"))
-    nsis=cfg.setdefault("bundle",{}).setdefault("windows",{}).setdefault("nsis",{})
+    bundle=cfg.setdefault("bundle",{})
+    nsis=bundle.setdefault("windows",{}).setdefault("nsis",{})
     if nsis.get("installMode")=="perUser":
         nsis["installMode"]="currentUser"
+    nsis["installerIcon"]="icons/icon.ico"
+    nsis["uninstallerIcon"]="icons/icon.ico"
+    resources=bundle.get("resources")
+    if not isinstance(resources,dict):
+        resources={}
+        bundle["resources"]=resources
+    resources["../src/assets/data/rosters.v310.bin"]="rosters.v310.bin"
     cfg_path.write_text(json.dumps(cfg,ensure_ascii=False,indent=2),encoding="utf-8")
 
     # Windows GUI subsystem
@@ -83,12 +91,30 @@ fn close_game(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn load_player_base(app: AppHandle) -> Result<String, String> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    if let Some(dir) = exe_dir {
+        let portable = dir.join("rosters.v310.bin");
+        if portable.exists() {
+            return fs::read_to_string(&portable)
+                .map_err(|e| format!("Falha ao ler a base local portátil: {e}"));
+        }
+    }
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    let bundled = resource_dir.join("rosters.v310.bin");
+    fs::read_to_string(&bundled)
+        .map_err(|e| format!("Falha ao ler a base local instalada: {e}"))
+}
+
 '''
         lib=replace_once(lib,"#[tauri::command]\nfn desktop_info",native+"#[tauri::command]\nfn desktop_info","native commands")
         lib=replace_once(
             lib,
             "            kv_commit_manifest,\n            desktop_info,",
-            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            desktop_info,",
+            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            load_player_base,\n            desktop_info,",
             "handler commands"
         )
     lib_path.write_text(lib,encoding="utf-8")
@@ -127,6 +153,59 @@ html.futbr-desktop .main-wrap{height:100dvh!important;min-height:0!important;max
 '''
     if 'futbr-desktop-viewport-lock' not in html:
         html=replace_once(html,'</head>',viewport+'\n</head>','viewport css')
+
+    auth_theme=r'''
+<style id="futbr-desktop-auth-green">
+html.futbr-desktop .v548-auth{
+ height:100dvh!important;min-height:0!important;overflow:hidden!important;
+ padding:clamp(12px,2.3vh,28px)!important;
+ background:radial-gradient(circle at 12% 10%,rgba(60,184,106,.19),transparent 35%),radial-gradient(circle at 86% 86%,rgba(17,103,63,.22),transparent 40%),#06140c!important;
+ --bg:#06140c;--panel:#0d2116;--panel2:#12301f;--line:#2f6847;--text:#f0f7f2;--muted:#b2cbbb;--dim:#7fa28d;--accent:#65d98d;--accent2:#b9efc9;--gold:#d8d98a;--red:#ff9a92
+}
+html.futbr-desktop .v548-auth-shell{width:min(1180px,100%)!important;max-height:100%!important;min-height:0!important;gap:20px!important;align-items:stretch!important}
+html.futbr-desktop .v548-auth-brand,html.futbr-desktop .v548-auth-card{background:linear-gradient(145deg,rgba(94,214,137,.055),transparent 58%),#0c2116!important;border-color:#397a53!important;box-shadow:0 22px 70px rgba(0,0,0,.36)!important;min-height:0!important}
+html.futbr-desktop .v548-auth-brand:before{background:linear-gradient(90deg,#5fd489,#9ee3b5 56%,#c8dc84)!important}
+html.futbr-desktop .v548-auth-card{overflow:hidden!important}
+html.futbr-desktop .v548-plan-card{background:rgba(0,0,0,.16)!important;border-color:#315e43!important}
+html.futbr-desktop .v548-plan-card.premium{background:rgba(91,189,122,.08)!important;border-color:#5ab378!important}
+html.futbr-desktop .v548-auth-tabs{background:rgba(0,0,0,.16)!important;border-color:#315e43!important}
+html.futbr-desktop .v548-auth-tabs button.active{background:rgba(101,217,141,.13)!important;color:#83e4a5!important}
+html.futbr-desktop .v548-auth .field input{background:#07170e!important;border-color:#315e43!important;color:#f4faf6!important}
+html.futbr-desktop .v548-auth .field input:focus{border-color:#65d98d!important;box-shadow:0 0 0 2px rgba(101,217,141,.12)!important}
+html.futbr-desktop .v548-auth .btn.primary{background:#58d382!important;border-color:#58d382!important;color:#062010!important}
+html.futbr-desktop .futbr-desktop-close-auth{margin-top:10px!important;padding-top:9px!important;border-top-color:#315e43!important}
+@media (max-height:940px) and (min-width:841px){
+ html.futbr-desktop .v548-auth{padding:12px 18px!important}
+ html.futbr-desktop .v548-auth-shell{height:calc(100dvh - 24px)!important;gap:16px!important}
+ html.futbr-desktop .v548-auth-brand{padding:24px 28px!important}
+ html.futbr-desktop .v548-auth-brand h1{font-size:clamp(38px,5.1vh,56px)!important;line-height:1!important;margin:14px 0 10px!important}
+ html.futbr-desktop .v548-auth-brand>p{font-size:11px!important;line-height:1.55!important}
+ html.futbr-desktop .v548-plan-grid{padding-top:14px!important;gap:9px!important}
+ html.futbr-desktop .v548-plan-card{padding:12px!important}
+ html.futbr-desktop .v548-plan-card ul{margin-top:7px!important;font-size:9px!important;line-height:1.45!important}
+ html.futbr-desktop .v548-auth-card{padding:22px 26px!important}
+ html.futbr-desktop .v548-auth-card h2{font-size:24px!important}
+ html.futbr-desktop .v548-auth-card>.subtext{margin:5px 0 14px!important}
+ html.futbr-desktop .v548-auth-tabs{margin-bottom:14px!important}
+ html.futbr-desktop .v548-auth-form{gap:9px!important}
+ html.futbr-desktop .v548-auth-form .field{gap:4px!important}
+ html.futbr-desktop .v548-auth-form .field input{min-height:36px!important;padding:8px 10px!important}
+ html.futbr-desktop .v548-auth-form .btn{min-height:36px!important}
+ html.futbr-desktop .v548-auth-error{margin-top:7px!important;min-height:16px!important}
+ html.futbr-desktop .v548-auth-foot{margin-top:10px!important;padding-top:10px!important;line-height:1.45!important}
+}
+@media (max-height:760px) and (min-width:841px){
+ html.futbr-desktop .v548-auth-brand{padding:18px 22px!important}
+ html.futbr-desktop .v548-auth-brand h1{font-size:36px!important;margin:8px 0!important}
+ html.futbr-desktop .v548-auth-brand>p{display:none!important}
+ html.futbr-desktop .v548-plan-grid{padding-top:8px!important}
+ html.futbr-desktop .v548-plan-card ul{font-size:8px!important;line-height:1.3!important}
+ html.futbr-desktop .v548-auth-card{padding:16px 22px!important}
+}
+</style>
+'''
+    if 'futbr-desktop-auth-green' not in html:
+        html=replace_once(html,'</head>',auth_theme+'\\n</head>','green auth theme')
 
     performance=r'''
 <style id="futbr-desktop-rc-performance-ui">
