@@ -73,6 +73,10 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
+    if "fetch(V310_ROSTER_ASSET" in html:
+        die('A build desktop ainda usa fetch local para a base de jogadores')
+    if "O acesso é validado pelo servidor do FutBR Manager." in html:
+        die('Mensagem de seguranca ainda aparece no login desktop')
     if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
         die('Ainda existe resolvedor final de escudo que ignora arquivos locais')
     if "supabase_proxy" not in html or "supabaseRequest:request=>call('supabase_proxy'" not in html:
