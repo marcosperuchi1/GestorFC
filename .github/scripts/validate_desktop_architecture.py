@@ -112,6 +112,20 @@ def main():
     files=sum(1 for p in (src/'assets/crests').rglob('*') if p.is_file() and p.name!='manifest.json')
     if files<int(crest_info.get('asset_files',0)): die('Arquivos de escudos locais incompletos')
 
+    lib_rs=(project/'src-tauri/src/lib.rs').read_text(encoding='utf-8')
+    cargo_toml=(project/'src-tauri/Cargo.toml').read_text(encoding='utf-8')
+    for marker in ['async fn supabase_proxy(', 'fn open_premium_site(', 'fn load_player_base(']:
+        if marker not in lib_rs:
+            die(f'Comando Rust ausente: {marker}')
+    handler_match=re.search(r'tauri::generate_handler!\[(.*?)\]',lib_rs,re.S)
+    if not handler_match:
+        die('invoke_handler do Tauri nao encontrado')
+    handler=handler_match.group(1)
+    for command in ['supabase_proxy','open_premium_site','load_player_base']:
+        if command not in handler:
+            die(f'Comando Tauri nao registrado no invoke_handler: {command}')
+    if 'reqwest = ' not in cargo_toml:
+        die('Dependencia reqwest ausente do Cargo.toml')
     checked=validate_scripts(html,project)
     report={
         'ok':True,
