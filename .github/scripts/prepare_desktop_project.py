@@ -92,6 +92,15 @@ fn close_game(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_premium_site(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.minimize();
+    }
+    open::that("https://futbrmanager.com.br/#planos").map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn load_player_base(app: AppHandle) -> Result<String, String> {
     let exe_dir = std::env::current_exe()
         .ok()
@@ -136,7 +145,7 @@ fn load_player_base(app: AppHandle) -> Result<String, String> {
     html=replace_once(
         html,
         "  openDataFolder:()=>call('open_data_folder')",
-        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  closeGame:()=>call('close_game')",
+        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  openPremium:()=>call('open_premium_site'),\n  loadPlayerBase:()=>call('load_player_base'),\n  closeGame:()=>call('close_game')",
         "desktop api"
     )
 
@@ -207,6 +216,44 @@ html.futbr-desktop .futbr-desktop-close-auth{margin-top:10px!important;padding-t
     if 'futbr-desktop-auth-green' not in html:
         html=replace_once(html,'</head>',auth_theme+'\\n</head>','green auth theme')
 
+    start_theme=r'''
+<style id="futbr-desktop-start-green">
+html.futbr-desktop .welcome.v570-career-start{
+ --bg:#06140c!important;--panel:#0b2115!important;--panel2:#102d1c!important;--line:#2e6846!important;
+ --text:#f2f8f4!important;--muted:#b5cdbd!important;--dim:#7fa18d!important;--accent:#62d88c!important;--accent2:#a8e9bc!important;--gold:#d8d487!important;
+ width:100%!important;height:100dvh!important;min-height:0!important;overflow:hidden!important;
+ background:radial-gradient(circle at 10% 18%,rgba(73,196,116,.15),transparent 30%),radial-gradient(circle at 86% 82%,rgba(18,116,68,.18),transparent 38%),#06140c!important;
+ color:#f2f8f4!important
+}
+html.futbr-desktop .welcome.v570-career-start .welcome-top{background:transparent!important}
+html.futbr-desktop .welcome.v570-career-start .setup-card{
+ background:linear-gradient(145deg,rgba(88,211,130,.04),transparent 56%),#0a2014!important;
+ border-color:#34794f!important;box-shadow:0 22px 60px rgba(0,0,0,.34)!important
+}
+html.futbr-desktop .welcome.v570-career-start .v658-career-hero{
+ background:radial-gradient(circle at 50% 42%,rgba(74,205,118,.14),transparent 46%),#07180f!important
+}
+html.futbr-desktop .welcome.v570-career-start .career-mode-card,
+html.futbr-desktop .welcome.v570-career-start .v744-financial-field,
+html.futbr-desktop .welcome.v570-career-start input,
+html.futbr-desktop .welcome.v570-career-start select{
+ background:#0b1912!important;border-color:#2d6946!important;color:#f2f8f4!important
+}
+html.futbr-desktop .welcome.v570-career-start .career-mode-card.active{
+ border-color:#5fd78a!important;background:#0c2919!important
+}
+html.futbr-desktop .welcome.v570-career-start .btn.primary,
+html.futbr-desktop .welcome.v570-career-start [data-action="new-career"]{
+ background:#58cf80!important;border-color:#58cf80!important;color:#05200f!important
+}
+html.futbr-desktop .welcome.v570-career-start .v658-career-hero img.futbr125-hero-logo{
+ filter:drop-shadow(0 18px 30px rgba(0,0,0,.32))!important
+}
+</style>
+'''
+    if 'futbr-desktop-start-green' not in html:
+        html=replace_once(html,'</head>',start_theme+'\\n</head>','green start theme')
+
     performance=r'''
 <style id="futbr-desktop-rc-performance-ui">
 html.futbr-desktop .futbr-desktop-close-auth{margin-top:14px;padding-top:12px;border-top:1px solid var(--line,#ffffff22)}
@@ -234,7 +281,7 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
  const mo=new MutationObserver(()=>decorateCloseButton());mo.observe(document.documentElement,{subtree:true,childList:true});decorateCloseButton();
  document.addEventListener('click',event=>{
   if(event.target?.closest?.('[data-futbr-desktop-close]')){event.preventDefault();event.stopImmediatePropagation();Promise.resolve(syncActiveSaveToDisk()).catch(()=>{}).finally(()=>window.FutBRDesktop.closeGame());return;}
-  if(event.target?.closest?.('[data-futbr-buy-premium]')){event.preventDefault();event.stopImmediatePropagation();window.FutBRDesktop.openUrl(PURCHASE_URL).catch(()=>alert('Acesse https://futbrmanager.com.br/'));}
+  if(event.target?.closest?.('[data-futbr-buy-premium]')){event.preventDefault();event.stopImmediatePropagation();window.FutBRDesktop.openPremium().catch(()=>window.FutBRDesktop.openUrl(PURCHASE_URL)).catch(()=>alert('Acesse https://futbrmanager.com.br/'));}
  },true);
  document.documentElement.dataset.futbrStorage='indexeddb-hot-sqlite-manual-sync';
 })();
