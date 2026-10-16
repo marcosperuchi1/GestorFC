@@ -259,6 +259,7 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
 
     html=html.replace("const PRICE = 'R$ 24,99';","const PRICE = 'R$ 19,90';")
     html=html.replace("purchasePriceBRL: 24.99","purchasePriceBRL: 19.90")
+    html=html.replace("O acesso é validado pelo servidor do FutBR Manager. O plano Premium ou Autor nunca é definido pelo arquivo local.","")
 
     viewport=r'''
 <style id="futbr-desktop-viewport-lock">
