@@ -56,9 +56,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path $work | Out-Null
           Expand-Archive -LiteralPath $pacote -DestinationPath $work -Force
           $project = Join-Path $work 'FutBR_Manager_Desktop_RC1'
-          if (-not (Test-Path (Join-Path $project 'src-tauri/tauri.conf.json'))) {
+          $tauriConfig = Join-Path $project 'src-tauri/tauri.conf.json'
+          if (-not (Test-Path $tauriConfig)) {
             throw 'Projeto Tauri nao encontrado dentro do ZIP.'
           }
+
+          # Tauri 2 atual usa "currentUser" (nao "perUser") para instalacao sem administrador.
+          $cfg = Get-Content -LiteralPath $tauriConfig -Raw
+          $cfg = $cfg.Replace('"installMode": "perUser"', '"installMode": "currentUser"')
+          Set-Content -LiteralPath $tauriConfig -Value $cfg -Encoding utf8
+          Write-Host 'Configuracao NSIS ajustada para installMode=currentUser.'
+
           "FUTBR_PROJECT=$project" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Preparar Node 22
