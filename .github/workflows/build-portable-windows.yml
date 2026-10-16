@@ -1,4 +1,4 @@
-name: Gerar EXE Windows portatil
+name: Build FutBR Manager Desktop RC1 Windows
 
 on:
   workflow_dispatch:
@@ -7,74 +7,93 @@ permissions:
   contents: read
 
 jobs:
-  construir-exe:
-    name: Tauri Windows x64 sem instalador
+  build-windows:
+    name: Tauri Windows x64 - portatil e instalador
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
+
     steps:
       - name: Baixar arquivos do repositorio
         uses: actions/checkout@v4
 
-      - name: Extrair pacote, se foi enviado somente o ZIP
+      - name: Extrair pacote Desktop RC1
         shell: pwsh
         run: |
-          $pacote = 'GestorFC_Tauri_18_121_GITHUB.zip'
-          if (Test-Path -LiteralPath $pacote) {
-            Write-Host 'Pacote ZIP encontrado. Restaurando projeto...'
-            Expand-Archive -LiteralPath $pacote -DestinationPath . -Force
+          $pacote = 'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip'
+          if (-not (Test-Path -LiteralPath $pacote)) {
+            throw "Envie $pacote para a raiz do repositorio antes de executar este workflow."
           }
-          if (-not (Test-Path 'src-tauri/tauri.conf.json')) {
-            throw 'Nao achei src-tauri/tauri.conf.json; envie o pacote correto.'
+          $work = Join-Path $env:RUNNER_TEMP 'futbr-desktop-rc1'
+          if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          Expand-Archive -LiteralPath $pacote -DestinationPath $work -Force
+          $project = Join-Path $work 'FutBR_Manager_Desktop_RC1'
+          if (-not (Test-Path (Join-Path $project 'src-tauri/tauri.conf.json'))) {
+            throw 'Projeto Tauri nao encontrado dentro do ZIP.'
           }
+          "FUTBR_PROJECT=$project" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Preparar Python
-        uses: actions/setup-python@v5
+      - name: Preparar Node 22
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.12'
+          node-version: '22'
 
-      - name: Restaurar HTML offline e conferir hash SHA-256
-        shell: pwsh
-        run: python scripts/prepare_frontend.py
-
-      - name: Instalar Rust MSVC
+      - name: Instalar Rust stable MSVC
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: '1.90.0'
           targets: x86_64-pc-windows-msvc
-
-      - name: Resolver dependencias no Cargo.lock
-        shell: pwsh
-        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: ${{ env.FUTBR_PROJECT }}/src-tauri -> target
 
-      - name: Instalar Tauri CLI 2.12.2
+      - name: Instalar Tauri CLI
         shell: pwsh
-        run: cargo install tauri-cli --version 2.12.2 --locked
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: npm install
 
-      - name: Compilar EXE do jogo, sem MSI e sem NSIS
+      - name: Compilar EXE e instaladores
         shell: pwsh
-        run: cargo tauri build --no-bundle --target x86_64-pc-windows-msvc
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        run: npm run tauri build
 
-      - name: Preparar EXE portatil
+      - name: Montar pacote portatil e instalador
         shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
         run: |
-          $exe = 'src-tauri/target/x86_64-pc-windows-msvc/release/gestor-fc-mundo.exe'
-          if (-not (Test-Path -LiteralPath $exe)) {
-            Get-ChildItem -Path src-tauri/target -Recurse -Filter '*.exe' | Select-Object -ExpandProperty FullName
-            throw 'EXE do jogo nao foi encontrado apos compilar.'
-          }
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item -LiteralPath $exe -Destination 'dist/GestorFC-Mundo-v18.121-PORTATIL.exe'
-          Get-Item -LiteralPath 'dist/GestorFC-Mundo-v18.121-PORTATIL.exe' | Format-List Name,Length
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          New-Item -ItemType Directory -Force -Path portable | Out-Null
 
-      - name: Entregar EXE nos Artifacts do GitHub Actions
+          $exe = 'src-tauri/target/release/futbr-manager.exe'
+          if (!(Test-Path $exe)) { throw "EXE nao encontrado: $exe" }
+
+          Copy-Item $exe 'portable/FutBR Manager.exe'
+          Set-Content -Path 'portable/portable.flag' -Value 'FutBR Manager portable mode' -Encoding ascii
+          Set-Content -Path 'portable/LEIA-ME.txt' -Value @'
+          FUTBR MANAGER - DESKTOP RC1 PORTATIL
+
+          Extraia toda a pasta e execute FutBR Manager.exe.
+          Nao apague portable.flag.
+          Os saves ficam em FutBR Manager Data\saves ao lado do EXE.
+          F11 alterna tela cheia. Alt+F4 fecha o jogo.
+          '@ -Encoding utf8
+          Compress-Archive -Path 'portable/*' -DestinationPath 'artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip' -Force
+
+          $nsis = Get-ChildItem 'src-tauri/target/release/bundle/nsis' -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($nsis) { Copy-Item $nsis.FullName 'artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe' }
+
+          $msi = Get-ChildItem 'src-tauri/target/release/bundle/msi' -Filter '*.msi' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($msi) { Copy-Item $msi.FullName 'artifacts/FutBR-Manager-Desktop-RC1.msi' }
+
+          Get-ChildItem artifacts | Format-Table Name,Length
+
+      - name: Entregar builds
         uses: actions/upload-artifact@v4
         with:
-          name: GestorFC-Mundo-v18.121-Windows-portatil
-          path: dist/GestorFC-Mundo-v18.121-PORTATIL.exe
+          name: FutBR-Manager-Desktop-RC1-Windows
+          path: ${{ env.FUTBR_PROJECT }}/artifacts/*
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
