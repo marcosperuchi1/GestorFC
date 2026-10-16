@@ -81,6 +81,12 @@ def main():
         die('A build desktop ainda usa fetch local para a base de jogadores')
     if "O acesso é validado pelo servidor do FutBR Manager." in html:
         die('Mensagem de seguranca ainda aparece no login desktop')
+    if "futbr-desktop-load-optimization" not in html:
+        die('Otimizacao de carregamento de saves ausente')
+    if "shardReadConcurrency:8" not in html:
+        die('Leitura paralela dos blocos do save nao foi ativada')
+    if "blankScreenRecovery:true" not in html:
+        die('Recuperacao automatica de tela vazia ausente')
     if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
         die('Ainda existe resolvedor final de escudo que ignora arquivos locais')
     if "supabase_proxy" not in html or "supabaseRequest:request=>call('supabase_proxy'" not in html:
