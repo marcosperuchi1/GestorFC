@@ -466,6 +466,9 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
           $nsis = Get-ChildItem 'src-tauri/target/release/bundle/nsis' -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($nsis) { Copy-Item $nsis.FullName 'artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe' }
 
+          Copy-Item -LiteralPath 'architecture-validation.json' -Destination 'artifacts/architecture-validation.json' -ErrorAction SilentlyContinue
+          Copy-Item -LiteralPath 'src/assets/data/player-base-manifest.json' -Destination 'artifacts/player-base-manifest.json' -ErrorAction SilentlyContinue
+          Copy-Item -LiteralPath 'src/assets/crests/manifest.json' -Destination 'artifacts/crest-assets-manifest.json' -ErrorAction SilentlyContinue
           Get-ChildItem artifacts | Format-Table Name,Length
 
       - name: Entregar builds
