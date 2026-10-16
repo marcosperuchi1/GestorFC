@@ -73,6 +73,10 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
+    if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
+        die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
+    if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
+        die('Manifesto nao confirma preservacao da base compacta durante a carreira')
     if "fetch(V310_ROSTER_ASSET" in html:
         die('A build desktop ainda usa fetch local para a base de jogadores')
     if "O acesso é validado pelo servidor do FutBR Manager." in html:
