@@ -292,6 +292,7 @@ html.futbr-desktop .v548-auth .field input{background:#07170e!important;border-c
 html.futbr-desktop .v548-auth .field input:focus{border-color:#65d98d!important;box-shadow:0 0 0 2px rgba(101,217,141,.12)!important}
 html.futbr-desktop .v548-auth .btn.primary{background:#58d382!important;border-color:#58d382!important;color:#062010!important}
 html.futbr-desktop .futbr-desktop-close-auth{margin-top:10px!important;padding-top:9px!important;border-top-color:#315e43!important}
+html.futbr-desktop .v548-auth-foot{display:none!important}
 @media (max-height:940px) and (min-width:841px){
  html.futbr-desktop .v548-auth{padding:12px 18px!important}
  html.futbr-desktop .v548-auth-shell{height:calc(100dvh - 24px)!important;gap:16px!important}
