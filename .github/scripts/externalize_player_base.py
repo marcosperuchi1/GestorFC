@@ -173,12 +173,9 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
         'release roster source'
     )
 
-    preload=f"<script id=\"futbr-player-base-preload\">(()=>{{const desktop=globalThis.FutBRDesktop;globalThis.__FUTBR_ROSTER_PRELOAD__=desktop?.loadPlayerBase?desktop.loadPlayerBase():fetch('{ASSET_REL}',{{cache:'force-cache'}}).then(r=>{{if(!r.ok)throw Error('Base local '+r.status);return r.text();}});}})();</script>\n"
     if '</head>' not in html: fail('head close not found')
-    html=html.replace('</head>',preload+'</head>',1)
     html=replace_once(html,"async function v548EnterGame(){renderWelcome();await loadLocal();}","async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}",'wait player base before login')
     html=html.replace("const b=v310RosterRawBytes();if(b){msg.baseRosterBytes=b;transfer.push(b);}","const b=await v310RosterRawBytes();if(b){msg.baseRosterBytes=b;transfer.push(b);}")
-    html+="\n<!-- failed-to-fetch guard -->\n"
 
     engine_after=hashlib.sha256(engine_bytes(html)).hexdigest()
     if engine_after!=engine_before: fail('Engine changed while externalizing player base')
