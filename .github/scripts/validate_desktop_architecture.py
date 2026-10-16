@@ -75,10 +75,12 @@ def main():
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
     if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
         die('Ainda existe resolvedor final de escudo que ignora arquivos locais')
-    if "futbr-desktop-supabase-proxy" not in html or "supabase_proxy" not in html:
+    if "supabase_proxy" not in html or "supabaseRequest:request=>call('supabase_proxy'" not in html:
         die('Proxy nativo do Supabase nao foi ligado ao frontend')
-    csp_match=re.search(r'<meta[^>]+http-equiv=["\']Content-Security-Policy["\'][^>]+content=["\']([^"\']+)["\']',html,re.I)
-    if not csp_match or "img-src 'self'" not in csp_match.group(1):
+    if "window.FutBRDesktop?.supabaseRequest" not in html:
+        die('v580Fetch desktop nao usa o proxy nativo do Supabase')
+    csp_tag=re.search(r'<meta[^>]*http-equiv=["\']Content-Security-Policy["\'][^>]*>',html,re.I)
+    if not csp_tag or "img-src 'self'" not in csp_tag.group(0):
         die("CSP desktop nao permite imagens locais do proprio aplicativo")
 
     manifest_path=src/'assets/data/player-base-manifest.json'
