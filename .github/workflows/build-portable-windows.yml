@@ -67,6 +67,57 @@ jobs:
           Set-Content -LiteralPath $tauriConfig -Value $cfg -Encoding utf8
           Write-Host 'Configuracao NSIS ajustada para installMode=currentUser.'
 
+          # Corrige o frame desktop: algumas sequencias literais "\n" do empacotamento
+          # estavam criando text nodes fora do #app e aumentando a altura do body.
+          $indexHtml = Join-Path $project 'src/index.html'
+          $html = [System.IO.File]::ReadAllText($indexHtml)
+          $html = $html.Replace('<body class="">\n<script id="futbr-desktop-native-bridge">', '<body class=""><script id="futbr-desktop-native-bridge">')
+          $html = $html.Replace('</script>\n' + [Environment]::NewLine + '<div id="app"', '</script>' + [Environment]::NewLine + '<div id="app"')
+          $html = $html.Replace('\n<style id="futbr-desktop-native-style">', '<style id="futbr-desktop-native-style">')
+          $html = $html.Replace('</style>\n<script id="futbr-desktop-native-ui">', '</style><script id="futbr-desktop-native-ui">')
+
+          $desktopFrameCss = @'
+<style id="futbr-desktop-viewport-lock">
+html.futbr-desktop,
+html.futbr-desktop body{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+html.futbr-desktop #app{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+}
+html.futbr-desktop .main-wrap{
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+}
+@media(min-width:761px){
+  html.futbr-desktop body.v54-competitions-view .main{
+    height:calc(100dvh - 66px)!important;
+    min-height:calc(100dvh - 66px)!important;
+    max-height:calc(100dvh - 66px)!important;
+    overflow:hidden!important;
+  }
+}
+</style>
+'@
+          $html = $html.Replace('</head>', $desktopFrameCss + [Environment]::NewLine + '</head>')
+          [System.IO.File]::WriteAllText($indexHtml, $html, [System.Text.UTF8Encoding]::new($false))
+          Write-Host 'Viewport desktop corrigida: sem scroll externo; rolagem permanece nos paineis internos.'
+
           "FUTBR_PROJECT=$project" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Preparar Node 22
