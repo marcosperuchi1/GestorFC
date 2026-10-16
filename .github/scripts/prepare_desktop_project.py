@@ -407,9 +407,21 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
   return nativeSync;
  }
  window.FutBRDesktop.syncActiveSave=syncActiveSaveToDisk;
+ async function syncAfterPrimarySave(){
+  try{
+   const started=Date.now();
+   while(Date.now()-started<120000){
+    const pending=!!(window.v52SavePromise||window.v52SaveDirty||window.v52Processing||window.busy);
+    if(!pending)break;
+    await new Promise(r=>setTimeout(r,250));
+   }
+   if(window.saveOK===false)return false;
+   return await syncActiveSaveToDisk();
+  }catch(e){console.warn('[FutBR Desktop] espelhamento pos-save:',e);return false;}
+ }
  document.addEventListener('click',event=>{
   const action=event.target?.closest?.('[data-action]')?.dataset?.action;
-  if(action==='futbr125-save-current'||action==='futbr125-save-and-exit')setTimeout(()=>syncActiveSaveToDisk().catch(console.warn),900);
+  if(action==='futbr125-save-current'||action==='futbr125-save-and-exit')setTimeout(()=>syncAfterPrimarySave(),250);
  },true);
  function decorateCloseButton(){const card=document.querySelector('.v548-auth .v548-auth-card');if(!card||card.querySelector('[data-futbr-desktop-close]'))return;card.insertAdjacentHTML('beforeend','<div class="futbr-desktop-close-auth"><button type="button" class="btn ghost" data-futbr-desktop-close="1">Fechar o jogo</button></div>');}
  const mo=new MutationObserver(()=>decorateCloseButton());mo.observe(document.documentElement,{subtree:true,childList:true});decorateCloseButton();
