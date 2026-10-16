@@ -224,7 +224,7 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
         lib=replace_once(
             lib,
             "            kv_commit_manifest,\n            desktop_info,",
-            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            load_player_base,\n            desktop_info,",
+            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            open_premium_site,\n            load_player_base,\n            supabase_proxy,\n            desktop_info,",
             "handler commands"
         )
     lib_path.write_text(lib,encoding="utf-8")
