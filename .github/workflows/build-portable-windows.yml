@@ -297,10 +297,97 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
 '@
           $html = $html.Replace('</body>', $desktopPerformanceUi + [Environment]::NewLine + '</body>')
 
+          $crestWarmup = @'
+<script id="futbr-desktop-crest-warmup">
+(()=>{
+ if(!window.FutBRDesktop?.available)return;
+ const seen=new Set();
+ const localSrc=src=>typeof src==='string'&&/^(?:\.\/)?assets\/crests\//.test(src);
+ function warm(src,priority='low'){
+   if(!localSrc(src)||seen.has(src))return;
+   seen.add(src);
+   const img=new Image();
+   try{img.fetchPriority=priority;}catch(_){}
+   img.decoding='async';
+   img.src=src;
+ }
+ function warmVisible(root=document){
+   root.querySelectorAll?.('img[src]').forEach(img=>{
+     const src=img.getAttribute('src')||'';
+     if(localSrc(src)) warm(src,'high');
+   });
+ }
+ function warmTeamIds(ids,priority='high'){
+   if(!Array.isArray(ids))return;
+   for(const id of ids){
+     try{
+       const t=(typeof E!=='undefined'&&state)?E.team(state,id):null;
+       const url=t?((typeof v4CrestURL==='function'&&v4CrestURL(t))||''):'';
+       if(localSrc(url))warm(url,priority);
+     }catch(_){}
+   }
+ }
+ function primeCurrentContext(){
+   try{
+     if(typeof state==='undefined'||!state)return;
+     warmTeamIds([state.user],'high');
+     const t=typeof E!=='undefined'?E.team(state,state.user):null;
+     if(t){
+       const league=(state.teams||[]).filter(x=>x&&x.country===t.country&&Number(x.division)===Number(t.division)).map(x=>x.id);
+       warmTeamIds(league,'high');
+     }
+     const next=(state.schedule||[]).slice(Number(state.day)||0,Math.min((Number(state.day)||0)+4,(state.schedule||[]).length));
+     warmTeamIds(next.flatMap(d=>(d.fixtures||[]).flatMap(f=>[f.home,f.away])),'high');
+   }catch(_){}
+ }
+ function idleWarmAll(){
+   let ids=[];
+   try{ids=(state?.teams||[]).map(t=>t.id);}catch(_){}
+   let i=0;
+   const tick=deadline=>{
+     let n=0;
+     while(i<ids.length&&n<32&&(deadline?.timeRemaining?.()>3||!deadline)){
+       try{
+         const t=E.team(state,ids[i++]);
+         const url=t?((typeof v4CrestURL==='function'&&v4CrestURL(t))||''):'';
+         if(localSrc(url))warm(url,'low');
+       }catch(_){i++;}
+       n++;
+     }
+     if(i<ids.length){
+       if('requestIdleCallback'in window)requestIdleCallback(tick,{timeout:1500});
+       else setTimeout(()=>tick(null),120);
+     }
+   };
+   if('requestIdleCallback'in window)requestIdleCallback(tick,{timeout:1000});
+   else setTimeout(()=>tick(null),250);
+ }
+ const mo=new MutationObserver(list=>{
+   for(const m of list)for(const node of m.addedNodes||[])if(node.nodeType===1)warmVisible(node);
+ });
+ document.addEventListener('DOMContentLoaded',()=>{
+   warmVisible(document);
+   setTimeout(primeCurrentContext,80);
+   setTimeout(idleWarmAll,700);
+   mo.observe(document.body,{childList:true,subtree:true});
+ },{once:true});
+})();
+</script>
+'@
+          $html = $html.Replace('</body>', $crestWarmup + [Environment]::NewLine + '</body>')
+
           [System.IO.File]::WriteAllText($indexHtml, $html, [System.Text.UTF8Encoding]::new($false))
           Write-Host 'Viewport desktop corrigida: sem scroll externo; rolagem permanece nos paineis internos.'
 
           "FUTBR_PROJECT=$project" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Externalizar escudos para arquivos locais
+        shell: pwsh
+        run: |
+          python .github/scripts/externalize_crests.py "$env:FUTBR_PROJECT"
+          $manifest = Join-Path $env:FUTBR_PROJECT 'src/assets/crests/manifest.json'
+          if (-not (Test-Path $manifest)) { throw 'Manifesto de escudos locais nao foi gerado.' }
+          Get-Content $manifest
 
       - name: Preparar Node 22
         uses: actions/setup-node@v4
