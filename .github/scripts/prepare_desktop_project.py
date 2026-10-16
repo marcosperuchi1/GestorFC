@@ -28,6 +28,13 @@ def main():
     resources["../src/assets/data/rosters.v310.bin"]="rosters.v310.bin"
     cfg_path.write_text(json.dumps(cfg,ensure_ascii=False,indent=2),encoding="utf-8")
 
+    # Native HTTPS client for Supabase in the desktop build.
+    cargo_path=project/"src-tauri"/"Cargo.toml"
+    cargo=cargo_path.read_text(encoding="utf-8")
+    if 'reqwest = ' not in cargo:
+        cargo=cargo.replace('open = "5"', 'open = "5"\nreqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }')
+    cargo_path.write_text(cargo,encoding="utf-8")
+
     # Windows GUI subsystem
     main_path=project/"src-tauri"/"src"/"main.rs"
     main_rs=main_path.read_text(encoding="utf-8")
@@ -50,6 +57,22 @@ def main():
 struct KvWrite {
     key: String,
     value: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct SupabaseProxyRequest {
+    path: String,
+    method: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SupabaseProxyResponse {
+    status: u16,
+    body: String,
+    content_type: String,
 }""",
             "KvWrite"
         )
@@ -117,6 +140,59 @@ fn load_player_base(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Falha ao ler a base local instalada: {e}"))
 }
 
+#[tauri::command]
+async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyResponse, String> {
+    const BASE: &str = "https://ticwckvvxswturovwlqu.supabase.co";
+    const APIKEY: &str = "sb_publishable_tGhqX7Jozn1cfO-Odj1mkQ__6xJ2ZqZ";
+
+    if !request.path.starts_with('/') || request.path.contains("://") || request.path.contains("..") {
+        return Err("Caminho Supabase invalido.".to_string());
+    }
+    let allowed = request.path.starts_with("/auth/v1/")
+        || request.path.starts_with("/functions/v1/")
+        || request.path.starts_with("/rest/v1/")
+        || request.path.starts_with("/storage/v1/");
+    if !allowed {
+        return Err("Endpoint Supabase nao permitido.".to_string());
+    }
+
+    let method_text = request.method.unwrap_or_else(|| "GET".to_string()).to_uppercase();
+    let method = reqwest::Method::from_bytes(method_text.as_bytes()).map_err(|e| e.to_string())?;
+    if !matches!(method_text.as_str(), "GET" | "POST" | "PUT" | "PATCH" | "DELETE") {
+        return Err("Metodo HTTP nao permitido.".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .https_only(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut builder = client.request(method, format!("{BASE}{}", request.path))
+        .header("apikey", APIKEY)
+        .header("accept", "application/json");
+
+    if let Some(headers) = request.headers {
+        for (name, value) in headers {
+            let lower = name.to_ascii_lowercase();
+            if lower == "authorization" || lower == "content-type" || lower == "prefer" {
+                builder = builder.header(name, value);
+            }
+        }
+    }
+    if let Some(body) = request.body {
+        builder = builder.body(body);
+    }
+
+    let response = builder.send().await.map_err(|e| format!("Falha de conexao com Supabase: {e}"))?;
+    let status = response.status().as_u16();
+    let content_type = response.headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/json")
+        .to_string();
+    let body = response.text().await.map_err(|e| e.to_string())?;
+    Ok(SupabaseProxyResponse { status, body, content_type })
+}
+
 '''
         lib=replace_once(lib,"#[tauri::command]\nfn desktop_info",native+"#[tauri::command]\nfn desktop_info","native commands")
         lib=replace_once(
@@ -130,6 +206,7 @@ fn load_player_base(app: AppHandle) -> Result<String, String> {
     # Frontend patch
     index_path=project/"src"/"index.html"
     html=index_path.read_text(encoding="utf-8")
+    html=html.replace("img-src data: blob: https:;", "img-src 'self' data: blob: https:;")
 
     # remove literal backslash-n artifacts near desktop bridge
     html=html.replace('<body class="">\\n<script id="futbr-desktop-native-bridge">','<body class=""><script id="futbr-desktop-native-bridge">')
@@ -144,7 +221,7 @@ fn load_player_base(app: AppHandle) -> Result<String, String> {
     html=replace_once(
         html,
         "  openDataFolder:()=>call('open_data_folder')",
-        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  openPremium:()=>call('open_premium_site'),\n  loadPlayerBase:()=>call('load_player_base'),\n  closeGame:()=>call('close_game')",
+        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  openPremium:()=>call('open_premium_site'),\n  loadPlayerBase:()=>call('load_player_base'),\n  supabaseRequest:request=>call('supabase_proxy',{request}),\n  closeGame:()=>call('close_game')",
         "desktop api"
     )
 
@@ -252,6 +329,36 @@ html.futbr-desktop .welcome.v570-career-start .v658-career-hero img.futbr125-her
 '''
     if 'futbr-desktop-start-green' not in html:
         html=replace_once(html,'</head>',start_theme+'\\n</head>','green start theme')
+
+    supabase_proxy=r'''
+<script id="futbr-desktop-supabase-proxy">
+(()=>{
+ if(!window.FutBRDesktop?.available||!window.FutBRDesktop?.supabaseRequest)return;
+ const BASE='https://ticwckvvxswturovwlqu.supabase.co';
+ const nativeFetch=window.fetch.bind(window);
+ window.fetch=async function(input,init={}){
+   const url=typeof input==='string'?input:(input instanceof URL?input.href:input?.url);
+   if(!url||!url.startsWith(BASE+'/'))return nativeFetch(input,init);
+   const source=input instanceof Request?input:null;
+   const headers=new Headers(source?.headers||undefined);
+   new Headers(init?.headers||undefined).forEach((v,k)=>headers.set(k,v));
+   let body=init?.body;
+   if(body==null&&source&&source.method!=='GET'&&source.method!=='HEAD'){
+     try{body=await source.clone().text();}catch(_){}
+   }
+   const result=await window.FutBRDesktop.supabaseRequest({
+     path:url.slice(BASE.length),
+     method:String(init?.method||source?.method||'GET'),
+     headers:Object.fromEntries(headers.entries()),
+     body:body==null?null:String(body)
+   });
+   return new Response(result.body,{status:Number(result.status)||500,headers:{'content-type':result.contentType||'application/json'}});
+ };
+})();
+</script>
+'''
+    if 'futbr-desktop-supabase-proxy' not in html:
+        html=replace_once(html,'</body>',supabase_proxy+'\\n</body>','supabase desktop proxy')
 
     performance=r'''
 <style id="futbr-desktop-rc-performance-ui">
