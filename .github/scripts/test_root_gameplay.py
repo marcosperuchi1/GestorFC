@@ -39,7 +39,10 @@ def main():
         "function v18172ApplyCareerSurface(primary){return v18172ApplySurfaceToElement(document.documentElement,primary);}",
         "v18172ApplyCareerSurface(p.primary)",
         "v18172ApplySurfaceToElement(modalEl,p.primary)",
-        "v18173PaintConsultedNationalProfile(code);"
+        "v18173PaintConsultedNationalProfile(code);",
+        "const surface=typeof v18172SurfaceVars==='function'?v18172SurfaceVars(p.primary)",
+        "try{v18172ApplySurfaceToElement(modalEl,p.primary);}catch(e){}",
+        "try{v18172ApplySurfaceToElement(profile,p.primary);}catch(e){}"
     ]:
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
 
