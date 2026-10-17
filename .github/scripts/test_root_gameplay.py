@@ -28,7 +28,10 @@ def main():
       "function v18172PointerGhostAt(p,e)",
       "nationalProfileFinalOwnTheme:true",
       "function v18173PaintConsultedNationalProfile(code)",
-      "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;"
+      "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;",
+      "function v18174ForceNationalProfileTheme(code)",
+      "nationalProfileForcedSurface:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
     ]
     for x in required:
         if x not in html: die('Marcador raiz ausente: '+x)
@@ -42,9 +45,25 @@ def main():
         "v18173PaintConsultedNationalProfile(code);",
         "const surface=typeof v18172SurfaceVars==='function'?v18172SurfaceVars(p.primary)",
         "try{v18172ApplySurfaceToElement(modalEl,p.primary);}catch(e){}",
-        "try{v18172ApplySurfaceToElement(profile,p.primary);}catch(e){}"
+        "try{v18172ApplySurfaceToElement(profile,p.primary);}catch(e){}",
+        "v18174ForceNationalProfileTheme(code);",
+        "set(modalEl,'background',",
+        "set(head,'background',",
+        "set(body,'background',"
     ]:
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
+
+    # Criacao de carreira: a segunda passagem deve reutilizar a referencia
+    # transitoria do registro da base em vez de reconstruir Maps por nome.
+    for marker in [
+        "p.v18175SeedRoster=rp",
+        "const info=db[t.id];",
+        "p.real?(p.v18175SeedRoster||null):null",
+        "if(p.v18175SeedRoster)delete p.v18175SeedRoster;"
+    ]:
+        if marker not in html: die('Otimizacao de criacao incompleta: '+marker)
+    if "const info=db[t.id],map=new Map((info?.players||[]).map" in html:
+        die('Criacao ainda reconstrui Maps de elenco por clube')
 
     # Arraste por pointer deve exibir uma copia flutuante e remove-la no final.
     for marker in [
@@ -64,6 +83,12 @@ def main():
         if bad in prk_text: die('Nome brasileiro contaminou pool PRK: '+bad)
     if not all(x in prk_text for x in ['Kwang-song','Chol-min','Kim','Ri','Pak']):
         die('Pool PRK nao contem identidade coreana suficiente')
+    if "+String((h%89)+10)" in html:
+        die('Gerador nacional ainda possui fallback numerico no nome')
+    if "const tripleTotal=Math.max(1,g.length*sn.length" not in html:
+        die('Gerador nacional nao ampliou combinacoes alfabeticas')
+    if "const clean=p.v18171LocalizedName&&p.natCode===n&&!/\\d/.test" not in html:
+        die('Reparo de nomes nacionais antigos com numero ausente')
 
     # Mouse em reserva deve usar pointer; HTML drag nativo deve ser bloqueado no banco.
     if "if(el.dataset.v5Slot===undefined){e.preventDefault();return;}" not in html:
