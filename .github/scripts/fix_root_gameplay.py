@@ -385,7 +385,29 @@ function v18170EnsureAllNationalPools(s){
     html += r'''
 <script id="futbr-root-18170-fixes">
 window.GestorFC=window.GestorFC||{};
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,liveDragUsesCoreV5Execute:true};
+
+// A ficha nacional foi redefinida novamente em v737, depois dos wrappers v650/v657.
+// Este wrapper fica no fim do documento e, portanto, sempre captura a implementacao
+// final da ficha. A paleta vem do codigo da selecao CONSULTADA, nunca de state.userTeam.
+function v18173PaintConsultedNationalProfile(code){
+ const paint=()=>{
+  try{if(typeof v650ApplyNationalModalTheme==='function')v650ApplyNationalModalTheme(code);}catch(e){}
+  try{if(typeof v657ApplyNationalModalTheme==='function')v657ApplyNationalModalTheme(code);}catch(e){}
+ };
+ paint();
+ queueMicrotask(paint);
+ if(typeof requestAnimationFrame==='function')requestAnimationFrame(paint);
+}
+const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;
+if(v18173BaseOpenNationalProfile){
+ v645OpenNationalProfile=function(code){
+  const out=v18173BaseOpenNationalProfile(code);
+  v18173PaintConsultedNationalProfile(code);
+  return out;
+ };
+}
+
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
