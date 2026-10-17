@@ -531,6 +531,54 @@ function v18170EnsureAllNationalPools(s){
         "old-save opponent repair"
     )
 
+
+    # 18.179 - equilibrio de selecoes.
+    # A simulacao automatica nacional deixa de depender quase so do Elo/rating.
+    # O OVR real do melhor XI passa a ser a base; Elo vira apenas um ajuste pequeno.
+    root_sig="function v640SimFixture(s,f){ if(f.result)return f.result;"
+    root_helper=r"""function v18179NationalSimPower(s,code){
+ const t=v640Team(s,code),xi=typeof v640BestXI==='function'?v640BestXI(s,code):[];
+ const vals=(xi||[]).map(id=>s.players?.[id]).filter(Boolean).map(p=>Number(E.overall(p))).filter(Number.isFinite).sort((a,b)=>b-a).slice(0,11);
+ const avg=vals.length?vals.reduce((sum,x)=>sum+x,0)/vals.length:65,elo=Number(t?.rating)||1400;
+ return E.clamp(avg+E.clamp((elo-1400)/45,-4,4),45,94);
+}
+"""
+    html=once(html,root_sig,root_helper+root_sig,"national root power helper")
+    html=once(
+        html,
+        "const [h,a]=v640FixtureTeams(s,f),hp=v640TeamPower(s,f.home)+(f.neutral?0:1.2),ap=v640TeamPower(s,f.away),diff=(hp-ap)/11,lh=E.clamp(1.28*Math.exp(diff*.34),.18,3.9),la=E.clamp(1.16*Math.exp(-diff*.34),.16,3.7);let gh=v640Poisson(s,lh),ga=v640Poisson(s,la),pens=null,winner=null;",
+        "const [h,a]=v640FixtureTeams(s,f),hp=v18179NationalSimPower(s,f.home),ap=v18179NationalSimPower(s,f.away),gap=E.clamp(hp-ap+(f.neutral?0:1.4),-30,30),lh=E.clamp(1.25*Math.exp(gap*.038),.14,3.8),la=E.clamp(1.25*Math.exp(-gap*.038),.14,3.8);let gh=v640Poisson(s,lh),ga=v640Poisson(s,la),pens=null,winner=null;",
+        "national root OVR-weighted xG"
+    )
+    html=once(
+        html,
+        "if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
+        "if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
+        "national root strength-aware penalties"
+    )
+
+    worker_sig="function simulateFixture(s,f){if(f.result)return f.result;"
+    worker_helper=r"""function nationalPower(s,code){
+ const t=team(s,code),xi=typeof natXI==='function'?natXI(s,code):[];
+ const vals=(xi||[]).map(id=>s.players?.[id]).filter(Boolean).map(p=>Number(E.overall(p))).filter(Number.isFinite).sort((a,b)=>b-a).slice(0,11);
+ const avg=vals.length?vals.reduce((sum,x)=>sum+x,0)/vals.length:65,elo=Number(t?.rating)||1400;
+ return E.clamp(avg+E.clamp((elo-1400)/45,-4,4),45,94);
+}
+"""
+    html=once(html,worker_sig,worker_helper+worker_sig,"national worker power helper")
+    html=once(
+        html,
+        "const h=team(s,f.home),a=team(s,f.away),rh=Number(h?.rating)||1400,ra=Number(a?.rating)||1400,diff=(rh-ra)/210+(f.neutral?0:.12),lh=E.clamp(1.30*Math.exp(diff*.34),.18,3.8),la=E.clamp(1.16*Math.exp(-diff*.34),.16,3.6);let gh=poisson(s,lh),ga=poisson(s,la),pens=null,winner=null;",
+        "const h=team(s,f.home),a=team(s,f.away),hp=nationalPower(s,f.home),ap=nationalPower(s,f.away),gap=E.clamp(hp-ap+(f.neutral?0:1.4),-30,30),lh=E.clamp(1.25*Math.exp(gap*.038),.14,3.8),la=E.clamp(1.25*Math.exp(-gap*.038),.14,3.8);let gh=poisson(s,lh),ga=poisson(s,la),pens=null,winner=null;",
+        "national worker OVR-weighted xG"
+    )
+    html=once(
+        html,
+        "if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
+        "if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
+        "national worker strength-aware penalties"
+    )
+
     html += r'''
 <script id="futbr-root-18170-fixes">
 window.GestorFC=window.GestorFC||{};
