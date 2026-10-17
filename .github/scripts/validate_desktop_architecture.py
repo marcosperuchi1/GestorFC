@@ -85,6 +85,10 @@ def main():
         die('Pacotes vac-live do nationaljump ainda nao atualizam a Visao Geral')
     if "v18170EnsureAllNationalPools" not in html or "v18170InitialNationalFreeAgent" not in html:
         die('Selecoes pequenas ainda nao recebem jogadores livres na criacao do mundo')
+    if "localizedNationalFreeAgentNames:true" not in html or "function v18171NationalGeneratedName(s,code,id,used=new Set())" not in html:
+        die('Jogadores ficticios das selecoes ainda nao recebem nomes caracteristicos do pais')
+    if "reservePointerSwap:true" not in html or "if(el.dataset.v5Slot===undefined){e.preventDefault();return;}" not in html:
+        die('Banco de reservas ainda depende do drag HTML nativo')
     if "v18170EnsureNationalPool(state,enemy,f);" not in html:
         die('Saves antigos ainda podem enfrentar selecao adversaria sem elenco apto suficiente')
     if "t.v600PreferredBench=v602SortPlayerIds(list.slice(0,V600_BENCH_LIMIT))" not in html:
