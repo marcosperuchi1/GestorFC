@@ -138,7 +138,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
 </script>
 '''.replace('DUP_ASA_PLACEHOLDER',repr(DUP_ASA_ID))
     if 'futbr-v18163-parity-live' not in html:
-        html=html.replace('</body>',runtime+'</body>',1)
+        html=html+'\n'+runtime
 
     # Final structural checks.
     if len(base['clubs']) != before-1: fail('ASA was not removed exactly once')
