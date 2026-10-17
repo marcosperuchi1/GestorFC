@@ -55,7 +55,7 @@ def main():
 
     # If the same duplicate was also copied into another static catalog, filter it
     # immediately before team-id maps/Engine are created.
-    anchor="const V310_TEAM_BY_ID=new Map(WorldCatalog.clubs.map(t=>[t.id,t]));"
+    anchor="const V310_TEAM_BY_ID=new Map((WorldCatalog.clubs||[]).map(t=>[t.id,t]));"
     if anchor not in html:
         fail('V310_TEAM_BY_ID anchor not found')
     catalog_guard=f"""{{
