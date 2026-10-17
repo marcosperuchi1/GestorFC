@@ -105,8 +105,10 @@ def main():
         die('v657ApplyNationalModalTheme ainda nao reaplica bg/panel/panel2/line da selecao consultada')
     if "nationalProfileForcedSurface:true" not in html or "function v18174ForceNationalProfileTheme(code)" not in html or "v18174ForceNationalProfileTheme(code);" not in html:
         die('Ficha nacional final ainda pode herdar superficie da selecao comandada')
-    if "nationalModalOwnRootTheme:true" not in html or "let v18176NationalModalCode=null" not in html or "if(v18176NationalModalCode&&typeof v128NationalTheme==='function')" not in html:
+    if "nationalModalOwnRootTheme:true" not in html or "let v18176NationalModalCode=null,v18176OpeningNationalCode=null" not in html:
         die('Ficha nacional ainda nao controla o tema raiz enquanto esta aberta')
+    if "nationalModalThemePinsV128:true" not in html or "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;" not in html:
+        die('Carreira iniciada por selecao ainda pode sobrescrever o tema da ficha consultada')
     if "v18176NationalModalCode=n;" not in html or "v18176NationalModalCode=null;" not in html:
         die('Tema raiz da ficha nacional nao e ativado/restaurado corretamente')
     if "set(modalEl,'background'," not in html or "set(body,'background'," not in html:
@@ -151,6 +153,8 @@ def main():
         die('Mensagem de seguranca ainda aparece no login desktop')
     if "futbr-desktop-load-optimization" not in html:
         die('Otimizacao de carregamento de saves ausente')
+    if "freeNationalStartBlocked:true" not in html or "params?.options?.v643StartType==='national'&&!v18177FullAccess()" not in html:
+        die('Plano Gratuito ainda pode iniciar carreira por selecao')
     if "fastCareerSeedRefs:true" not in html or "p.v18175SeedRoster=rp" not in html or "p.real?(p.v18175SeedRoster||null):null" not in html:
         die('Criacao de carreira ainda reconstrui relacionamentos da base por nome')
     if "const info=db[t.id],map=new Map((info?.players||[]).map" in html:
