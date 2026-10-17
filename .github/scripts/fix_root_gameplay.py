@@ -215,6 +215,40 @@ function v53ScheduleNationalJumpPaint(){
         "v657 national profile full surface theme"
     )
 
+    # Criacao de carreira: a primeira passagem ja conhece o registro compacto que
+    # originou cada jogador real. Guarda somente essa referencia transitoria para
+    # a segunda passagem, evitando reconstruir milhares de Maps por nome.
+    html=once(
+        html,
+        """        p.name=String(rp.name).slice(0,80);p.real=true;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;""",
+        """        p.name=String(rp.name).slice(0,80);p.real=true;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;p.v18175SeedRoster=rp;""",
+        "career seed direct reference"
+    )
+
+    html=once(
+        html,
+        """      const info=db[t.id],map=new Map((info?.players||[]).map(p=>[normName(p.name),p]));""",
+        """      const info=db[t.id];""",
+        "avoid repeated roster name maps"
+    )
+
+    html=once(
+        html,
+        """        const p=player(s,id),rp=p.real?map.get(normName(p.name)):null;""",
+        """        const p=player(s,id),rp=p.real?(p.v18175SeedRoster||null):null;""",
+        "reuse direct source record"
+    )
+
+    html=once(
+        html,
+        """        }else localizeGenerated(s,p,t.country);
+      }""",
+        """        }else localizeGenerated(s,p,t.country);
+        if(p.v18175SeedRoster)delete p.v18175SeedRoster;
+      }""",
+        "drop transient source record"
+    )
+
     html=once(
         html,
         """document.addEventListener('dragstart',e=>{const el=e.target.closest('[data-v5-player]');if(!el||el.disabled)return;v5Drag={id:el.dataset.v5Player,ctx:el.dataset.v5Context};v5Selection=v5Drag;if(v5Drag.ctx==='live')stopTimer();e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',JSON.stringify(v5Drag));v5MarkSelection();});""",
@@ -484,7 +518,7 @@ if(v18173BaseOpenNationalProfile){
  };
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalNamesNeverNumeric:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
