@@ -178,7 +178,7 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
     old_worker="function v310WorkerLoadRosters(bytes){const raw=new TextDecoder().decode(bytes),O={};for(const [id,x] of Object.entries(V310_ROSTER_INDEX)){try{O[id]=v310DecodeCompactRoster(JSON.parse(raw.slice(x[0],x[0]+x[1])));}catch(e){}}return O;}"
     new_worker="""function v310WorkerLoadRosters(bytes){
  const raw=new TextDecoder().decode(bytes),overrides=Object.create(null),cache=new Map(),keys=Object.keys(V310_ROSTER_INDEX);
- const read=id=>{if(Object.prototype.hasOwnProperty.call(overrides,id))return overrides[id];if(cache.has(id)){const r=cache.get(id);cache.delete(id);cache.set(id,r);return r;}const x=V310_ROSTER_INDEX[id];if(!x)return undefined;let r;try{r=v310DecodeCompactRoster(JSON.parse(raw.slice(x[0],x[0]+x[1])));}catch(e){throw Error('Registro de elenco inválido: '+id);}if(r){cache.set(id,r);if(cache.size>96)cache.delete(cache.keys().next().value);}return r;};
+ const read=id=>{if(Object.prototype.hasOwnProperty.call(overrides,id))return overrides[id];if(cache.has(id))return cache.get(id);const x=V310_ROSTER_INDEX[id];if(!x)return undefined;let r;try{r=v310DecodeCompactRoster(JSON.parse(raw.slice(x[0],x[0]+x[1])));}catch(e){throw Error('Registro de elenco inválido: '+id);}if(r)cache.set(id,r);return r;};
  return new Proxy(overrides,{get(t,p){if(typeof p==='symbol')return Reflect.get(t,p);return read(String(p));},set(t,p,v){if(typeof p!=='string')return Reflect.set(t,p,v);t[p]=v;cache.delete(p);return true;},has(t,p){return typeof p==='string'&&(Object.prototype.hasOwnProperty.call(t,p)||Object.prototype.hasOwnProperty.call(V310_ROSTER_INDEX,p));},ownKeys(t){return [...new Set([...keys,...Object.keys(t)])];},getOwnPropertyDescriptor(t,p){if(typeof p==='string'&&(Object.prototype.hasOwnProperty.call(t,p)||Object.prototype.hasOwnProperty.call(V310_ROSTER_INDEX,p)))return {enumerable:true,configurable:true};}});
 }"""
     html=replace_once(html,old_worker,new_worker,'lazy worker roster decoder')
@@ -202,7 +202,7 @@ v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',
         'format':'FUTBR_PLAYER_BASE_EXTERNAL_V1','asset':ASSET_REL,'sha256':blob_sha,'bytes':len(blob_bytes),
         'records':len(roster_index),'players':players,'sample':sample,'engine_sha256':engine_before,
         'html_bytes_before':before_size,'html_bytes_after':index_path.stat().st_size,
-        'html_bytes_saved':before_size-index_path.stat().st_size,'worker_decoder':'lazy-lru-96',
+        'html_bytes_saved':before_size-index_path.stat().st_size,'worker_decoder':'parse-once-transient-create-cache',
         'authoritative_career_state':'unchanged','bootstrap_records':['t6'],'roster_source_retained_for_sync_reads':True
     }
     (project/'src'/MANIFEST_REL).write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
