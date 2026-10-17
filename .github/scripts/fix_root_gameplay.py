@@ -22,38 +22,6 @@ def main():
         print("root gameplay fixes already present")
         return
 
-    # A ficha de selecao deve seguir a mesma regra da ficha de clube:
-    # ao consultar outra equipe, a paleta troca tambem --bg/--panel/--panel2/--line
-    # na raiz, e nao apenas as variaveis --club-*.
-    html=once(
-        html,
-        """function v128NationalTheme(code){
- if(!code||typeof v650NationalPalette!=='function')return false;
- const p=v650NationalPalette(code),r=document.documentElement;
- r.classList.add('v51-active');
- const mix=(a,b,w)=>{try{return v51Mix(a,b,w);}catch(e){return a;}};
- let accent=p.accent||p.primary;
- const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':accent,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
- Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));r.dataset.visualClub='national:'+code;
- try{v664ApplyContrast?.();}catch(e){}try{v665ApplySolidSidebar?.();}catch(e){}
- return true;
-}""",
-        """function v128NationalTheme(code){
- if(!code||typeof v650NationalPalette!=='function')return false;
- const p=v650NationalPalette(code),r=document.documentElement;
- r.classList.add('v51-active');
- const mix=(a,b,w)=>{try{return v51Mix(a,b,w);}catch(e){return a;}};
- let accent=p.accent||p.primary;
- const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':accent,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
- Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));
- if(typeof v18172ApplyCareerSurface==='function')v18172ApplyCareerSurface(p.primary);
- r.dataset.visualClub='national:'+code;
- try{v664ApplyContrast?.();}catch(e){}try{v665ApplySolidSidebar?.();}catch(e){}
- return true;
-}""",
-        "national root surface follows consulted selection"
-    )
-
     html=once(
         html,
         """// Painéis deixam de ser pretos puros: derivam tons escuros da cor principal do clube ativo/consultado.
@@ -175,6 +143,10 @@ function v53ScheduleNationalJumpPaint(){
  const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':accent,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
  Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));r.dataset.visualClub='national:'+code;
  try{v18172ApplyCareerSurface(p.primary);}catch(e){}
+ // A selecao consultada deve dominar a superficie inteira enquanto a ficha estiver aberta.
+ if(typeof v18176NationalModalCode!=='undefined'&&v18176NationalModalCode){
+  try{document.documentElement.dataset.visualClub='national:'+String(v18176NationalModalCode).toUpperCase();}catch(e){}
+ }
  try{v664ApplyContrast?.();}catch(e){}try{v665ApplySolidSidebar?.();}catch(e){}
  return true;
 }""",
