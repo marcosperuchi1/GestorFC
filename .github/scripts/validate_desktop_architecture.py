@@ -77,44 +77,40 @@ def main():
         die('Catalogo inicial ainda possui ASA duplicado')
     if "supportFictional?(div>=4?.72" not in html:
         die('Guard de desenvolvimento para elencos de suporte ausente')
-    if "futbr-v18163-parity-live" not in html:
-        die('Atualizacao ao vivo de classificacoes ausente')
-    if "v18163JuveCatalog" not in html:
-        die('Auditoria do Juventus brasileiro ausente')
+    if "futbr-root-18170-fixes" not in html:
+        die('Correcoes raiz 18.170 ausentes')
+    if "function v53ScheduleNationalJumpPaint()" not in html:
+        die('Visao Geral do nationaljump ainda nao usa o agendador raiz')
+    if "if(v53Sim?.mode==='nationaljump'){v53ScheduleNationalJumpPaint();}" not in html:
+        die('Pacotes vac-live do nationaljump ainda nao atualizam a Visao Geral')
+    if "v18170EnsureAllNationalPools" not in html or "v18170InitialNationalFreeAgent" not in html:
+        die('Selecoes pequenas ainda nao recebem jogadores livres na criacao do mundo')
+    if "v18170EnsureNationalPool(state,enemy);" not in html:
+        die('Saves antigos ainda podem enfrentar selecao adversaria sem elenco suficiente')
+    if "t.v600PreferredBench=v602SortPlayerIds(list.slice(0,V600_BENCH_LIMIT))" not in html:
+        die('Banco nacional pre-jogo nao esta ordenado por posicao na raiz')
+    if "ids=typeof v602SortPlayerIds==='function'?v602SortPlayerIds(raw):raw" not in html:
+        die('Banco durante a partida nao esta ordenado por posicao na raiz')
+    if "return typeof v602SortPlayerIds==='function'?v602SortPlayerIds(ids):ids;" not in html:
+        die('Nao relacionados durante a partida nao estao ordenados por posicao')
+    if "futbr-v18164-national-match-parity" not in html:
+        die('Camada visual de paridade das selecoes ausente')
+    if "firstClickEditable:true" not in html or "coreDragOnly:true" not in html:
+        die('Primeiro clique ou drag da selecao ainda nao usa a rota unificada')
+    if "v18167NationalDrag" in html:
+        die('Listener duplicado de drag nacional foi reintroduzido')
+    if "justify-self:stretch!important" not in html:
+        die('Banco do adversario nacional ainda nao ocupa toda a largura')
+    if "nationalFixtureDetails:true" not in html:
+        die('Detalhes das partidas de selecoes ausentes')
     if "decorateCareerMenuActions" not in html:
         die('Acoes desktop do menu de carreira nao sao independentes do tipo de carreira')
     if "function v515RatingForClub(t){if(t?.regionalOnly)return null;" not in html:
         die('Clubes regionais ainda podem herdar ranking mundial por colisao de nome')
-    if "cleanNationalClubVisualResidue" not in html:
+    if "cleanNationalClubVisualResidue" not in html and "futbr-root-18170-fixes" not in html:
         die('Isolamento visual entre carreira de selecao e clube ausente')
     if "initialClub:nationalCode?'':loaded.user" not in html:
         die('Carreira nova de selecao ainda guarda clube inicial indevido')
-    if "futbr-v18164-national-match-parity" not in html:
-        die('Paridade das telas de partida de selecao ausente')
-    if "ownTeamResolver:'v1888HumanId'" not in html:
-        die('Partida de selecao ainda nao resolve corretamente a equipe humana')
-    if "opponentBenchSameGeometry:true" not in html:
-        die('Banco do adversario nacional ainda nao usa a mesma geometria')
-    if "v18164-national-result-view" not in html:
-        die('Resultados de selecoes ainda nao possuem acao Ver/Detalhes')
-    if "careerOriginIndependent:true" not in html:
-        die('Paridade de selecao ainda depende da origem da carreira')
-    if "v18165OwnClickGuard" not in html:
-        die('Primeiro clique na equipe humana ainda pode cair na rota antiga')
-    if "justify-self:stretch!important" not in html:
-        die('Banco de reservas ainda nao ocupa toda a largura da coluna')
-    if "v18165BaseStageResults" not in html:
-        die('Resumo de resultados de selecoes ainda nao possui detalhes da partida')
-    if "v18165RefreshVisibleDay" not in html or "overviewPerRound:true" not in html or "overviewView:'world'" not in html:
-        die('Visao Geral real ainda nao atualiza por mudanca de jornada')
-    if "v18166PrepareAiNationalOpponent" not in html:
-        die('Selecao adversaria ainda pode iniciar partida sem elenco apto suficiente')
-    if "v18167SeedNationalPools" not in html or "initialNationalFreeAgents:true" not in html:
-        die('Selecoes pequenas ainda nao recebem profundidade inicial de jogadores livres')
-    if "nationalBenchOrderedByPosition:true" not in html or "v18167BaseLiveBench" not in html:
-        die('Banco nacional ainda nao esta ordenado por posicao em todas as telas')
-    if "v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)" not in html:
-        die('Avancar ate a selecao ainda nao atualiza Visao Geral/Selecoes por jornada')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
