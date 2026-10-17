@@ -38,20 +38,24 @@ v51Theme=function(t,preview){
  };
  Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));
 };""",
-        """// Painéis deixam de usar o vermelho/padrao fixo: a superficie inteira deriva
-// da cor principal da equipe efetivamente comandada.
-function v18172ApplyCareerSurface(primary){
+        """// A superficie inteira deriva da cor do tema ativo. Em telas normais o tema
+// ativo e a equipe comandada; fichas consultadas recebem a propria paleta.
+function v18172SurfaceVars(primary){
  primary=v51Hex(primary)||'#386a8a';
- const r=document.documentElement;
- const vars={
-  '--bg':v51Mix(primary,'#070b09',.84),
-  '--panel':v51Mix(primary,'#111915',.77),
-  '--panel2':v51Mix(primary,'#1b241f',.70),
-  '--line':v51Mix(primary,'#829087',.62)
+ return {
+  '--bg':v51Mix(primary,'#070b09',.78),
+  '--panel':v51Mix(primary,'#111915',.70),
+  '--panel2':v51Mix(primary,'#1b241f',.62),
+  '--line':v51Mix(primary,'#829087',.54)
  };
- Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));
- r.style.setProperty('--v18172-career-primary',primary);
 }
+function v18172ApplySurfaceToElement(el,primary){
+ if(!el)return false;const vars=v18172SurfaceVars(primary);
+ Object.entries(vars).forEach(([k,v])=>el.style.setProperty(k,v));
+ el.style.setProperty('--v18172-career-primary',v51Hex(primary)||'#386a8a');
+ return true;
+}
+function v18172ApplyCareerSurface(primary){return v18172ApplySurfaceToElement(document.documentElement,primary);}
 const v530BaseTheme=v51Theme;
 v51Theme=function(t,preview){
  v530BaseTheme(t,preview);if(!t)return;
@@ -143,6 +147,24 @@ function v53ScheduleNationalJumpPaint(){
  return true;
 }""",
         "national career surface theme"
+    )
+
+    html=once(
+        html,
+        """function v650ApplyNationalModalTheme(code){
+ const modalEl=document.querySelector('#modal-root .v645-national-modal');if(!modalEl)return;
+ modalEl.classList.add('v650-national-theme');modalEl.dataset.nationalTheme=String(code||'');modalEl.style.cssText+=';'+v650NationalThemeVars(code);
+}""",
+        """function v650ApplyNationalModalTheme(code){
+ const modalEl=document.querySelector('#modal-root .v645-national-modal');if(!modalEl)return;
+ const p=v650NationalPalette(code),mix=(a,b,w)=>{try{return v51Mix(a,b,w);}catch(e){return a;}};
+ modalEl.classList.add('v650-national-theme');modalEl.dataset.nationalTheme=String(code||'');
+ modalEl.style.cssText+=';'+v650NationalThemeVars(code);
+ const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':p.accent||p.primary,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
+ Object.entries(vars).forEach(([k,v])=>modalEl.style.setProperty(k,v));
+ try{v18172ApplySurfaceToElement(modalEl,p.primary);}catch(e){}
+}""",
+        "national profile full surface theme"
     )
 
     html=once(
@@ -342,7 +364,7 @@ function v18170EnsureAllNationalPools(s){
     html += r'''
 <script id="futbr-root-18170-fixes">
 window.GestorFC=window.GestorFC||{};
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
