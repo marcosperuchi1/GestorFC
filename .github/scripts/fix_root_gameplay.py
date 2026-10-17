@@ -510,12 +510,19 @@ function v18173PaintConsultedNationalProfile(code){
  setTimeout(paint,0);
 }
 // A raiz visual (html) tambem precisa apontar para a selecao consultada.
-let v18176NationalModalCode=null;
+let v18176NationalModalCode=null,v18176OpeningNationalCode=null;
+const v18176BaseNationalTheme=typeof v128NationalTheme==='function'?v128NationalTheme:null;
+if(v18176BaseNationalTheme){
+ v128NationalTheme=function(code){
+  const use=v18176NationalModalCode||v18176OpeningNationalCode||code;
+  return v18176BaseNationalTheme(String(use||'').toUpperCase());
+ };
+}
 const v18176BaseRefreshTheme=typeof v51RefreshTheme==='function'?v51RefreshTheme:null;
 if(v18176BaseRefreshTheme){
  v51RefreshTheme=function(){
-  if(v18176NationalModalCode&&typeof v128NationalTheme==='function'){
-   return v128NationalTheme(String(v18176NationalModalCode).toUpperCase());
+  if((v18176NationalModalCode||v18176OpeningNationalCode)&&typeof v128NationalTheme==='function'){
+   return v128NationalTheme(v18176NationalModalCode||v18176OpeningNationalCode);
   }
   return v18176BaseRefreshTheme();
  };
@@ -523,10 +530,10 @@ if(v18176BaseRefreshTheme){
 const v18176BaseCloseModal=typeof closeModal==='function'?closeModal:null;
 if(v18176BaseCloseModal){
  closeModal=function(...args){
-  const hadNational=!!v18176NationalModalCode;
-  v18176NationalModalCode=null;
+  const opening=!!v18176OpeningNationalCode,hadNational=!!v18176NationalModalCode;
+  if(!opening)v18176NationalModalCode=null;
   const out=v18176BaseCloseModal(...args);
-  if(hadNational){try{v18176BaseRefreshTheme?.();}catch(e){}}
+  if(hadNational&&!opening){try{v18176BaseRefreshTheme?.();}catch(e){}}
   return out;
  };
 }
@@ -535,23 +542,67 @@ const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?
 if(v18173BaseOpenNationalProfile){
  v645OpenNationalProfile=function(code){
   const n=String(code||'').toUpperCase();
-  v18176NationalModalCode=n;
+  v18176OpeningNationalCode=n;
   try{
-   // modal() chama v51RefreshTheme internamente; como o codigo consultado ja esta
-   // marcado, toda a raiz recebe a paleta correta antes mesmo do primeiro frame.
    const out=v18173BaseOpenNationalProfile(n);
+   v18176NationalModalCode=n;v18176OpeningNationalCode=null;
+   try{v128NationalTheme?.(n);}catch(e){}
    try{v51RefreshTheme?.();}catch(e){}
    v18173PaintConsultedNationalProfile(n);
+   requestAnimationFrame(()=>{if(v18176NationalModalCode===n){try{v128NationalTheme?.(n);v18173PaintConsultedNationalProfile(n);}catch(e){}}});
    return out;
   }catch(e){
-   v18176NationalModalCode=null;
+   v18176OpeningNationalCode=null;v18176NationalModalCode=null;
    try{v18176BaseRefreshTheme?.();}catch(_){}
    throw e;
   }
  };
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
+// Plano Gratuito: carreira por selecao e recurso Premium. A restricao existe
+// tanto na interface quanto no caminho autoritativo de criacao.
+function v18177FullAccess(){try{return typeof v548FullAccess==='function'&&!!v548FullAccess();}catch(e){return false;}}
+function v18177EnforceFreeStartUI(){
+ if(v18177FullAccess())return;
+ try{
+  v643StartMode='club';
+  const sel=document.querySelector('#v643-start-mode');if(sel){sel.value='club';sel.querySelector('option[value="national"]')?.remove();}
+  document.querySelectorAll('[data-v643-start="national"]').forEach(el=>el.remove());
+  document.querySelector('#v643-national-start')?.classList.remove('active');
+  document.querySelectorAll('[data-v643-club-only="1"]').forEach(el=>el.classList.remove('v643-club-only-hidden'));
+  const note=document.querySelector('.v548-free-notice');if(note)note.style.display='';
+  const btn=document.querySelector('[data-action="new-career"]');if(btn)btn.innerHTML=icon('play')+' Comecar minha carreira';
+ }catch(e){}
+}
+const v18177BaseRenderWelcome=typeof renderWelcome==='function'?renderWelcome:null;
+if(v18177BaseRenderWelcome){
+ renderWelcome=function(...args){const out=v18177BaseRenderWelcome(...args);queueMicrotask(v18177EnforceFreeStartUI);return out;};
+}
+document.addEventListener('click',e=>{
+ const b=e.target?.closest?.('[data-v643-start="national"]');if(!b||v18177FullAccess())return;
+ e.preventDefault();e.stopImmediatePropagation();v643StartMode='club';toast('Carreira iniciando por selecao e exclusiva do Premium.','warn');v18177EnforceFreeStartUI();
+},true);
+const v18177BaseAct=typeof act==='function'?act:null;
+if(v18177BaseAct){
+ act=function(el){
+  const a=el?.dataset?.action;
+  if(a==='new-career'&&!v18177FullAccess()&&typeof v643WelcomeMode==='function'&&v643WelcomeMode()==='national'){toast('Carreira iniciando por selecao e exclusiva do Premium.','error');v18177EnforceFreeStartUI();return;}
+  return v18177BaseAct(el);
+ };
+}
+const v18177BasePrepare=typeof v53Prepare==='function'?v53Prepare:null;
+if(v18177BasePrepare){
+ v53Prepare=async function(op,params={}){
+  if(op==='create'&&params?.options?.v643StartType==='national'&&!v18177FullAccess()){toast('Carreira por selecao requer Premium.','error');return;}
+  return v18177BasePrepare(op,params);
+ };
+}
+if(typeof v643PrepareNationalCareer==='function'){
+ const v18177BaseNationalPrepare=v643PrepareNationalCareer;
+ v643PrepareNationalCareer=async function(options={}){if(!v18177FullAccess()){toast('Carreira por selecao requer Premium.','error');return;}return v18177BaseNationalPrepare(options);};
+}
+
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,freeNationalStartBlocked:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
