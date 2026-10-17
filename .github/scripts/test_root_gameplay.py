@@ -22,11 +22,32 @@ def main():
       "return typeof v602SortPlayerIds==='function'?v602SortPlayerIds(ids):ids;",
       "E.swapPlayers(state,t,source.id,destination.dataset.v5Player,m,sideIndex)",
       "localizedNationalFreeAgentNames:true","reservePointerSwap:true",
-      "function v18171NationalGeneratedName(s,code,id,used=new Set())"
+      "dynamicCareerSurfaceTheme:true","consultedProfileOwnTheme:true","dragGhost:true",
+      "function v18171NationalGeneratedName(s,code,id,used=new Set())",
+      "function v18172ApplySurfaceToElement(el,primary)",
+      "function v18172PointerGhostAt(p,e)"
     ]
     for x in required:
         if x not in html: die('Marcador raiz ausente: '+x)
     if 'v18167NationalDrag' in html: die('Listener duplicado de drag nacional')
+
+    # Tema: carreira usa a equipe comandada; fichas consultadas recebem paleta propria.
+    for marker in [
+        "function v18172ApplyCareerSurface(primary){return v18172ApplySurfaceToElement(document.documentElement,primary);}",
+        "v18172ApplyCareerSurface(p.primary)",
+        "v18172ApplySurfaceToElement(modalEl,p.primary)"
+    ]:
+        if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
+
+    # Arraste por pointer deve exibir uma copia flutuante e remove-la no final.
+    for marker in [
+        "g.classList.add('v18172-drag-ghost')",
+        "document.body.appendChild(g);v18172PointerGhost=g;",
+        "v18172PointerGhostAt(p,e);",
+        "v18172RemovePointerGhost();v5Execute(p,dest,e.clientX,e.clientY);",
+        "pointerEvents:'none'"
+    ]:
+        if marker not in html: die('Ghost visual do arraste incompleto: '+marker)
 
     # O gerador da Coreia do Norte deve usar nomes coreanos e nunca cair no padrao brasileiro.
     prk_block=re.search(r"PRK:\{familyFirst:true,g:\[(.*?)\],s:\[(.*?)\]\}",html,re.S)
