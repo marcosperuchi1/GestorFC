@@ -73,6 +73,16 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
+    if html.count('"name":"ASA"') != 1:
+        die('Catalogo inicial ainda possui ASA duplicado')
+    if "supportFictional?(div>=4?.72" not in html:
+        die('Guard de desenvolvimento para elencos de suporte ausente')
+    if "futbr-v18163-parity-live" not in html:
+        die('Atualizacao ao vivo de classificacoes ausente')
+    if "v18163JuveCatalog" not in html:
+        die('Auditoria do Juventus brasileiro ausente')
+    if "decorateCareerMenuActions" not in html:
+        die('Acoes desktop do menu de carreira nao sao independentes do tipo de carreira')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
