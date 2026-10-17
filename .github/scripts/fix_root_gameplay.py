@@ -535,7 +535,7 @@ function v18170EnsureAllNationalPools(s){
     # 18.179 - equilibrio de selecoes.
     # A simulacao automatica nacional deixa de depender quase so do Elo/rating.
     # O OVR real do melhor XI passa a ser a base; Elo vira apenas um ajuste pequeno.
-    root_sig="function v640SimFixture(s,f){ if(f.result)return f.result;"
+    root_sig="function v640SimFixture(s,f){"
     root_helper=r"""function v18179NationalSimPower(s,code){
  const t=v640Team(s,code),xi=typeof v640BestXI==='function'?v640BestXI(s,code):[];
  const vals=(xi||[]).map(id=>s.players?.[id]).filter(Boolean).map(p=>Number(E.overall(p))).filter(Number.isFinite).sort((a,b)=>b-a).slice(0,11);
