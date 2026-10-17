@@ -58,7 +58,10 @@ def main():
     anchor="const V310_TEAM_BY_ID=new Map(WorldCatalog.clubs.map(t=>[t.id,t]));"
     if anchor not in html:
         fail('V310_TEAM_BY_ID anchor not found')
-    catalog_guard=f"""WorldCatalog.clubs=WorldCatalog.clubs.filter(c=>c?.id!=='{DUP_ASA_ID}');
+    catalog_guard=f"""{{
+ const v18163DupASA=WorldCatalog.clubs.findIndex(c=>c?.id==='{DUP_ASA_ID}');
+ if(v18163DupASA>=0)WorldCatalog.clubs.splice(v18163DupASA,1);
+}}
 const v18163JuveCatalog=WorldCatalog.clubs.find(c=>c?.id==='{JUVENTUS_ID}');
 if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163JuveCatalog.v515WorldRatingDate;v18163JuveCatalog.supportRosterGrowthGuard=true;}}
 """
@@ -105,10 +108,10 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
 <script id="futbr-v18163-parity-live">
 (()=>{
  let lastStamp='',scheduled=false;
- function activeViewNeedsRefresh(){return ['dashboard','competitions','national'].includes(String(window.view||''));}
+ function activeViewNeedsRefresh(){try{return ['dashboard','competitions','national'].includes(String(typeof view!=='undefined'?view:''));}catch(_){return false;}}
  function paint(){
   scheduled=false;
-  if(!window.state||document.hidden||!activeViewNeedsRefresh())return;
+  if(typeof state==='undefined'||!state||document.hidden||!activeViewNeedsRefresh())return;
   const stamp=String(state.year)+'|'+String(state.day)+'|'+String(view);
   if(stamp===lastStamp)return;lastStamp=stamp;
   try{
