@@ -509,16 +509,49 @@ function v18173PaintConsultedNationalProfile(code){
  if(typeof requestAnimationFrame==='function')requestAnimationFrame(paint);
  setTimeout(paint,0);
 }
-const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;
-if(v18173BaseOpenNationalProfile){
- v645OpenNationalProfile=function(code){
-  const out=v18173BaseOpenNationalProfile(code);
-  v18173PaintConsultedNationalProfile(code);
+// A raiz visual (html) tambem precisa apontar para a selecao consultada.
+let v18176NationalModalCode=null;
+const v18176BaseRefreshTheme=typeof v51RefreshTheme==='function'?v51RefreshTheme:null;
+if(v18176BaseRefreshTheme){
+ v51RefreshTheme=function(){
+  if(v18176NationalModalCode&&typeof v128NationalTheme==='function'){
+   return v128NationalTheme(String(v18176NationalModalCode).toUpperCase());
+  }
+  return v18176BaseRefreshTheme();
+ };
+}
+const v18176BaseCloseModal=typeof closeModal==='function'?closeModal:null;
+if(v18176BaseCloseModal){
+ closeModal=function(...args){
+  const hadNational=!!v18176NationalModalCode;
+  v18176NationalModalCode=null;
+  const out=v18176BaseCloseModal(...args);
+  if(hadNational){try{v18176BaseRefreshTheme?.();}catch(e){}}
   return out;
  };
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
+const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;
+if(v18173BaseOpenNationalProfile){
+ v645OpenNationalProfile=function(code){
+  const n=String(code||'').toUpperCase();
+  v18176NationalModalCode=n;
+  try{
+   // modal() chama v51RefreshTheme internamente; como o codigo consultado ja esta
+   // marcado, toda a raiz recebe a paleta correta antes mesmo do primeiro frame.
+   const out=v18173BaseOpenNationalProfile(n);
+   try{v51RefreshTheme?.();}catch(e){}
+   v18173PaintConsultedNationalProfile(n);
+   return out;
+  }catch(e){
+   v18176NationalModalCode=null;
+   try{v18176BaseRefreshTheme?.();}catch(_){}
+   throw e;
+  }
+ };
+}
+
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
