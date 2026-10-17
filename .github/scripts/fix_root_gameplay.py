@@ -550,12 +550,12 @@ function v18170EnsureAllNationalPools(s){
         "const [h,a]=v640FixtureTeams(s,f),hp=v18179NationalSimPower(s,f.home),ap=v18179NationalSimPower(s,f.away),gap=E.clamp(hp-ap+(f.neutral?0:1.4),-30,30),lh=E.clamp(1.25*Math.exp(gap*.038),.14,3.8),la=E.clamp(1.25*Math.exp(-gap*.038),.14,3.8);let gh=v640Poisson(s,lh),ga=v640Poisson(s,la),pens=null,winner=null;",
         "national root OVR-weighted xG"
     )
-    html=once(
-        html,
-        "if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
-        "if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
-        "national root strength-aware penalties"
-    )
+    root_pen_old="if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;"
+    root_pen_new="if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;"
+    root_pos=html.find("hp=v18179NationalSimPower(s,f.home)")
+    root_pen_pos=html.find(root_pen_old,root_pos)
+    if root_pos<0 or root_pen_pos<0: fail("national root strength-aware penalties: ancora nao encontrada")
+    html=html[:root_pen_pos]+root_pen_new+html[root_pen_pos+len(root_pen_old):]
 
     worker_sig="function simulateFixture(s,f){if(f.result)return f.result;"
     worker_helper=r"""function nationalPower(s,code){
@@ -572,12 +572,12 @@ function v18170EnsureAllNationalPools(s){
         "const h=team(s,f.home),a=team(s,f.away),hp=nationalPower(s,f.home),ap=nationalPower(s,f.away),gap=E.clamp(hp-ap+(f.neutral?0:1.4),-30,30),lh=E.clamp(1.25*Math.exp(gap*.038),.14,3.8),la=E.clamp(1.25*Math.exp(-gap*.038),.14,3.8);let gh=poisson(s,lh),ga=poisson(s,la),pens=null,winner=null;",
         "national worker OVR-weighted xG"
     )
-    html=once(
-        html,
-        "if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
-        "if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;",
-        "national worker strength-aware penalties"
-    )
+    worker_pen_old="if(f.knockout&&gh===ga){let ph=3+Math.floor(E.rng(s)*3),pa=3+Math.floor(E.rng(s)*3);if(ph===pa){if(E.rng(s)<.5)ph++;else pa++;}pens=[ph,pa];winner=ph>pa?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;"
+    worker_pen_new="if(f.knockout&&gh===ga){const pHome=E.clamp(.5+gap*.008,.32,.68),homePenWin=E.rng(s)<pHome,loser=2+Math.floor(E.rng(s)*4),win=loser+1;pens=homePenWin?[win,loser]:[loser,win];winner=homePenWin?f.home:f.away;}else if(gh!==ga)winner=gh>ga?f.home:f.away;"
+    worker_pos=html.find("hp=nationalPower(s,f.home)")
+    worker_pen_pos=html.find(worker_pen_old,worker_pos)
+    if worker_pos<0 or worker_pen_pos<0: fail("national worker strength-aware penalties: ancora nao encontrada")
+    html=html[:worker_pen_pos]+worker_pen_new+html[worker_pen_pos+len(worker_pen_old):]
 
     html += r'''
 <script id="futbr-root-18170-fixes">
