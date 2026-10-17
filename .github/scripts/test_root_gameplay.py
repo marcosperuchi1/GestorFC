@@ -33,7 +33,7 @@ def main():
       "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","nationalRootSurfaceFollowsConsulted:true","premiumBuyOnWelcome:true","freeNationalStartBlocked:true","freeNationalStartCoreGate:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
       "let v18176NationalModalCode=null,v18176OpeningNationalCode=null",
       "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;",
-      "if(typeof v18172ApplyCareerSurface==='function')v18172ApplyCareerSurface(p.primary);",
+      "try{v18172ApplyCareerSurface(p.primary);}catch(e){}",
       "window.open('https://futbrmanager.com.br/','_blank','noopener,noreferrer')",
       "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
     ]
