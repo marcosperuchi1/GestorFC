@@ -113,7 +113,7 @@ def main():
         die('Selecoes pequenas ainda nao recebem profundidade inicial de jogadores livres')
     if "nationalBenchOrderedByPosition:true" not in html or "v18167BaseLiveBench" not in html:
         die('Banco nacional ainda nao esta ordenado por posicao em todas as telas')
-    if "v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)" not in html:
+    if "v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)" not in html:
         die('Avancar ate a selecao ainda nao atualiza Visao Geral/Selecoes por jornada')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
