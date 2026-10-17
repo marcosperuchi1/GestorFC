@@ -87,6 +87,19 @@ def main():
  v133NationalBench=function(t){return v18167SortIds(v133NormalizeNationalBench(t)).map(id=>v133NationalTile(id,t)).join('');};
  const v18167BaseNationalUnrelatedIds=v153NationalUnrelatedIds;
  v153NationalUnrelatedIds=function(t){return v18167SortIds(v18167BaseNationalUnrelatedIds(t));};
+ const v18167BaseLiveBench=v5Bench;
+ v5Bench=function(target,ctx){
+  if(ctx==='live'&&Array.isArray(target?.bench))target.bench=v18167SortIds(target.bench);
+  return v18167BaseLiveBench(target,ctx);
+ };
+ if(typeof v1893LiveNotRelated==='function'){
+  const v18167BaseLiveNotRelated=v1893LiveNotRelated;
+  v1893LiveNotRelated=function(t,side){return v18167SortIds(v18167BaseLiveNotRelated(t,side));};
+ }
+ if(typeof v1893ExtraRows==='function'){
+  const v18167BaseExtraRows=v1893ExtraRows;
+  v1893ExtraRows=function(ids,side){return v18167BaseExtraRows(v18167SortIds(ids),side);};
+ }
  const isNationalLive=()=>!!state?.live?.v1888National;
  const ownLiveId=()=>isNationalLive()?state.live.v1888HumanId:state?.user;
  const isOwnLiveTeam=id=>!!id&&String(id)===String(ownLiveId()||'');
