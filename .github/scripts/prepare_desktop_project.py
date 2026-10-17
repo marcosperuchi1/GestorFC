@@ -424,7 +424,23 @@ html.futbr-desktop .futbr-desktop-close-auth .btn{width:100%;min-height:34px}
   if(action==='futbr125-save-current'||action==='futbr125-save-and-exit')setTimeout(()=>syncAfterPrimarySave(),250);
  },true);
  function decorateCloseButton(){const card=document.querySelector('.v548-auth .v548-auth-card');if(!card||card.querySelector('[data-futbr-desktop-close]'))return;card.insertAdjacentHTML('beforeend','<div class="futbr-desktop-close-auth"><button type="button" class="btn ghost" data-futbr-desktop-close="1">Fechar o jogo</button></div>');}
- const mo=new MutationObserver(()=>decorateCloseButton());mo.observe(document.documentElement,{subtree:true,childList:true});decorateCloseButton();
+ function decorateCareerMenuActions(){
+  if(typeof state!=='undefined'&&state)return;
+  const welcome=document.querySelector('.welcome');if(!welcome)return;
+  let tools=welcome.querySelector('.welcome-top .v548-account-tools');
+  if(!tools){
+   const top=welcome.querySelector('.welcome-top');if(!top)return;
+   tools=document.createElement('div');tools.className='v548-account-tools futbr-desktop-career-menu-actions';top.appendChild(tools);
+  }
+  if(!tools.querySelector('[data-futbr-desktop-close]')){
+   tools.insertAdjacentHTML('beforeend','<button type="button" class="btn ghost" data-futbr-desktop-close="1">Fechar o jogo</button>');
+  }
+  const free=typeof v548Session!=='undefined'&&v548Session?.plan==='free';
+  if(free&&!tools.querySelector('[data-futbr-buy-premium]')){
+   tools.insertAdjacentHTML('beforeend','<button type="button" class="btn secondary" data-futbr-buy-premium="1">Adquirir Premium · R$ 19,90</button>');
+  }
+ }
+ const mo=new MutationObserver(()=>{decorateCloseButton();decorateCareerMenuActions();});mo.observe(document.documentElement,{subtree:true,childList:true});decorateCloseButton();decorateCareerMenuActions();
  document.addEventListener('click',event=>{
   if(event.target?.closest?.('[data-futbr-desktop-close]')){event.preventDefault();event.stopImmediatePropagation();Promise.resolve(syncActiveSaveToDisk()).catch(()=>{}).finally(()=>window.FutBRDesktop.closeGame());return;}
   if(event.target?.closest?.('[data-futbr-buy-premium]')){event.preventDefault();event.stopImmediatePropagation();window.FutBRDesktop.openPremium().catch(()=>window.FutBRDesktop.openUrl(PURCHASE_URL)).catch(()=>alert('Acesse https://futbrmanager.com.br/'));}
