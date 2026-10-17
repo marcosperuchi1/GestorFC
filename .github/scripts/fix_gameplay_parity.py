@@ -67,6 +67,23 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
 """
     html=html.replace(anchor,catalog_guard+anchor,1)
 
+    # Rankings by bare club name must never promote a regional namesake.
+    old_rating="function v515RatingForClub(t){for(const n of [t.name,...(t.aliases||[])]){const p=V515_RATING_MAP.get(v515Norm(n));if(p)return p;}return null;}"
+    new_rating="function v515RatingForClub(t){if(t?.regionalOnly)return null;for(const n of [t.name,...(t.aliases||[])]){const p=V515_RATING_MAP.get(v515Norm(n));if(p)return p;}return null;}"
+    html=replace_once(html,old_rating,new_rating,'world ranking regional namesake guard')
+
+    # --- 1b) Fresh careers must not inherit runtime-only UI state from another save.
+    html=html.replace(
+        "stopTimer();state=loaded;saved=loaded;compCountry=null;compDivision=null;v52MarketIndex=null;v5RenderedView=null;",
+        "stopTimer();state=loaded;saved=loaded;compCountry=null;compDivision=null;v52MarketIndex=null;v5RenderedView=null;try{v51ModalClub=null;v51EditingClub=null;v4AcademyClub=null;if(typeof v523ClubView!=='undefined')v523ClubView=null;}catch(e){}try{document.documentElement.removeAttribute('data-visual-club');}catch(e){}",
+        1
+    )
+    html=html.replace(
+        "initialClub:loaded.user,initialCountry:ht?.country||'',initialDivision:Number(ht?.division||0),startType:nationalCode?'national':'club'",
+        "initialClub:nationalCode?'':loaded.user,initialCountry:ht?.country||'',initialDivision:Number(ht?.division||0),startType:nationalCode?'national':'club'",
+        1
+    )
+
     # --- 2) Correct support/fallback player identity and potential.
     old_player="""p.name=String(rp.name).slice(0,80);p.real=true;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;
         if(hasDbOvr)v200ApplyDatabaseOVR(p,dbOvr);t.roster.push(id);"""
@@ -108,7 +125,19 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
 <script id="futbr-v18163-parity-live">
 (()=>{
  let lastStamp='',scheduled=false;
- function activeViewNeedsRefresh(){try{return ['dashboard','competitions','national'].includes(String(typeof view!=='undefined'?view:''));}catch(_){return false;}}
+ function nationalOnly(){try{return !!state?.v640National?.userTeam&&state.userEmployed===false;}catch(_){return false;}}
+ function cleanNationalClubVisualResidue(){
+  if(!nationalOnly())return;
+  try{
+   const modalOpen=!!document.querySelector('#modal-root .modal');
+   if(!modalOpen){v51ModalClub=null;v51EditingClub=null;}
+   document.querySelectorAll('table tbody tr.is-user,table tbody tr.v670-own-standing').forEach(tr=>{
+    if(tr.querySelector('[data-team],.v634-club-cell,.v247-standing-club-box'))tr.classList.remove('is-user','v670-own-standing');
+   });
+   if(!modalOpen&&typeof v128NationalTheme==='function')v128NationalTheme(state.v640National.userTeam);
+  }catch(e){console.warn('[18.163] national visual isolation:',e?.message||e);}
+ }
+ function activeViewNeedsRefresh(){try{return ['dashboard','competitions','national','clubrankings'].includes(String(typeof view!=='undefined'?view:''));}catch(_){return false;}}
  function paint(){
   scheduled=false;
   if(typeof state==='undefined'||!state||document.hidden||!activeViewNeedsRefresh())return;
@@ -130,8 +159,9 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
  if(typeof basePaint==='function'){
   window.v53PaintStatus=function(){const out=basePaint.apply(this,arguments);if(v53Sim?.active)schedule();return out;};
  }
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
- window.addEventListener('focus',schedule);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();cleanNationalClubVisualResidue();}});
+ window.addEventListener('focus',()=>{schedule();cleanNationalClubVisualResidue();});
+ queueMicrotask(cleanNationalClubVisualResidue);
  window.GestorFC=window.GestorFC||{};
  window.GestorFC.parity18163={liveStandings:true,careerTypeIndependent:true,duplicateASA:DUP_ASA_PLACEHOLDER};
 })();
