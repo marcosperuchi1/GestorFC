@@ -155,6 +155,10 @@ def main():
         die('Otimizacao de carregamento de saves ausente')
     if "freeNationalStartBlocked:true" not in html or "params?.options?.v643StartType==='national'&&!v18177FullAccess()" not in html:
         die('Plano Gratuito ainda pode iniciar carreira por selecao')
+    if "freeNationalStartCoreGate:true" not in html or "if(!v548FullAccess()&&v128NationalStart){" not in html:
+        die('Nucleo final 11.5C ainda pode permitir carreira nacional gratuita')
+    if "function v643ConvertNewCareerToNational(s,code){if(!v548FullAccess())throw Error('Carreira por selecao requer Premium.')" not in html:
+        die('Conversao final para selecao nao exige Premium')
     if "fastCareerSeedRefs:true" not in html or "p.v18175SeedRoster=rp" not in html or "p.real?(p.v18175SeedRoster||null):null" not in html:
         die('Criacao de carreira ainda reconstrui relacionamentos da base por nome')
     if "const info=db[t.id],map=new Map((info?.players||[]).map" in html:
