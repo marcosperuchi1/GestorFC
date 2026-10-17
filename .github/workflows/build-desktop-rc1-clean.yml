@@ -24,7 +24,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -58,6 +58,10 @@ jobs:
       - name: Preparar projeto desktop
         shell: pwsh
         run: python .github/scripts/prepare_desktop_project.py "$env:FUTBR_PROJECT"
+
+      - name: Corrigir gameplay na raiz
+        shell: pwsh
+        run: python .github/scripts/fix_root_gameplay.py "$env:FUTBR_PROJECT"
 
       - name: Corrigir paridade e base inicial
         shell: pwsh
