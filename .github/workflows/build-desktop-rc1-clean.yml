@@ -2,8 +2,6 @@ name: Build FutBR Manager Desktop RC1 Clean
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -87,23 +85,6 @@ jobs:
         shell: pwsh
         run: python .github/scripts/externalize_player_base.py "$env:FUTBR_PROJECT"
 
-      - name: Empacotar fonte Tauri corrigida
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $out = Join-Path $env:RUNNER_TEMP 'FutBR_Manager_TAURI_FINAL_COMO_JOGAR.zip'
-          if (Test-Path $out) { Remove-Item $out -Force }
-          Compress-Archive -Path "$env:FUTBR_PROJECT\*" -DestinationPath $out -Force
-          "FUTBR_SOURCE_ZIP=$out" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-      - name: Publicar fonte Tauri corrigida
-        uses: actions/upload-artifact@v4
-        with:
-          name: FutBR-Manager-TAURI-FINAL-COMO-JOGAR
-          path: ${{ env.FUTBR_SOURCE_ZIP }}
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
 
       - name: Preparar Node
         uses: actions/setup-node@v4
