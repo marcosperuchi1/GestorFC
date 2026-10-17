@@ -128,10 +128,12 @@ function v18170NationalPoolBase(s,code,pos,conf){
  const sample=same.length?same:top,avg=sample.length?E.avg(sample.map(E.overall)):(V640_CONF_BASE[conf]||62);
  return E.clamp(Math.round(avg),45,86);
 }
-function v18170EnsureNationalPool(s,code){
+function v18170EnsureNationalPool(s,code,f=null){
  const t=v640Team(s,code);if(!t||!s?.players)return {code,created:0};
- const target=V18170_NATIONAL_POOL_TARGET,pool=v640Eligible(s,code),counts={GOL:0,ZAG:0,LAT:0,VOL:0,MEI:0,ATA:0},created=[];
- for(const p of pool)if(Object.hasOwn(counts,p.pos))counts[p.pos]++;
+ const target=V18170_NATIONAL_POOL_TARGET,pool=v640Eligible(s,code),key=f?v641NationalDisciplineKey(s,f):null;
+ const available=f?pool.filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0)):pool;
+ const counts={GOL:0,ZAG:0,LAT:0,VOL:0,MEI:0,ATA:0},created=[];
+ for(const p of available)if(Object.hasOwn(counts,p.pos))counts[p.pos]++;
  s.free=Array.isArray(s.free)?s.free:[];
  for(const pos of ['GOL','ZAG','LAT','VOL','MEI','ATA']){
   let missing=Math.max(0,(target[pos]||0)-(counts[pos]||0));
@@ -146,6 +148,11 @@ function v18170EnsureNationalPool(s,code){
   }
  }
  if(created.length)t.v18170InitialSupport=(t.v18170InitialSupport||0)+created.length;
+ if(f){
+  const playable=v640Eligible(s,code).filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0))
+   .sort((a,b)=>(typeof v165CallupScore==='function'?v165CallupScore(b)-v165CallupScore(a):E.overall(b)-E.overall(a))||(Number(a.age)||99)-(Number(b.age)||99));
+  t.roster=playable.slice(0,26).map(p=>p.id);
+ }
  return {code,created:created.length};
 }
 function v18170EnsureAllNationalPools(s){
@@ -175,7 +182,7 @@ function v18170EnsureAllNationalPools(s){
  if(enemyList.length<11)throw Error('O adversario nao tem jogadores suficientes para esta partida.');""",
         """ const enemy=f.home===chosen.code?f.away:f.home,enemyT=v640Team(state,enemy);
  if(!enemyT)throw Error('Selecao adversaria nao encontrada.');
- v18170EnsureNationalPool(state,enemy);
+ v18170EnsureNationalPool(state,enemy,f);
  const enemyList=v1888NationalEligible(state,enemyT,f);
  if(enemyList.length<11)throw Error('Nao foi possivel montar 11 jogadores aptos para a selecao adversaria.');""",
         "old-save opponent repair"
