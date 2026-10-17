@@ -85,8 +85,8 @@ def main():
         die('Pacotes vac-live do nationaljump ainda nao atualizam a Visao Geral')
     if "v18170EnsureAllNationalPools" not in html or "v18170InitialNationalFreeAgent" not in html:
         die('Selecoes pequenas ainda nao recebem jogadores livres na criacao do mundo')
-    if "v18170EnsureNationalPool(state,enemy);" not in html:
-        die('Saves antigos ainda podem enfrentar selecao adversaria sem elenco suficiente')
+    if "v18170EnsureNationalPool(state,enemy,f);" not in html:
+        die('Saves antigos ainda podem enfrentar selecao adversaria sem elenco apto suficiente')
     if "t.v600PreferredBench=v602SortPlayerIds(list.slice(0,V600_BENCH_LIMIT))" not in html:
         die('Banco nacional pre-jogo nao esta ordenado por posicao na raiz')
     if "ids=typeof v602SortPlayerIds==='function'?v602SortPlayerIds(raw):raw" not in html:
