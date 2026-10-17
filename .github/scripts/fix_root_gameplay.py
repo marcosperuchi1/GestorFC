@@ -22,6 +22,38 @@ def main():
         print("root gameplay fixes already present")
         return
 
+    # A ficha de selecao deve seguir a mesma regra da ficha de clube:
+    # ao consultar outra equipe, a paleta troca tambem --bg/--panel/--panel2/--line
+    # na raiz, e nao apenas as variaveis --club-*.
+    html=once(
+        html,
+        """function v128NationalTheme(code){
+ if(!code||typeof v650NationalPalette!=='function')return false;
+ const p=v650NationalPalette(code),r=document.documentElement;
+ r.classList.add('v51-active');
+ const mix=(a,b,w)=>{try{return v51Mix(a,b,w);}catch(e){return a;}};
+ let accent=p.accent||p.primary;
+ const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':accent,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
+ Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));r.dataset.visualClub='national:'+code;
+ try{v664ApplyContrast?.();}catch(e){}try{v665ApplySolidSidebar?.();}catch(e){}
+ return true;
+}""",
+        """function v128NationalTheme(code){
+ if(!code||typeof v650NationalPalette!=='function')return false;
+ const p=v650NationalPalette(code),r=document.documentElement;
+ r.classList.add('v51-active');
+ const mix=(a,b,w)=>{try{return v51Mix(a,b,w);}catch(e){return a;}};
+ let accent=p.accent||p.primary;
+ const vars={'--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third,'--club-accent':accent,'--club-soft':p.primary+'26','--club-border':mix(p.primary,'#ffffff',.18)+'7a','--club-gradient':p.primary,'--on-accent':p.on||'#ffffff'};
+ Object.entries(vars).forEach(([k,v])=>r.style.setProperty(k,v));
+ if(typeof v18172ApplyCareerSurface==='function')v18172ApplyCareerSurface(p.primary);
+ r.dataset.visualClub='national:'+code;
+ try{v664ApplyContrast?.();}catch(e){}try{v665ApplySolidSidebar?.();}catch(e){}
+ return true;
+}""",
+        "national root surface follows consulted selection"
+    )
+
     html=once(
         html,
         """// Painéis deixam de ser pretos puros: derivam tons escuros da cor principal do clube ativo/consultado.
@@ -630,10 +662,10 @@ function v18177EnforceFreeStartUI(){
   const note=document.querySelector('.v548-free-notice');if(note)note.style.display='';
   const card=document.querySelector('.setup-card');
   if(card&&!card.querySelector('#v18178-buy-premium')){
-   const buy=document.createElement('a');
-   buy.id='v18178-buy-premium';buy.href='https://futbrmanager.com.br/#planos';buy.target='_blank';buy.rel='noopener noreferrer';
-   buy.className='btn btn-primary';buy.textContent='Comprar Premium';
+   const buy=document.createElement('button');
+   buy.type='button';buy.id='v18178-buy-premium';buy.className='btn primary';buy.textContent='Comprar Premium';
    buy.style.cssText='display:inline-flex;align-items:center;justify-content:center;margin:12px 0;gap:8px';
+   buy.onclick=()=>{try{window.open('https://futbrmanager.com.br/','_blank','noopener,noreferrer');}catch(e){toast('Acesse futbrmanager.com.br para comprar o Premium.','warn');}};
    (note||card).insertAdjacentElement('afterend',buy);
   }
   const btn=document.querySelector('[data-action="new-career"]');if(btn)btn.innerHTML=icon('play')+' Comecar minha carreira';
@@ -667,7 +699,7 @@ if(typeof v643PrepareNationalCareer==='function'){
  v643PrepareNationalCareer=async function(options={}){if(!v18177FullAccess()){toast('Carreira por selecao requer Premium.','error');return;}return v18177BaseNationalPrepare(options);};
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,freeNationalStartBlocked:true,freeNationalStartCoreGate:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,nationalRootSurfaceFollowsConsulted:true,premiumBuyOnWelcome:true,freeNationalStartBlocked:true,freeNationalStartCoreGate:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
