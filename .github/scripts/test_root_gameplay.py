@@ -30,7 +30,7 @@ def main():
       "function v18173PaintConsultedNationalProfile(code)",
       "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;",
       "function v18174ForceNationalProfileTheme(code)",
-      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","freeNationalStartBlocked:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","freeNationalStartBlocked:true","freeNationalStartCoreGate:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
       "let v18176NationalModalCode=null,v18176OpeningNationalCode=null",
       "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;",
       "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
@@ -61,6 +61,14 @@ def main():
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
 
     # Plano gratuito nunca inicia carreira de selecao, mesmo por chamada direta.
+    for marker in [
+        "if(!v548FullAccess()&&v128NationalStart){",
+        "Comecar uma carreira por selecao e um recurso exclusivo do Premium.",
+        "function v643ConvertNewCareerToNational(s,code){if(!v548FullAccess())throw Error('Carreira por selecao requer Premium.')",
+        "freeNationalStartCoreGate:true"
+    ]:
+        if marker not in html: die('Bloqueio autoritativo da carreira por selecao ausente: '+marker)
+
     for marker in [
         "freeNationalStartBlocked:true",
         "Carreira por selecao requer Premium.",
