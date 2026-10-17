@@ -197,6 +197,27 @@ document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-v5-
 
     html=once(
         html,
+        """document.addEventListener('pointermove',e=>{if(!v5Pointer)return;if(Math.hypot(e.clientX-v5Pointer.x,e.clientY-v5Pointer.y)>7){v5Pointer.moved=true;if(v5Pointer.ctx==='live')stopTimer();e.preventDefault();}},{passive:false});""",
+        """document.addEventListener('pointermove',e=>{const p=v5Pointer;if(!p||p.pid!==e.pointerId)return;if(!p.moved&&Math.hypot(e.clientX-p.x,e.clientY-p.y)>7){p.moved=true;if(p.ctx==='live')stopTimer();}if(p.moved){e.preventDefault();v18172PointerGhostAt(p,e);}},{passive:false});""",
+        "pointer drag ghost move"
+    )
+
+    html=once(
+        html,
+        """document.addEventListener('pointerup',e=>{const p=v5Pointer;v5Pointer=null;if(!p?.moved)return;v5IgnoreClick=Date.now()+500;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY),dest=target?.closest('[data-v5-player]')||target?.closest('[data-v5-vacant]')||target?.closest('[data-v5-board]');v5Execute(p,dest,e.clientX,e.clientY);});""",
+        """document.addEventListener('pointerup',e=>{const p=v5Pointer;if(!p||p.pid!==e.pointerId)return;v5Pointer=null;if(!p.moved){v18172RemovePointerGhost();return;}v5IgnoreClick=Date.now()+500;e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY),dest=target?.closest('[data-v5-player]')||target?.closest('[data-v5-vacant]')||target?.closest('[data-v5-board]');v18172RemovePointerGhost();v5Execute(p,dest,e.clientX,e.clientY);});""",
+        "pointer drag ghost drop"
+    )
+
+    html=once(
+        html,
+        """document.addEventListener('pointercancel',()=>{v5Pointer=null;});""",
+        """document.addEventListener('pointercancel',e=>{if(v5Pointer&&(!e.pointerId||v5Pointer.pid===e.pointerId))v5Pointer=null;v18172RemovePointerGhost();});""",
+        "pointer drag ghost cancel"
+    )
+
+    html=once(
+        html,
         """function v5Bench(target,ctx){const ids=ctx==='live'?target.bench:E.human(state).roster.filter(id=>!target.lineup.includes(id));return `<div class="v5-bench" data-v5-bench="${ctx}">${ids.map(id=>v5Tile(id,target,ctx)).join('')}</div>`;}""",
         """function v5Bench(target,ctx){let ids=ctx==='live'?target.bench:E.human(state).roster.filter(id=>!target.lineup.includes(id));if(typeof v602SortPlayerIds==='function')ids=v602SortPlayerIds(ids);return `<div class="v5-bench" data-v5-bench="${ctx}">${ids.map(id=>v5Tile(id,target,ctx)).join('')}</div>`;}""",
         "base bench order"
