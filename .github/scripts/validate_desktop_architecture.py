@@ -107,6 +107,10 @@ def main():
         die('Resumo de resultados de selecoes ainda nao possui detalhes da partida')
     if "v18165RefreshVisibleDay" not in html or "overviewPerRound:true" not in html:
         die('Visao Geral ainda nao atualiza por mudanca de jornada')
+    if "v18166PrepareAiNationalOpponent" not in html:
+        die('Selecao adversaria ainda pode iniciar partida sem elenco apto suficiente')
+    if "v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)" not in html:
+        die('Avancar ate a selecao ainda nao atualiza Visao Geral/Selecoes por jornada')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
