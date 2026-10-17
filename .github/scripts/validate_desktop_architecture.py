@@ -83,6 +83,12 @@ def main():
         die('Auditoria do Juventus brasileiro ausente')
     if "decorateCareerMenuActions" not in html:
         die('Acoes desktop do menu de carreira nao sao independentes do tipo de carreira')
+    if "function v515RatingForClub(t){if(t?.regionalOnly)return null;" not in html:
+        die('Clubes regionais ainda podem herdar ranking mundial por colisao de nome')
+    if "cleanNationalClubVisualResidue" not in html:
+        die('Isolamento visual entre carreira de selecao e clube ausente')
+    if "initialClub:nationalCode?'':loaded.user" not in html:
+        die('Carreira nova de selecao ainda guarda clube inicial indevido')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
