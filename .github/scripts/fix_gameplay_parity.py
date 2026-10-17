@@ -118,6 +118,18 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
   }"""
     html=replace_once(html,old_growth,new_growth,'support development rate')
 
+    # --- 2b) "Avancar ate a selecao" already publishes a compact live delta every day.
+    # Allow the same live repaint used in Vacation for Overview/National only.
+    old_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nationaljump'&&v53Sim?.mode!=='nextmatch')refresh=true;"
+    new_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nextmatch'&&(v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)))refresh=true;"
+    html=replace_once(html,old_jump_refresh,new_jump_refresh,'national jump overview refresh')
+
+    # national-jump-day is a progress event; keep the chrome/status current as the
+    # corresponding vac-live packet updates state.day and the open Overview.
+    old_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();continue;"
+    new_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();if(['dashboard','national'].includes(view)&&!document.hidden)try{v53RefreshView(false);}catch(e){}continue;"
+    html=replace_once(html,old_jump_day,new_jump_day,'national jump progress repaint')
+
     # --- 3) Live standings repaint: once per completed world day.
     # This keeps the existing lightweight shell but refreshes the visible standings
     # deterministically for club and national-team careers.
@@ -200,6 +212,8 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     if 'supportFictional?(div>=4?.72' not in html: fail('support development guard missing')
     if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
     if 'v18165RefreshVisibleDay' not in html: fail('overview per-round refresh missing')
+    if "v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)" not in html:
+        fail('national jump overview live refresh missing')
 
     p.write_text(html,encoding='utf-8')
     print(json.dumps({
