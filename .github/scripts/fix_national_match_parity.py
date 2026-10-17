@@ -71,6 +71,22 @@ def main():
     runtime=r'''
 <script id="futbr-v18164-national-match-parity">
 (()=>{
+ function v18167SortIds(ids){
+  const order={GOL:0,ZAG:1,LAT:2,VOL:3,MEI:4,ATA:5};
+  return [...new Set(ids||[])].sort((a,b)=>{
+   const pa=E.player(state,a),pb=E.player(state,b);
+   const oa=order[pa?.pos]??99,ob=order[pb?.pos]??99;
+   if(oa!==ob)return oa-ob;
+   const qa=pa?E.overall(pa):0,qb=pb?E.overall(pb):0;
+   if(qa!==qb)return qb-qa;
+   return String(pa?.name||'').localeCompare(String(pb?.name||''),'pt-BR');
+  });
+ }
+
+ const v18167BaseNationalBench=v133NationalBench;
+ v133NationalBench=function(t){return v18167SortIds(v133NormalizeNationalBench(t)).map(id=>v133NationalTile(id,t)).join('');};
+ const v18167BaseNationalUnrelatedIds=v153NationalUnrelatedIds;
+ v153NationalUnrelatedIds=function(t){return v18167SortIds(v18167BaseNationalUnrelatedIds(t));};
  const isNationalLive=()=>!!state?.live?.v1888National;
  const ownLiveId=()=>isNationalLive()?state.live.v1888HumanId:state?.user;
  const isOwnLiveTeam=id=>!!id&&String(id)===String(ownLiveId()||'');
@@ -149,6 +165,29 @@ def main():
   if(ownName&&title.includes(ownName))queueMicrotask(()=>v526OpenOwnTactics());
  });
  roObserver.observe(document.documentElement,{childList:true,subtree:true});
+
+ let v18167NationalDrag=null;
+ document.addEventListener('dragstart',e=>{
+  const el=e.target?.closest?.('.v144-national-tactics [data-v5-player][data-v5-context="national"]');
+  if(!el||el.disabled)return;
+  v18167NationalDrag={id:el.dataset.v5Player,ctx:'national'};
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',JSON.stringify(v18167NationalDrag));}catch(_){}
+ },true);
+ document.addEventListener('dragover',e=>{
+  if(!v18167NationalDrag)return;
+  if(e.target?.closest?.('.v144-national-tactics [data-v5-board="national"],.v144-national-tactics [data-v5-player][data-v5-context="national"]')){
+   e.preventDefault();try{e.dataTransfer.dropEffect='move';}catch(_){}
+  }
+ },true);
+ document.addEventListener('drop',e=>{
+  if(!v18167NationalDrag)return;
+  const root=e.target?.closest?.('.v144-national-tactics');if(!root)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  const dest=e.target.closest('[data-v5-player][data-v5-context="national"]')||e.target.closest('[data-v5-vacant]')||e.target.closest('[data-v5-board="national"]');
+  const src=v18167NationalDrag;v18167NationalDrag=null;
+  try{v5Execute(src,dest,e.clientX,e.clientY);}catch(err){toast(err?.message||String(err),'warn');}
+ },true);
+ document.addEventListener('dragend',()=>{v18167NationalDrag=null;},true);
 
  const style=document.createElement('style');
  style.id='v18164-national-match-parity-style';
@@ -250,7 +289,9 @@ def main():
   editableOwnBoard:true,
   opponentBenchSameGeometry:true,
   nationalFixtureDetails:true,
-  careerOriginIndependent:true
+  careerOriginIndependent:true,
+  liveBenchDragValid:true,
+  nationalBenchOrderedByPosition:true
  };
 })();
 </script>
@@ -267,7 +308,10 @@ def main():
       "v18165OwnClickGuard",
       "v18165BaseStageResults",
       "justify-self:stretch!important",
-      "v18166PrepareAiNationalOpponent"
+      "v18166PrepareAiNationalOpponent",
+      "v18167SortIds",
+      "liveBenchDragValid:true",
+      "nationalBenchOrderedByPosition:true"
     ]
     for marker in required:
         if marker not in html:
