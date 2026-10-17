@@ -145,6 +145,7 @@ jobs:
           if (-not $nsis) { throw 'Instalador NSIS nao encontrado.' }
           Copy-Item $nsis.FullName 'artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
           Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json'
+          Copy-Item 'root-gameplay-tests.json' 'artifacts/root-gameplay-tests.json'
           Copy-Item 'src/assets/data/player-base-manifest.json' 'artifacts/player-base-manifest.json'
           Copy-Item 'src/assets/crests/manifest.json' 'artifacts/crest-assets-manifest.json'
           Get-ChildItem artifacts | Format-Table Name,Length
