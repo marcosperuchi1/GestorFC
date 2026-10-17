@@ -87,6 +87,12 @@ def main():
         die('Selecoes pequenas ainda nao recebem jogadores livres na criacao do mundo')
     if "localizedNationalFreeAgentNames:true" not in html or "function v18171NationalGeneratedName(s,code,id,used=new Set())" not in html:
         die('Jogadores ficticios das selecoes ainda nao recebem nomes caracteristicos do pais')
+    if "dynamicCareerSurfaceTheme:true" not in html or "function v18172ApplyCareerSurface(primary)" not in html:
+        die('Tema dinamico da carreira ainda nao deriva da equipe comandada')
+    if "consultedProfileOwnTheme:true" not in html or "v18172ApplySurfaceToElement(modalEl,p.primary)" not in html:
+        die('Ficha consultada ainda nao recebe tema completo proprio')
+    if "dragGhost:true" not in html or "function v18172PointerGhostAt(p,e)" not in html:
+        die('Cartao fantasma do jogador durante o arraste ausente')
     if "reservePointerSwap:true" not in html or "if(el.dataset.v5Slot===undefined){e.preventDefault();return;}" not in html:
         die('Banco de reservas ainda depende do drag HTML nativo')
     if "v18170EnsureNationalPool(state,enemy,f);" not in html:
