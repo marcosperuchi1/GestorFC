@@ -555,6 +555,7 @@ function v18174ForceNationalProfileTheme(code){
 }
 function v18173PaintConsultedNationalProfile(code){
  const paint=()=>{
+  try{if(v18176NationalModalCode&&v18176NationalModalCode!==String(code).toUpperCase())return;}catch(e){}
   try{if(typeof v650ApplyNationalModalTheme==='function')v650ApplyNationalModalTheme(code);}catch(e){}
   try{if(typeof v657ApplyNationalModalTheme==='function')v657ApplyNationalModalTheme(code);}catch(e){}
   try{v18174ForceNationalProfileTheme(code);}catch(e){}
@@ -600,6 +601,7 @@ if(v18173BaseOpenNationalProfile){
   v18176OpeningNationalCode=n;
   try{
    const out=v18173BaseOpenNationalProfile(n);
+   document.querySelectorAll('#modal-root .v645-national-modal').forEach(el=>{el.dataset.consultedNational=n;});
    v18176NationalModalCode=n;v18176OpeningNationalCode=null;
    try{v128NationalTheme?.(n);}catch(e){}
    try{v51RefreshTheme?.();}catch(e){}
@@ -626,6 +628,14 @@ function v18177EnforceFreeStartUI(){
   document.querySelector('#v643-national-start')?.classList.remove('active');
   document.querySelectorAll('[data-v643-club-only="1"]').forEach(el=>el.classList.remove('v643-club-only-hidden'));
   const note=document.querySelector('.v548-free-notice');if(note)note.style.display='';
+  const card=document.querySelector('.setup-card');
+  if(card&&!card.querySelector('#v18178-buy-premium')){
+   const buy=document.createElement('a');
+   buy.id='v18178-buy-premium';buy.href='https://futbrmanager.com.br/#planos';buy.target='_blank';buy.rel='noopener noreferrer';
+   buy.className='btn btn-primary';buy.textContent='Comprar Premium';
+   buy.style.cssText='display:inline-flex;align-items:center;justify-content:center;margin:12px 0;gap:8px';
+   (note||card).insertAdjacentElement('afterend',buy);
+  }
   const btn=document.querySelector('[data-action="new-career"]');if(btn)btn.innerHTML=icon('play')+' Comecar minha carreira';
  }catch(e){}
 }
