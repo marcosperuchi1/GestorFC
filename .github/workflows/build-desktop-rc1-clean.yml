@@ -63,6 +63,18 @@ jobs:
         shell: pwsh
         run: python .github/scripts/fix_root_gameplay.py "$env:FUTBR_PROJECT"
 
+      - name: Diagnosticar motor de partidas
+        shell: pwsh
+        run: python .github/scripts/diagnose_match_engine.py "$env:FUTBR_PROJECT" > match-engine-diagnostic.txt
+
+      - name: Publicar diagnostico do motor
+        uses: actions/upload-artifact@v4
+        with:
+          name: Match-Engine-Diagnostic
+          path: match-engine-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Corrigir paridade e base inicial
         shell: pwsh
         run: python .github/scripts/fix_gameplay_parity.py "$env:FUTBR_PROJECT"
