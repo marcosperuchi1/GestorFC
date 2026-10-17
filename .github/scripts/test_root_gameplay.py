@@ -41,6 +41,17 @@ def main():
         if x not in html: die('Marcador raiz ausente: '+x)
     if 'v18167NationalDrag' in html: die('Listener duplicado de drag nacional')
 
+    # Simulacao nacional: qualidade real do XI domina, Elo e apenas ajuste secundario.
+    for marker in [
+        "function v18179NationalSimPower(s,code)",
+        "function nationalPower(s,code)",
+        "hp=v18179NationalSimPower(s,f.home)",
+        "hp=nationalPower(s,f.home)",
+        "1.25*Math.exp(gap*.038)",
+        "pHome=E.clamp(.5+gap*.008,.32,.68)"
+    ]:
+        if marker not in html: die('Balanceamento nacional ausente: '+marker)
+
     # Tema: carreira usa a equipe comandada; fichas consultadas recebem paleta propria.
     for marker in [
         "function v18172ApplyCareerSurface(primary){return v18172ApplySurfaceToElement(document.documentElement,primary);}",
