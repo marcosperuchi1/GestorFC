@@ -30,9 +30,11 @@ def main():
       "function v18173PaintConsultedNationalProfile(code)",
       "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;",
       "function v18174ForceNationalProfileTheme(code)",
-      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","freeNationalStartBlocked:true","freeNationalStartCoreGate:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","nationalRootSurfaceFollowsConsulted:true","premiumBuyOnWelcome:true","freeNationalStartBlocked:true","freeNationalStartCoreGate:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
       "let v18176NationalModalCode=null,v18176OpeningNationalCode=null",
       "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;",
+      "if(typeof v18172ApplyCareerSurface==='function')v18172ApplyCareerSurface(p.primary);",
+      "window.open('https://futbrmanager.com.br/','_blank','noopener,noreferrer')",
       "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
     ]
     for x in required:
