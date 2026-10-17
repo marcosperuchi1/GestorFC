@@ -26,7 +26,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/test_root_gameplay.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/finalize_how_to_play.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/test_root_gameplay.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -65,17 +65,6 @@ jobs:
         shell: pwsh
         run: python .github/scripts/fix_root_gameplay.py "$env:FUTBR_PROJECT"
 
-      - name: Diagnosticar tela Como jogar
-        shell: pwsh
-        run: python .github/scripts/diagnose_how_to_play.py "$env:FUTBR_PROJECT" > how-to-play-diagnostic.txt
-
-      - name: Publicar diagnostico Como jogar
-        uses: actions/upload-artifact@v4
-        with:
-          name: How-To-Play-Diagnostic
-          path: how-to-play-diagnostic.txt
-          if-no-files-found: error
-          retention-days: 1
 
 
       - name: Corrigir paridade e base inicial
@@ -85,6 +74,10 @@ jobs:
       - name: Unificar partidas de selecao e clube
         shell: pwsh
         run: python .github/scripts/fix_national_match_parity.py "$env:FUTBR_PROJECT"
+
+      - name: Finalizar tela Como jogar
+        shell: pwsh
+        run: python .github/scripts/finalize_how_to_play.py "$env:FUTBR_PROJECT"
 
       - name: Externalizar escudos
         shell: pwsh
