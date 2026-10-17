@@ -42,10 +42,6 @@ def main():
     html = path.read_text(encoding='utf-8')
 
     marker = 'function helpPage(){'
-    start = html.rfind(marker)
-    if start < 0:
-        fail('Implementacao final de helpPage nao encontrada.')
-    end = function_end(html, start)
 
     replacement = r'''function helpPage(){
  const sections=[
@@ -63,20 +59,45 @@ def main():
   '<div class="help-grid">'+sections.map(([title,text])=>'<section class="help-section"><h3>'+title+'</h3><p>'+text+'</p></section>').join('')+'</div>';
 }'''
 
-    html = html[:start] + replacement + html[end:]
+    starts = []
+    pos = 0
+    while True:
+        start = html.find(marker, pos)
+        if start < 0:
+            break
+        starts.append(start)
+        pos = start + len(marker)
+    if not starts:
+        fail('Nenhuma implementacao de helpPage encontrada.')
 
-    final_start = html.rfind(marker)
-    final_end = function_end(html, final_start)
-    final_body = html[final_start:final_end]
-    for old in ['Edição 5.0. Seu mundo continua presente.','Migrar a carreira','O que permanece','Importe o JSON 4.0.']:
-        if old in final_body:
-            fail('Texto historico ainda presente na helpPage final: ' + old)
-    for item in ['Seu objetivo','Elenco e táticas','Partidas','Competições e mundo','Mercado e contratos','Carreira do treinador','Salvar e continuar']:
-        if item not in final_body:
-            fail('Secao obrigatoria ausente da helpPage final: ' + item)
+    # Ha mais de uma camada historica do jogo que redefine helpPage.
+    # Todas precisam receber o mesmo conteudo final; alterar apenas a ultima
+    # pode deixar uma implementacao anterior ativa em outro escopo.
+    ranges = [(start, function_end(html, start)) for start in starts]
+    for start, end in reversed(ranges):
+        html = html[:start] + replacement + html[end:]
+
+    # Validacao forte: nenhuma implementacao de helpPage pode manter
+    # changelog, migracao ou texto de edicoes antigas.
+    check_pos = 0
+    checked = 0
+    while True:
+        start = html.find(marker, check_pos)
+        if start < 0:
+            break
+        end = function_end(html, start)
+        body = html[start:end]
+        for old in ['Edição 5.0. Seu mundo continua presente.','Migrar a carreira','O que permanece','Importe o JSON 4.0.','O que esta edição inclui','O que esta edicao inclui']:
+            if old in body:
+                fail('Texto historico ainda presente em helpPage: ' + old)
+        for item in ['Seu objetivo','Elenco e táticas','Partidas','Competições e mundo','Mercado e contratos','Carreira do treinador','Salvar e continuar']:
+            if item not in body:
+                fail('Secao obrigatoria ausente de helpPage: ' + item)
+        checked += 1
+        check_pos = end
 
     path.write_text(html, encoding='utf-8')
-    print('Como jogar finalizado sem historico de versoes.')
+    print(f'Como jogar finalizado em {checked} implementacao(oes), sem historico de versoes.')
 
 if __name__ == '__main__':
     main()
