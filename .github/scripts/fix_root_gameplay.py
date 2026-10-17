@@ -249,6 +249,61 @@ function v53ScheduleNationalJumpPaint(){
         "drop transient source record"
     )
 
+    # Plano Gratuito: bloqueio autoritativo de carreira por selecao.
+    # Corrige a regra final 11.5C que antes fazia uma excecao explicita para
+    # v128NationalStart e, portanto, deixava o Gratuito iniciar em selecao.
+    html=once(
+        html,
+        """ const v128NationalStart=params?.options?.v643StartType==='national';
+ const v128NationalStartCode=v128NationalStart?String(params?.options?.v643NationalCode||'BRA').toUpperCase():null;
+ if(!v548FullAccess()&&!v128NationalStart){
+  const allowed=v4Catalog.get(params?.options?.club);""",
+        """ const v128NationalStart=params?.options?.v643StartType==='national';
+ const v128NationalStartCode=v128NationalStart?String(params?.options?.v643NationalCode||'BRA').toUpperCase():null;
+ if(!v548FullAccess()&&v128NationalStart){
+  toast('Comecar uma carreira por selecao e um recurso exclusivo do Premium.','error');
+  return;
+ }
+ if(!v548FullAccess()){
+  const allowed=v4Catalog.get(params?.options?.club);""",
+        "authoritative free national start gate"
+    )
+
+    html=once(
+        html,
+        """function v643ConvertNewCareerToNational(s,code){const root=v640EnsureState(s),t=root?.teams?.[code]""",
+        """function v643ConvertNewCareerToNational(s,code){if(!v548FullAccess())throw Error('Carreira por selecao requer Premium.');const root=v640EnsureState(s),t=root?.teams?.[code]""",
+        "national conversion premium guard"
+    )
+
+    html=once(
+        html,
+        """function v647CleanCareerStart(){
+ const card=document.querySelector('.setup-card');if(!card)return;
+ const modeSelect=card.querySelector('#v643-start-mode');
+ if(modeSelect){const field=modeSelect.closest('.field');if(field)field.remove();else modeSelect.remove();}
+ document.querySelectorAll('[data-v643-start]').forEach(x=>x.classList.toggle('active',x.dataset.v643Start===(v643StartMode||'club')));
+ v643ApplyWelcomeMode();
+}""",
+        """function v647CleanCareerStart(){
+ const card=document.querySelector('.setup-card');if(!card)return;
+ const modeSelect=card.querySelector('#v643-start-mode');
+ if(modeSelect){const field=modeSelect.closest('.field');if(field)field.remove();else modeSelect.remove();}
+ if(typeof v548FullAccess==='function'&&!v548FullAccess()){
+  v643StartMode='club';
+  card.querySelectorAll('[data-v643-start="national"]').forEach(x=>x.remove());
+  card.querySelector('#v643-national-start')?.remove();
+  card.querySelectorAll('[data-v643-club-only="1"]').forEach(x=>x.classList.remove('v643-club-only-hidden'));
+  const note=card.querySelector('.v548-free-notice');if(note)note.style.display='';
+  const btn=card.querySelector('[data-action="new-career"]');if(btn)btn.innerHTML=icon('play')+' Comecar minha carreira';
+  return;
+ }
+ document.querySelectorAll('[data-v643-start]').forEach(x=>x.classList.toggle('active',x.dataset.v643Start===(v643StartMode||'club')));
+ v643ApplyWelcomeMode();
+}""",
+        "free start UI national removal"
+    )
+
     html=once(
         html,
         """document.addEventListener('dragstart',e=>{const el=e.target.closest('[data-v5-player]');if(!el||el.disabled)return;v5Drag={id:el.dataset.v5Player,ctx:el.dataset.v5Context};v5Selection=v5Drag;if(v5Drag.ctx==='live')stopTimer();e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',JSON.stringify(v5Drag));v5MarkSelection();});""",
@@ -602,7 +657,7 @@ if(typeof v643PrepareNationalCareer==='function'){
  v643PrepareNationalCareer=async function(options={}){if(!v18177FullAccess()){toast('Carreira por selecao requer Premium.','error');return;}return v18177BaseNationalPrepare(options);};
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,freeNationalStartBlocked:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,freeNationalStartBlocked:true,freeNationalStartCoreGate:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
