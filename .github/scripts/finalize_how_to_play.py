@@ -5,35 +5,6 @@ from pathlib import Path
 def fail(msg):
     raise RuntimeError(msg)
 
-def function_end(text: str, start: int) -> int:
-    brace = text.find('{', start)
-    if brace < 0:
-        fail('Abertura da funcao helpPage nao encontrada.')
-    depth = 0
-    quote = None
-    escape = False
-    i = brace
-    while i < len(text):
-        ch = text[i]
-        if quote:
-            if escape:
-                escape = False
-            elif ch == '\\':
-                escape = True
-            elif ch == quote:
-                quote = None
-        else:
-            if ch in ("'", '"'):
-                quote = ch
-            elif ch == '{':
-                depth += 1
-            elif ch == '}':
-                depth -= 1
-                if depth == 0:
-                    return i + 1
-        i += 1
-    fail('Fim da funcao helpPage nao encontrado.')
-
 def main():
     if len(sys.argv) != 2:
         raise SystemExit('usage: finalize_how_to_play.py <project-dir>')
@@ -41,63 +12,75 @@ def main():
     path = project / 'src' / 'index.html'
     html = path.read_text(encoding='utf-8')
 
-    marker = 'function helpPage(){'
+    # Remove definitivamente a entrada da tela Como jogar do menu principal.
+    nav_item = "['help','help','Como jogar']"
+    if nav_item not in html:
+        fail('Entrada Como jogar nao encontrada no NAV principal.')
+    html = html.replace(',' + nav_item, '').replace(nav_item + ',', '').replace(nav_item, '')
 
-    replacement = r'''function helpPage(){
- const sections=[
-  ["Seu objetivo","Assuma a carreira de treinador e construa sua trajetória no futebol. Administre o dia a dia, dispute títulos, desenvolva sua reputação e aproveite as oportunidades que surgirem ao longo das temporadas. Você pode comandar clubes e, quando disponível para sua carreira, seleções nacionais."],
-  ["Elenco e táticas","Use Elenco e Táticas para escolher titulares, reservas, formação e instruções. A qualidade dos jogadores, o encaixe nas posições, o condicionamento e as decisões táticas influenciam o desempenho. Arraste atletas para reorganizar a equipe e adapte o time ao adversário e ao momento da partida. Não existe formação que garanta vitória."],
-  ["Partidas","Você pode acompanhar os jogos e intervir durante a partida, alterando formação, instruções e fazendo substituições. O resultado considera a força real das equipes, escalações, tática, desgaste, mando quando aplicável e a variação natural do futebol. Favoritos têm vantagem, mas zebras continuam possíveis."],
-  ["Competições e mundo","A carreira acontece em um mundo de futebol conectado, com ligas, copas, competições continentais e intercontinentais, além do futebol de seleções e seus torneios. Resultados em outros países continuam sendo simulados enquanto sua carreira avança."],
-  ["Mercado e contratos","No Mercado você pode contratar, vender e negociar jogadores. Observe valor, salário, duração de contrato e necessidades do elenco antes de decidir. Clubes controlados pela IA também negociam e reorganizam seus grupos ao longo das temporadas."],
-  ["Finanças e estrutura","O desempenho esportivo precisa caminhar junto com a gestão financeira. Acompanhe caixa, salários e receitas e invista na estrutura do clube quando fizer sentido. Decisões financeiras ruins podem limitar suas opções no mercado e aumentar a pressão sobre o treinador."],
-  ["Base e evolução","As categorias de base ajudam a renovar o elenco com jovens. Jogadores evoluem de acordo com idade, potencial e desenvolvimento, enquanto veteranos podem perder rendimento e se aposentar. O mundo se renova continuamente entre as temporadas."],
-  ["Carreira do treinador","Resultados, títulos e desempenho constroem sua reputação. Você pode receber propostas, trocar de clube, ser demitido e seguir a carreira em outro trabalho. As férias permitem avançar períodos automaticamente e podem ser interrompidas quando houver acontecimentos importantes."],
-  ["Salvar e continuar","A carreira é salva pelo próprio jogo. Use também as opções de backup e exportação quando quiser manter uma cópia adicional dos seus dados. Antes de substituir arquivos, limpar dados do aplicativo ou trocar de computador, mantenha um backup da carreira que deseja preservar."]
- ];
- return pageHeading("Como jogar","Um resumo do FutBR Manager e dos principais caminhos para construir sua carreira.")+
-  '<div class="help-grid">'+sections.map(([title,text])=>'<section class="help-section"><h3>'+title+'</h3><p>'+text+'</p></section>').join('')+'</div>';
-}'''
+    # Retira a rota da tela. Qualquer view=help passa a cair no dashboard
+    # pelo fallback natural de renderPage.
+    route = 'help:helpPage,'
+    if route not in html:
+        fail('Rota help:helpPage nao encontrada.')
+    html = html.replace(route, '')
 
-    starts = []
-    pos = 0
-    while True:
-        start = html.find(marker, pos)
-        if start < 0:
-            break
-        starts.append(start)
-        pos = start + len(marker)
-    if not starts:
-        fail('Nenhuma implementacao de helpPage encontrada.')
+    # Evita referencias visiveis para uma tela que nao existe mais.
+    html = html.replace('Regras completas em Como jogar → Disciplina.', 'Cartões, suspensões e pendências são exibidos nesta tela.')
+    html = html.replace('Regras completas em Como jogar -> Disciplina.', 'Cartões, suspensões e pendências são exibidos nesta tela.')
 
-    # Ha mais de uma camada historica do jogo que redefine helpPage.
-    # Todas precisam receber o mesmo conteudo final; alterar apenas a ultima
-    # pode deixar uma implementacao anterior ativa em outro escopo.
-    ranges = [(start, function_end(html, start)) for start in starts]
-    for start, end in reversed(ranges):
-        html = html[:start] + replacement + html[end:]
+    # Camada final de seguranca: mesmo que alguma camada historica tente
+    # recriar o botao ou definir view=help, a interface redireciona ao dashboard.
+    guard = r"""
+<script id="futbr-remove-how-to-play-final">
+(()=>{
+ const clean=()=>document.querySelectorAll('[data-action="nav"][data-view="help"],.nav [data-view="help"]').forEach(el=>el.remove());
+ if(typeof render==='function'){
+  const baseRender=render;
+  render=function(...args){
+   if(typeof view!=='undefined'&&view==='help')view='dashboard';
+   const out=baseRender(...args);clean();return out;
+  };
+ }
+ if(typeof act==='function'){
+  const baseAct=act;
+  act=function(el,...args){
+   if(el?.dataset?.action==='nav'&&el?.dataset?.view==='help'){
+    if(typeof view!=='undefined')view='dashboard';
+    try{closeModal?.();}catch(e){}
+    try{render?.();}catch(e){}
+    return;
+   }
+   return baseAct(el,...args);
+  };
+ }
+ document.addEventListener('click',e=>{
+  const b=e.target?.closest?.('[data-action="nav"][data-view="help"]');
+  if(!b)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(typeof view!=='undefined')view='dashboard';
+  try{render?.();}catch(_){}
+ },true);
+ queueMicrotask(clean);
+ window.GestorFC=window.GestorFC||{};
+ window.GestorFC.howToPlayRemoved=true;
+})();
+</script>
+"""
+    if 'futbr-remove-how-to-play-final' not in html:
+        pos = html.lower().rfind('</body>')
+        html = html[:pos] + guard + html[pos:] if pos >= 0 else html + guard
 
-    # Validacao forte: nenhuma implementacao de helpPage pode manter
-    # changelog, migracao ou texto de edicoes antigas.
-    check_pos = 0
-    checked = 0
-    while True:
-        start = html.find(marker, check_pos)
-        if start < 0:
-            break
-        end = function_end(html, start)
-        body = html[start:end]
-        for old in ['Edição 5.0. Seu mundo continua presente.','Migrar a carreira','O que permanece','Importe o JSON 4.0.','O que esta edição inclui','O que esta edicao inclui']:
-            if old in body:
-                fail('Texto historico ainda presente em helpPage: ' + old)
-        for item in ['Seu objetivo','Elenco e táticas','Partidas','Competições e mundo','Mercado e contratos','Carreira do treinador','Salvar e continuar']:
-            if item not in body:
-                fail('Secao obrigatoria ausente de helpPage: ' + item)
-        checked += 1
-        check_pos = end
+    # Validacao: menu e rota antigos nao podem permanecer.
+    if nav_item in html:
+        fail('Entrada Como jogar ainda presente no NAV.')
+    if 'help:helpPage,' in html:
+        fail('Rota Como jogar ainda presente em renderPage.')
+    if 'futbr-remove-how-to-play-final' not in html:
+        fail('Guard final da remocao da tela ausente.')
 
     path.write_text(html, encoding='utf-8')
-    print(f'Como jogar finalizado em {checked} implementacao(oes), sem historico de versoes.')
+    print('Tela Como jogar removida definitivamente do menu e da navegacao.')
 
 if __name__ == '__main__':
     main()
