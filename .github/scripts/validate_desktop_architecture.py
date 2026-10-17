@@ -99,6 +99,14 @@ def main():
         die('Resultados de selecoes ainda nao possuem acao Ver/Detalhes')
     if "careerOriginIndependent:true" not in html:
         die('Paridade de selecao ainda depende da origem da carreira')
+    if "v18165OwnClickGuard" not in html:
+        die('Primeiro clique na equipe humana ainda pode cair na rota antiga')
+    if "justify-self:stretch!important" not in html:
+        die('Banco de reservas ainda nao ocupa toda a largura da coluna')
+    if "v18165BaseStageResults" not in html:
+        die('Resumo de resultados de selecoes ainda nao possui detalhes da partida')
+    if "v18165RefreshVisibleDay" not in html or "overviewPerRound:true" not in html:
+        die('Visao Geral ainda nao atualiza por mudanca de jornada')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
