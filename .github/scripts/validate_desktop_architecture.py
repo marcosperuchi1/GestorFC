@@ -89,6 +89,16 @@ def main():
         die('Isolamento visual entre carreira de selecao e clube ausente')
     if "initialClub:nationalCode?'':loaded.user" not in html:
         die('Carreira nova de selecao ainda guarda clube inicial indevido')
+    if "futbr-v18164-national-match-parity" not in html:
+        die('Paridade das telas de partida de selecao ausente')
+    if "ownTeamResolver:'v1888HumanId'" not in html:
+        die('Partida de selecao ainda nao resolve corretamente a equipe humana')
+    if "opponentBenchSameGeometry:true" not in html:
+        die('Banco do adversario nacional ainda nao usa a mesma geometria')
+    if "v18164-national-result-view" not in html:
+        die('Resultados de selecoes ainda nao possuem acao Ver/Detalhes')
+    if "careerOriginIndependent:true" not in html:
+        die('Paridade de selecao ainda depende da origem da carreira')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
     if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
