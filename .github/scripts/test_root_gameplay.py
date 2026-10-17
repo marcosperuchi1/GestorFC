@@ -30,7 +30,7 @@ def main():
       "function v18173PaintConsultedNationalProfile(code)",
       "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;",
       "function v18174ForceNationalProfileTheme(code)",
-      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalModalThemePinsV128:true","freeNationalStartBlocked:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
       "let v18176NationalModalCode=null",
       "if(v18176NationalModalCode&&typeof v128NationalTheme==='function')",
       "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
@@ -54,9 +54,20 @@ def main():
         "set(body,'background',",
         "v18176NationalModalCode=n;",
         "try{v51RefreshTheme?.();}catch(e){}",
-        "v18176NationalModalCode=null;"
+        "v18176NationalModalCode=null;",
+        "v18176OpeningNationalCode=n;",
+        "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;"
     ]:
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
+
+    # Plano gratuito nunca inicia carreira de selecao, mesmo por chamada direta.
+    for marker in [
+        "freeNationalStartBlocked:true",
+        "Carreira por selecao requer Premium.",
+        "params?.options?.v643StartType==='national'&&!v18177FullAccess()",
+        "document.querySelectorAll('[data-v643-start=\"national\"]')"
+    ]:
+        if marker not in html: die('Bloqueio Premium da carreira de selecao incompleto: '+marker)
 
     # Criacao de carreira: a segunda passagem deve reutilizar a referencia
     # transitoria do registro da base em vez de reconstruir Maps por nome.
