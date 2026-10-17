@@ -91,6 +91,10 @@ def main():
         die('Selecoes pequenas ainda nao recebem jogadores livres na criacao do mundo')
     if "localizedNationalFreeAgentNames:true" not in html or "function v18171NationalGeneratedName(s,code,id,used=new Set())" not in html:
         die('Jogadores ficticios das selecoes ainda nao recebem nomes caracteristicos do pais')
+    if "+String((h%89)+10)" in html or "nationalNamesNeverNumeric:true" not in html:
+        die('Jogadores ficticios de selecao ainda podem receber sufixo numerico')
+    if "const clean=p.v18171LocalizedName&&p.natCode===n&&!/\\d/.test" not in html:
+        die('Reparo de nomes nacionais numericos anteriores ausente')
     if "dynamicCareerSurfaceTheme:true" not in html or "function v18172ApplyCareerSurface(primary)" not in html:
         die('Tema dinamico da carreira ainda nao deriva da equipe comandada')
     if "consultedProfileOwnTheme:true" not in html or "v18172ApplySurfaceToElement(modalEl,p.primary)" not in html:
@@ -99,6 +103,10 @@ def main():
         die('Redefinicao final da ficha de selecao pode perder a paleta da selecao consultada')
     if "const surface=typeof v18172SurfaceVars==='function'?v18172SurfaceVars(p.primary)" not in html or "try{v18172ApplySurfaceToElement(profile,p.primary);}catch(e){}" not in html:
         die('v657ApplyNationalModalTheme ainda nao reaplica bg/panel/panel2/line da selecao consultada')
+    if "nationalProfileForcedSurface:true" not in html or "function v18174ForceNationalProfileTheme(code)" not in html or "v18174ForceNationalProfileTheme(code);" not in html:
+        die('Ficha nacional final ainda pode herdar superficie da selecao comandada')
+    if "set(modalEl,'background'," not in html or "set(body,'background'," not in html:
+        die('Tema nacional final nao fixa fundo e corpo da selecao consultada')
     if "dragGhost:true" not in html or "function v18172PointerGhostAt(p,e)" not in html:
         die('Cartao fantasma do jogador durante o arraste ausente')
     if "reservePointerSwap:true" not in html or "if(el.dataset.v5Slot===undefined){e.preventDefault();return;}" not in html:
@@ -139,6 +147,13 @@ def main():
         die('Mensagem de seguranca ainda aparece no login desktop')
     if "futbr-desktop-load-optimization" not in html:
         die('Otimizacao de carregamento de saves ausente')
+    if "fastCareerSeedRefs:true" not in html or "p.v18175SeedRoster=rp" not in html or "p.real?(p.v18175SeedRoster||null):null" not in html:
+        die('Criacao de carreira ainda reconstrui relacionamentos da base por nome')
+    if "const info=db[t.id],map=new Map((info?.players||[]).map" in html:
+        die('Criacao de carreira ainda cria Maps repetidos para os elencos')
+    manifest_text=(project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8')
+    if "parse-once-transient-create-cache" not in manifest_text:
+        die('Worker da nova carreira ainda nao usa cache transitorio parse-once')
     if "shardReadConcurrency:8" not in html:
         die('Leitura paralela dos blocos do save nao foi ativada')
     if "blankScreenRecovery:true" not in html:
