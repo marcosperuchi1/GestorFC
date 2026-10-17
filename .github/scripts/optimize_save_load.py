@@ -38,11 +38,21 @@ def main():
  }"""
     html=replace_once(html,old_decode,new_decode,"parallel sharded decode")
 
-    # 2. The player base must not delay the initial menu. Start it only when useful.
+    # 2. The login must remain one-click. The player base can stay lazy while the
+    # auth screen is open, but once credentials are accepted the SAME submit waits
+    # for the already-running load before rendering any screen that reads it sync.
     old_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
-    new_enter="""async function v548EnterGame(){v310StartRosterLoad().catch(e=>console.warn('[FutBR] base local em segundo plano:',e?.message||e));renderWelcome();await loadLocal();}"""
+    new_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
     if old_enter in html:
         html=html.replace(old_enter,new_enter,1)
+
+    # Start the lazy load silently as soon as the auth screen exists. This overlaps
+    # disk I/O with the time the user spends typing, but never exposes a blocking
+    # "base is being prepared" error and never requires a second click.
+    auth_anchor="""function v548RenderAuth(mode=v548AuthMode,message=''){v548AuthMode=mode;stopTimer?.();try{closeModal();}catch(e){}state=null;const root=document.getElementById('app');if(root)root.innerHTML=v548AuthHTML();document.title='FutBR Manager 5.48 | Login';const err=document.getElementById('v548-auth-error');if(err)err.textContent=message;setTimeout(()=>document.getElementById(mode==='login'?'v548-user':'v548-new-user')?.focus(),0);}"""
+    auth_patched="""function v548RenderAuth(mode=v548AuthMode,message=''){v548AuthMode=mode;stopTimer?.();try{closeModal();}catch(e){}state=null;const root=document.getElementById('app');if(root)root.innerHTML=v548AuthHTML();document.title='FutBR Manager 5.48 | Login';const err=document.getElementById('v548-auth-error');if(err)err.textContent=message;try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:',e?.message||e));}catch(e){}setTimeout(()=>document.getElementById(mode==='login'?'v548-user':'v548-new-user')?.focus(),0);}"""
+    if auth_anchor in html:
+        html=html.replace(auth_anchor,auth_patched,1)
 
     # Remove eager boot of the large compact roster source. New career/load paths request it.
     eager="""v310StartRosterLoad().catch(e=>console.error('[FutBR] base local de jogadores:',e?.message||e));"""
@@ -137,7 +147,7 @@ window.GestorFC=window.GestorFC||{};
 window.GestorFC.desktopLoadOptimization={
  version:'18.162',
  shardReadConcurrency:8,
- playerBase:'lazy-concurrent',
+ playerBase:'lazy-login-prefetch-one-click',
  blankScreenRecovery:true,
  seasonEndLanding:'squad'
 };
@@ -151,6 +161,10 @@ window.GestorFC.desktopLoadOptimization={
         fail("sequential shard decoder still present")
     if eager in html:
         fail("eager player base load still present")
+    if "async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}" not in html:
+        fail("login ainda pode renderizar antes da base local ficar pronta")
+    if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
+        fail("prefetch silencioso da base na tela de login ausente")
     if "blankScreenRecovery:true" not in html:
         fail("load optimization marker missing")
 
