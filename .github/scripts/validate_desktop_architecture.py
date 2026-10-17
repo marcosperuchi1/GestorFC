@@ -105,6 +105,10 @@ def main():
         die('v657ApplyNationalModalTheme ainda nao reaplica bg/panel/panel2/line da selecao consultada')
     if "nationalProfileForcedSurface:true" not in html or "function v18174ForceNationalProfileTheme(code)" not in html or "v18174ForceNationalProfileTheme(code);" not in html:
         die('Ficha nacional final ainda pode herdar superficie da selecao comandada')
+    if "nationalModalOwnRootTheme:true" not in html or "let v18176NationalModalCode=null" not in html or "if(v18176NationalModalCode&&typeof v128NationalTheme==='function')" not in html:
+        die('Ficha nacional ainda nao controla o tema raiz enquanto esta aberta')
+    if "v18176NationalModalCode=n;" not in html or "v18176NationalModalCode=null;" not in html:
+        die('Tema raiz da ficha nacional nao e ativado/restaurado corretamente')
     if "set(modalEl,'background'," not in html or "set(body,'background'," not in html:
         die('Tema nacional final nao fixa fundo e corpo da selecao consultada')
     if "dragGhost:true" not in html or "function v18172PointerGhostAt(p,e)" not in html:
