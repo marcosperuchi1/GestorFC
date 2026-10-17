@@ -71,6 +71,61 @@ def main():
     runtime=r'''
 <script id="futbr-v18164-national-match-parity">
 (()=>{
+ function v18167SeedNationalPools(s){
+  if(!s?.players||s.v18167NationalPoolSeed?.done)return s?.v18167NationalPoolSeed||null;
+  const associations=typeof v640AssocCatalog==='function'?v640AssocCatalog():[];
+  const byNat=new Map();
+  for(const p of Object.values(s.players||{})){
+   if(!p||Number(p.age)<16)continue;
+   const code=String(p.natCode||'').toUpperCase();if(!code)continue;
+   if(!byNat.has(code))byNat.set(code,[]);byNat.get(code).push(p);
+  }
+  const desired={GOL:3,ZAG:5,LAT:4,VOL:4,MEI:5,ATA:5},createdByNation={},positions=Object.keys(desired);
+  s.free=Array.isArray(s.free)?s.free:[];
+  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  for(const assoc of associations){
+   const code=String(assoc.code||'').toUpperCase();if(!code)continue;
+   const pool=byNat.get(code)||[];
+   const byPos={GOL:[],ZAG:[],LAT:[],VOL:[],MEI:[],ATA:[]};
+   for(const p of pool)if(byPos[p.pos])byPos[p.pos].push(p);
+   const overallSample=pool.slice().sort((a,b)=>E.overall(b)-E.overall(a)).slice(0,18);
+   const nationBase=Math.round(mean(overallSample.map(E.overall))||(V640_CONF_BASE[assoc.conf]||62));
+   const created=[];
+   const createOne=pos=>{
+    const sample=byPos[pos].length?byPos[pos]:overallSample;
+    const base=Math.max(48,Math.min(84,Math.round(mean(sample.map(E.overall))||nationBase)));
+    const age=20+Math.floor(E.rng(s)*10);
+    const id=E.createPlayer(s,pos,base,age),p=s.players[id];
+    if(!p)return null;
+    p.natCode=code;p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18167InitialNationalPool=true;
+    p.star=false;p.starCandidate=false;p.editorStarOverride=false;
+    const now=E.overall(p);p.potential=Math.max(now,Math.min(90,now+(age<=22?5:age<=26?3:1)));
+    if(!s.free.includes(id))s.free.push(id);
+    pool.push(p);byPos[pos].push(p);created.push(id);return id;
+   };
+   for(const pos of positions){
+    let missing=Math.max(0,(desired[pos]||0)-byPos[pos].length);
+    while(missing-->0)createOne(pos);
+   }
+   while(pool.length<26){
+    const pos=positions.slice().sort((a,b)=>(byPos[a].length/(desired[a]||1))-(byPos[b].length/(desired[b]||1)))[0]||'MEI';
+    createOne(pos);
+   }
+   if(created.length)createdByNation[code]=created.length;
+  }
+  const total=Object.values(createdByNation).reduce((a,b)=>a+b,0);
+  s.v18167NationalPoolSeed={done:true,year:s.year,totalCreated:total,nations:Object.keys(createdByNation).length,createdByNation,freeAgents:true,targetPerNation:26,ovrModel:'existing-nationality-position-average'};
+  return s.v18167NationalPoolSeed;
+ }
+ const v18167BaseCall=v53Call;
+ v53Call=async function(op,params={}){
+  const out=await v18167BaseCall(op,params);
+  if(out&&op==='create')v18167SeedNationalPools(out);
+  return out;
+ };
+ window.GestorFC=window.GestorFC||{};
+ window.GestorFC.seedNationalPools18167=v18167SeedNationalPools;
+
  function v18167SortIds(ids){
   const order={GOL:0,ZAG:1,LAT:2,VOL:3,MEI:4,ATA:5};
   return [...new Set(ids||[])].sort((a,b)=>{
@@ -304,7 +359,8 @@ def main():
   nationalFixtureDetails:true,
   careerOriginIndependent:true,
   liveBenchDragValid:true,
-  nationalBenchOrderedByPosition:true
+  nationalBenchOrderedByPosition:true,
+  initialNationalFreeAgents:true
  };
 })();
 </script>
@@ -324,7 +380,9 @@ def main():
       "v18166PrepareAiNationalOpponent",
       "v18167SortIds",
       "liveBenchDragValid:true",
-      "nationalBenchOrderedByPosition:true"
+      "nationalBenchOrderedByPosition:true",
+      "v18167SeedNationalPools",
+      "initialNationalFreeAgents:true"
     ]
     for marker in required:
         if marker not in html:
