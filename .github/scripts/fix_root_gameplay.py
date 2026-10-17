@@ -350,17 +350,25 @@ function v18171NationalGeneratedName(s,code,id,used=new Set()){
   if(familyFirst){families.push(parts[0]);givens.push(parts.slice(1).join(' '));}
   else{givens.push(parts[0]);families.push(parts.slice(1).join(' '));}
  }
- const fb=v18171NameFallback(n),g=givens.length>=3?[...new Set(givens)]:fb.g,sn=families.length>=3?[...new Set(families)]:fb.s;
+ const fb=v18171NameFallback(n),g=[...new Set([...givens,...fb.g])].filter(Boolean),sn=[...new Set([...families,...fb.s])].filter(Boolean);
  let h=2166136261;for(const ch of String(n+'|'+id)){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}h>>>=0;
- for(let k=0;k<96;k++){
-  const first=g[(h+k*17)%g.length],last=sn[((h>>>8)+k*29)%sn.length],name=(familyFirst?last+' '+first:first+' '+last).trim(),key=v18171NameKey(name);
+ const pairTotal=Math.max(1,g.length*sn.length),pairStart=h%pairTotal;
+ for(let k=0;k<pairTotal;k++){
+  const z=(pairStart+k)%pairTotal,first=g[z%g.length],last=sn[Math.floor(z/g.length)%sn.length],name=(familyFirst?last+' '+first:first+' '+last).trim(),key=v18171NameKey(name);
   if(name&&key&&!used.has(key))return name;
  }
- return (familyFirst?sn[h%sn.length]+' '+g[(h>>>8)%g.length]:g[h%g.length]+' '+sn[(h>>>8)%sn.length])+' '+String((h%89)+10);
+ const tripleTotal=Math.max(1,g.length*sn.length*Math.max(1,sn.length-1)),tripleStart=(h>>>5)%tripleTotal;
+ for(let k=0;k<tripleTotal;k++){
+  const z=(tripleStart+k)%tripleTotal,first=g[z%g.length],a=Math.floor(z/g.length)%sn.length,b=(a+1+Math.floor(z/(g.length*sn.length))%Math.max(1,sn.length-1))%sn.length;
+  const last1=sn[a],last2=sn[b],name=(familyFirst?last1+' '+first+' '+last2:first+' '+last1+' '+last2).trim(),key=v18171NameKey(name);
+  if(name&&key&&!used.has(key))return name;
+ }
+ const first=g[h%g.length]||'Alex',last=sn[(h>>>8)%sn.length]||'Silva',extra=sn[(h>>>16)%sn.length]||'Costa';
+ return (familyFirst?last+' '+first+' '+extra:first+' '+last+' '+extra).trim();
 }
 function v18171RepairNationalSupportNames(s,code){
  const n=String(code||'').toUpperCase(),players=v640Eligible(s,n),support=players.filter(p=>p?.generatedNationalSupport||p?.v18170InitialNationalFreeAgent),used=new Set(players.filter(p=>!support.includes(p)).map(p=>v18171NameKey(p.name)).filter(Boolean));
- support.sort((a,b)=>String(a.id).localeCompare(String(b.id))).forEach(p=>{if(p.v18171LocalizedName&&p.natCode===n){used.add(v18171NameKey(p.name));return;}p.natCode=n;p.name=v18171NationalGeneratedName(s,n,p.id,used);p.localized=true;p.nationalityKnown=true;p.v18171LocalizedName=true;used.add(v18171NameKey(p.name));});
+ support.sort((a,b)=>String(a.id).localeCompare(String(b.id))).forEach(p=>{const clean=p.v18171LocalizedName&&p.natCode===n&&!/\d/.test(String(p.name||''));if(clean){used.add(v18171NameKey(p.name));return;}p.natCode=n;p.name=v18171NationalGeneratedName(s,n,p.id,used).replace(/\s*\d+\s*$/,'').trim();p.localized=true;p.nationalityKnown=true;p.v18171LocalizedName=true;used.add(v18171NameKey(p.name));});
  return support.length;
 }
 function v18171RepairAllNationalSupportNames(s){if(!s?.players)return 0;let n=0;for(const a of v640AssocCatalog())n+=v18171RepairNationalSupportNames(s,a.code);return n;}
@@ -437,14 +445,35 @@ window.GestorFC=window.GestorFC||{};
 // A ficha nacional foi redefinida novamente em v737, depois dos wrappers v650/v657.
 // Este wrapper fica no fim do documento e, portanto, sempre captura a implementacao
 // final da ficha. A paleta vem do codigo da selecao CONSULTADA, nunca de state.userTeam.
+function v18174ForceNationalProfileTheme(code){
+ const modalEl=document.querySelector('#modal-root .v645-national-modal');if(!modalEl||typeof v650NationalPalette!=='function')return false;
+ const p=v650NationalPalette(String(code||'').toUpperCase()),surface=typeof v18172SurfaceVars==='function'?v18172SurfaceVars(p.primary):{};
+ const set=(el,k,v,important=false)=>{if(el&&v!=null)el.style.setProperty(k,String(v),important?'important':'');};
+ const vars={...surface,'--national-primary':p.primary,'--national-secondary':p.secondary,'--national-third':p.third||p.secondary,'--national-accent':p.accent||p.primary,'--national-on-accent':p.on||'#fff','--club-primary':p.primary,'--club-secondary':p.secondary,'--club-third':p.third||p.secondary,'--club-accent':p.accent||p.primary,'--club-soft':p.primary+'26','--on-accent':p.on||'#fff'};
+ for(const [k,v] of Object.entries(vars))set(modalEl,k,v,true);
+ const profile=modalEl.querySelector('.v645-national-profile');for(const [k,v] of Object.entries(vars))set(profile,k,v,true);
+ modalEl.dataset.nationalTheme=String(code||'').toUpperCase();
+ const bg=surface['--bg']||'#09100c',panel=surface['--panel']||'#101814',panel2=surface['--panel2']||panel,line=surface['--line']||p.primary;
+ set(modalEl,'background',`radial-gradient(ellipse at 88% 0,${p.primary}26,transparent 58%),${bg}`,true);
+ set(modalEl,'border-color',line,true);
+ const head=modalEl.querySelector(':scope>.modal-header');set(head,'background',`linear-gradient(90deg,${p.primary}26,transparent 72%),${panel2}`,true);set(head,'border-bottom-color',line,true);
+ const body=modalEl.querySelector(':scope>.modal-body');set(body,'background',`radial-gradient(ellipse at 92% 0,${p.primary}1f,transparent 54%),${bg}`,true);
+ const hero=modalEl.querySelector('.v737-national-profile-hero,.v640-hero');set(hero,'background',`radial-gradient(ellipse at top left,${p.primary}24,transparent 58%),${panel}`,true);set(hero,'border-color',line,true);
+ const roster=modalEl.querySelector('.v737-national-profile-roster,.v640-roster');set(roster,'background',panel,true);set(roster,'border-color',line,true);
+ const panelHead=roster?.querySelector(':scope>.panel-head');set(panelHead,'background',`linear-gradient(90deg,${p.primary}20,transparent 72%),${panel2}`,true);set(panelHead,'border-bottom-color',line,true);
+ modalEl.querySelectorAll('.v737-national-profile-roster thead th,.v640-roster thead th').forEach(el=>set(el,'background',panel,true));
+ return true;
+}
 function v18173PaintConsultedNationalProfile(code){
  const paint=()=>{
   try{if(typeof v650ApplyNationalModalTheme==='function')v650ApplyNationalModalTheme(code);}catch(e){}
   try{if(typeof v657ApplyNationalModalTheme==='function')v657ApplyNationalModalTheme(code);}catch(e){}
+  try{v18174ForceNationalProfileTheme(code);}catch(e){}
  };
  paint();
  queueMicrotask(paint);
  if(typeof requestAnimationFrame==='function')requestAnimationFrame(paint);
+ setTimeout(paint,0);
 }
 const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;
 if(v18173BaseOpenNationalProfile){
@@ -455,7 +484,7 @@ if(v18173BaseOpenNationalProfile){
  };
 }
 
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalNamesNeverNumeric:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
