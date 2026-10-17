@@ -30,7 +30,9 @@ def main():
       "function v18173PaintConsultedNationalProfile(code)",
       "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;",
       "function v18174ForceNationalProfileTheme(code)",
-      "nationalProfileForcedSurface:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "nationalProfileForcedSurface:true","nationalModalOwnRootTheme:true","nationalNamesNeverNumeric:true","fastCareerSeedRefs:true",
+      "let v18176NationalModalCode=null",
+      "if(v18176NationalModalCode&&typeof v128NationalTheme==='function')",
       "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
     ]
     for x in required:
@@ -49,7 +51,10 @@ def main():
         "v18174ForceNationalProfileTheme(code);",
         "set(modalEl,'background',",
         "set(head,'background',",
-        "set(body,'background',"
+        "set(body,'background',",
+        "v18176NationalModalCode=n;",
+        "try{v51RefreshTheme?.();}catch(e){}",
+        "v18176NationalModalCode=null;"
     ]:
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
 
