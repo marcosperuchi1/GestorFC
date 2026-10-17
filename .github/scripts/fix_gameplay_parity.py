@@ -85,9 +85,9 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     )
 
     # --- 2) Correct support/fallback player identity and potential.
-    old_player="""p.name=String(rp.name).slice(0,80);p.real=true;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;
+    old_player="""p.name=String(rp.name).slice(0,80);p.real=true;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;p.v18175SeedRoster=rp;
         if(hasDbOvr)v200ApplyDatabaseOVR(p,dbOvr);t.roster.push(id);"""
-    new_player="""p.name=String(rp.name).slice(0,80);p.real=rp.real!==false&&!rp.supportFictional;p.supportFictional=!!rp.supportFictional;p.initialFiller=!!rp.initialFiller;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;
+    new_player="""p.name=String(rp.name).slice(0,80);p.real=rp.real!==false&&!rp.supportFictional;p.supportFictional=!!rp.supportFictional;p.initialFiller=!!rp.initialFiller;p.clubId=t.id;p.providerId=String(rp.providerId||'');p.ageEstimated=!rp.age;p.positionEstimated=!!rp.positionEstimated;p.sourceOrder=i;p.listed=i>14&&rng(s)<.15;p.v18175SeedRoster=rp;
         if(hasDbOvr)v200ApplyDatabaseOVR(p,dbOvr);
         if(rp.supportFictional){
           const current=overall(p),div=Number(t.division)||1,age=Number(p.age)||25;
