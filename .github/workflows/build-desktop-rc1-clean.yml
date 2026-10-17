@@ -66,6 +66,7 @@ jobs:
       - name: Unificar partidas de selecao e clube
         shell: pwsh
         run: python .github/scripts/fix_national_match_parity.py "$env:FUTBR_PROJECT"
+
       - name: Externalizar escudos
         shell: pwsh
         run: python .github/scripts/externalize_crests.py "$env:FUTBR_PROJECT"
