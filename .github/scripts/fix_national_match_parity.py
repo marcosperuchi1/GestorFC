@@ -18,6 +18,28 @@ def main():
  const isNationalLive=()=>!!state?.live?.v1888National;
  const ownLiveId=()=>isNationalLive()?state.live.v1888HumanId:state?.user;
  const isOwnLiveTeam=id=>!!id&&String(id)===String(ownLiveId()||'');
+ let v18165OwnClickGuard=0;
+ function v18165OwnTeamButton(target){
+  const btn=target?.closest?.('[data-action="v513-match-team"],[data-action="v587-switch-board"],[data-action="v1897-switch-board"]');
+  if(!btn||!state?.live||!isOwnLiveTeam(btn.dataset.team))return null;
+  return btn;
+ }
+ function v18165OpenOwnFromPointer(event){
+  const btn=v18165OwnTeamButton(event.target);if(!btn)return false;
+  if(event.type==='pointerup'&&event.pointerType==='mouse'&&event.button!==0)return false;
+  event.preventDefault();event.stopImmediatePropagation();
+  v18165OwnClickGuard=performance.now()+800;
+  v526OpenOwnTactics();
+  return true;
+ }
+ // Window/capture runs before the legacy document pointer handler. This guarantees
+ // the first click opens the editable board for clubs and national teams alike.
+ window.addEventListener('pointerup',v18165OpenOwnFromPointer,true);
+ window.addEventListener('click',event=>{
+  const btn=v18165OwnTeamButton(event.target);if(!btn)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  if(performance.now()>v18165OwnClickGuard)v526OpenOwnTactics();
+ },true);
 
  const baseSetView=v513SetView;
  v513SetView=function(mode){
@@ -75,6 +97,10 @@ def main():
  const style=document.createElement('style');
  style.id='v18164-national-match-parity-style';
  style.textContent=
+ "#modal-root .v526-own-tactics .v600-bench-panel .panel-body,#modal-root .v1896-readonly-page .v600-bench-panel .panel-body{display:flex!important;flex-direction:column!important;width:100%!important;max-width:none!important;min-height:0!important;overflow:hidden!important;box-sizing:border-box!important}"+
+ "#modal-root .v526-own-tactics #v526-own-bench,#modal-root .v1896-readonly-page .v1893-bench-host{display:flex!important;flex:1 1 auto!important;width:100%!important;max-width:none!important;min-width:0!important;height:100%!important;min-height:0!important;box-sizing:border-box!important}"+
+ "#modal-root .v526-own-tactics #v526-own-bench>.v600-bench-list,#modal-root .v1896-readonly-page .v1896-readonly-bench{width:100%!important;max-width:none!important;min-width:0!important;height:100%!important;min-height:0!important;flex:1 1 auto!important;justify-items:stretch!important;align-items:stretch!important;box-sizing:border-box!important}"+
+ "#modal-root .v526-own-tactics #v526-own-bench .v5-reserve,#modal-root .v1896-readonly-page .v1896-readonly-bench>.v5-reserve{width:100%!important;min-width:0!important;max-width:none!important;justify-self:stretch!important;align-self:stretch!important;box-sizing:border-box!important;margin-left:0!important;margin-right:0!important}"+
  "body.v1888-national-live #modal-root .v1896-readonly-page .v600-bench-panel .panel-body{display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}"+
  "body.v1888-national-live #modal-root .v1896-readonly-page .v1893-bench-host{width:100%!important;height:100%!important;min-height:0!important;display:flex!important;flex:1 1 auto!important}"+
  "body.v1888-national-live #modal-root .v1896-readonly-page .v1896-readonly-bench{width:100%!important;height:100%!important;min-height:0!important;max-height:none!important;flex:1 1 auto!important;display:grid!important;grid-template-rows:repeat(12,minmax(0,1fr))!important;grid-auto-rows:minmax(0,1fr)!important;gap:3px!important;overflow:hidden!important}"+
@@ -83,7 +109,7 @@ def main():
  "body.v1888-national-live #modal-root .v1896-readonly-page .v1896-readonly-bench>.v5-reserve .v5-tile-name{font-size:9.2px!important;line-height:1.08!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}"+
  "body.v1888-national-live #modal-root .v1896-readonly-page .v1896-readonly-bench>.v5-reserve .v5-tile-meta{font-size:7.2px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}"+
  "body.v1888-national-live #modal-root .v1896-readonly-page .v1896-readonly-bench>.v5-reserve .v5-energy{grid-column:3!important;grid-row:1/3!important;align-self:center!important;justify-self:end!important;width:54px!important;min-width:54px!important;max-width:54px!important;height:12px!important;min-height:12px!important;max-height:12px!important}"+
- ".v18164-national-view-cell{width:64px!important;text-align:right!important}.v18164-national-view-btn{min-width:46px!important}";
+ ".v18164-national-view-cell{width:88px!important;text-align:right!important}.v18164-national-view-btn{min-width:66px!important}.v18165-national-summary-row{grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr) 150px!important}.v18165-national-summary-row>.btn{width:100%!important;justify-content:center!important}";
  document.head.appendChild(style);
 
  function v18164FindNationalFixture(id){
@@ -140,10 +166,25 @@ def main():
     if(tr.querySelector('.empty')){const td=tr.querySelector('td');if(td)td.colSpan=5;return;}
     const f=fixtures[i];if(!f)return;
     const td=document.createElement('td');td.className='v18164-national-view-cell';
-    td.innerHTML='<button type="button" class="btn small ghost v18164-national-view-btn" data-action="v18164-national-result-view" data-fixture="'+esc(f.id)+'">Ver</button>';
+    td.innerHTML='<button type="button" class="btn small ghost v18164-national-view-btn" data-action="v18164-national-result-view" data-fixture="'+esc(f.id)+'">Detalhes</button>';
     tr.appendChild(td);
    });
    return box.innerHTML;
+  };
+ }
+
+ if(typeof v640ShowStageResults==='function'){
+  const v18165BaseStageResults=v640ShowStageResults;
+  v640ShowStageResults=function(stage){
+   const games=(stage?.nationalFixtures||[]).filter(f=>f?.result);
+   if(!games.length)return v18165BaseStageResults(stage);
+   const rows=games.map(f=>{
+    const h=v640Team(state,f.home),a=v640Team(state,f.away),r=f.result;
+    if(!h||!a)return '';
+    const pen=r?.pens?' <small>('+r.pens[0]+'-'+r.pens[1]+' pen.)</small>':'';
+    return '<div class="v640-result-row v18165-national-summary-row"><span>'+v640Flag(f.home)+' '+esc(h.name)+'</span><b>'+r.home+' x '+r.away+pen+'</b><span>'+esc(a.name)+' '+v640Flag(f.away)+'</span><button type="button" class="btn small secondary" data-action="v18164-national-result-view" data-fixture="'+esc(f.id)+'">Detalhes da partida</button></div>';
+   }).join('');
+   modal(modalHead('Resultados de seleções',stage.label)+'<div class="modal-body"><div class="v640-result-list">'+rows+'</div></div><div class="modal-footer">'+button('close','Fechar','primary')+'</div>','national-results','wide');
   };
  }
 
@@ -166,7 +207,10 @@ def main():
       "opponentBenchSameGeometry:true",
       "v18164-national-result-view",
       "careerOriginIndependent:true",
-      "v513SetView=function(mode)"
+      "v513SetView=function(mode)",
+      "v18165OwnClickGuard",
+      "v18165BaseStageResults",
+      "justify-self:stretch!important"
     ]
     for marker in required:
         if marker not in html:
