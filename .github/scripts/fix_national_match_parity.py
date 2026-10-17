@@ -12,6 +12,62 @@ def main():
     p=project/"src"/"index.html"
     html=p.read_text(encoding="utf-8")
 
+    # AI national teams must always be able to field a legal XI. Rebuild the
+    # current call-up from all eligible nationals; create support players only
+    # when the association itself lacks enough available depth.
+    ai_helper=r'''function v18166PrepareAiNationalOpponent(s,code,f){
+ const t=v640Team(s,code);if(!t)return [];
+ const key=v641NationalDisciplineKey(s,f);
+ const playable=()=>v640Eligible(s,code).filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0));
+ let pool=playable();
+ if(pool.length<18||!pool.some(p=>p.pos==='GOL')){
+  try{v643EnsureNationalStarterDepth(s,code);}catch(e){console.warn('[18.166] suporte nacional IA:',e?.message||e);}
+  pool=playable();
+ }
+ if(pool.length<18||!pool.some(p=>p.pos==='GOL')){
+  const counts={GOL:0,ZAG:0,LAT:0,VOL:0,MEI:0,ATA:0};
+  for(const p of pool)if(Object.hasOwn(counts,p.pos))counts[p.pos]++;
+  const target={GOL:2,ZAG:3,LAT:3,VOL:2,MEI:3,ATA:3},base=Math.round(V640_CONF_BASE[t.conf]||62),created=[];
+  for(const pos of ['GOL','ZAG','LAT','VOL','MEI','ATA']){
+   let need=Math.max(0,(target[pos]||0)-(counts[pos]||0));
+   while(need-->0){
+    const id=E.createPlayer(s,pos,base,21+Math.floor(E.rng(s)*8)),p=s.players[id];
+    if(!p)continue;p.natCode=code;p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18166EmergencyDepth=true;
+    s.free??=[];if(!s.free.includes(id))s.free.push(id);created.push(id);
+   }
+  }
+  pool=playable();
+  while(pool.length<18){
+   const pos=['ZAG','LAT','VOL','MEI','ATA'][pool.length%5];
+   const id=E.createPlayer(s,pos,base,21+Math.floor(E.rng(s)*8)),p=s.players[id];
+   if(!p)break;p.natCode=code;p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18166EmergencyDepth=true;
+   s.free??=[];if(!s.free.includes(id))s.free.push(id);pool=playable();
+  }
+ }
+ const score=p=>typeof v165CallupScore==='function'?v165CallupScore(p):E.overall(p);
+ pool.sort((a,b)=>score(b)-score(a)||(Number(a.age)||99)-(Number(b.age)||99));
+ const auto=v640AutoRoster(s,code,26),ok=id=>{const p=s.players?.[id];return p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0);};
+ const roster=[];for(const id of auto)if(ok(id)&&!roster.includes(id)&&roster.length<26)roster.push(id);
+ for(const p of pool)if(!roster.includes(p.id)&&roster.length<26)roster.push(p.id);
+ t.roster=roster;
+ return v1888NationalEligible(s,t,f);
+}
+'''
+    marker='function v1888BeginNational(){'
+    if marker not in html: fail('v1888BeginNational not found')
+    html=html.replace(marker,ai_helper+'\n'+marker,1)
+
+    old_enemy=""" const enemy=f.home===chosen.code?f.away:f.home,enemyT=v640Team(state,enemy);
+ if(!enemyT)throw Error('Selecao adversaria nao encontrada.');
+ const enemyList=v1888NationalEligible(state,enemyT,f);
+ if(enemyList.length<11)throw Error('O adversario nao tem jogadores suficientes para esta partida.');"""
+    new_enemy=""" const enemy=f.home===chosen.code?f.away:f.home,enemyT=v640Team(state,enemy);
+ if(!enemyT)throw Error('Selecao adversaria nao encontrada.');
+ const enemyList=v18166PrepareAiNationalOpponent(state,enemy,f);
+ if(enemyList.length<11)throw Error('Nao foi possivel montar um elenco apto para a selecao adversaria.');"""
+    if old_enemy not in html: fail('AI opponent roster block not found')
+    html=html.replace(old_enemy,new_enemy,1)
+
     runtime=r'''
 <script id="futbr-v18164-national-match-parity">
 (()=>{
@@ -210,7 +266,8 @@ def main():
       "v513SetView=function(mode)",
       "v18165OwnClickGuard",
       "v18165BaseStageResults",
-      "justify-self:stretch!important"
+      "justify-self:stretch!important",
+      "v18166PrepareAiNationalOpponent"
     ]
     for marker in required:
         if marker not in html:
