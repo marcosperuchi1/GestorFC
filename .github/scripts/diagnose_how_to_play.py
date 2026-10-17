@@ -6,6 +6,8 @@ def compact(s):
     return re.sub(r"\s+"," ",s).strip()
 
 def main():
+    try: sys.stdout.reconfigure(encoding="utf-8")
+    except Exception: pass
     if len(sys.argv)!=2: raise SystemExit("usage: diagnose_how_to_play.py <project-dir>")
     html=(Path(sys.argv[1])/"src"/"index.html").read_text(encoding="utf-8")
     print("HTML_BYTES",len(html))
