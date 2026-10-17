@@ -143,7 +143,9 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     # Final structural checks.
     if len(base['clubs']) != before-1: fail('ASA was not removed exactly once')
     if html.count('"name":"ASA"')>1: fail('more than one ASA remains in initial source')
-    if 'p.real=true;p.clubId=t.id' in html: fail('old support-player real flag remains')
+    if old_player in html: fail('old support-player creation block remains')
+    if "p.real=rp.real!==false&&!rp.supportFictional" not in html:
+        fail('new support-player identity rule was not applied')
     if 'supportFictional?(div>=4?.72' not in html: fail('support development guard missing')
     if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
 
