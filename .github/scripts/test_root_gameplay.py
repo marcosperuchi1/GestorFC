@@ -25,7 +25,10 @@ def main():
       "dynamicCareerSurfaceTheme:true","consultedProfileOwnTheme:true","dragGhost:true",
       "function v18171NationalGeneratedName(s,code,id,used=new Set())",
       "function v18172ApplySurfaceToElement(el,primary)",
-      "function v18172PointerGhostAt(p,e)"
+      "function v18172PointerGhostAt(p,e)",
+      "nationalProfileFinalOwnTheme:true",
+      "function v18173PaintConsultedNationalProfile(code)",
+      "const v18173BaseOpenNationalProfile=typeof v645OpenNationalProfile==='function'?v645OpenNationalProfile:null;"
     ]
     for x in required:
         if x not in html: die('Marcador raiz ausente: '+x)
@@ -35,7 +38,8 @@ def main():
     for marker in [
         "function v18172ApplyCareerSurface(primary){return v18172ApplySurfaceToElement(document.documentElement,primary);}",
         "v18172ApplyCareerSurface(p.primary)",
-        "v18172ApplySurfaceToElement(modalEl,p.primary)"
+        "v18172ApplySurfaceToElement(modalEl,p.primary)",
+        "v18173PaintConsultedNationalProfile(code);"
     ]:
         if marker not in html: die('Regra de tema dinamico incompleta: '+marker)
 
