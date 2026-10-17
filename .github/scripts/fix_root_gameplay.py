@@ -393,7 +393,7 @@ function v133NationalBench(t){return v133NormalizeNationalBench(t).map(id=>v133N
         "live unrelated order"
     )
 
-    anchor="function v643ConvertNewCareerToNational(s,code){const root=v640EnsureState(s),t=root?.teams?.[code],me=v641NormalizeCoach(s.coaches?.[s.userCoachId]),old=me?.clubId?E.team(s,me.clubId):E.team(s,s.user);"
+    anchor="function v643ConvertNewCareerToNational(s,code){if(!v548FullAccess())throw Error('Carreira por selecao requer Premium.');const root=v640EnsureState(s),t=root?.teams?.[code],me=v641NormalizeCoach(s.coaches?.[s.userCoachId]),old=me?.clubId?E.team(s,me.clubId):E.team(s,s.user);"
     if anchor not in html:
         fail("national conversion anchor missing")
     helper=r'''
