@@ -118,17 +118,9 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
   }"""
     html=replace_once(html,old_growth,new_growth,'support development rate')
 
-    # --- 2b) "Avancar ate a selecao" already publishes a compact live delta every day.
-    # Allow the same live repaint used in Vacation for Overview/National only.
-    old_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nationaljump'&&v53Sim?.mode!=='nextmatch')refresh=true;"
-    new_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nextmatch'&&(v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)))refresh=true;"
-    html=replace_once(html,old_jump_refresh,new_jump_refresh,'national jump overview refresh')
-
-    # national-jump-day is a progress event; keep the chrome/status current as the
-    # corresponding vac-live packet updates state.day and the open Overview.
-    old_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();continue;"
-    new_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();if(['world','national'].includes(view)&&!document.hidden)try{v53RefreshView(false);}catch(e){}continue;"
-    html=replace_once(html,old_jump_day,new_jump_day,'national jump progress repaint')
+    # A partir da raiz 18.170 o nationaljump e a Visao Geral sao tratados
+    # diretamente no handler principal. Nao instalar wrappers concorrentes.
+    root18170='futbr-root-18170-fixes' in html
 
     # --- 3) Live standings repaint: once per completed world day.
     # This keeps the existing lightweight shell but refreshes the visible standings
@@ -200,7 +192,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
 })();
 </script>
 '''.replace('DUP_ASA_PLACEHOLDER',repr(DUP_ASA_ID))
-    if 'futbr-v18163-parity-live' not in html:
+    if not root18170 and 'futbr-v18163-parity-live' not in html:
         html=html+'\n'+runtime
 
     # Final structural checks.
@@ -210,10 +202,11 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     if "p.real=rp.real!==false&&!rp.supportFictional" not in html:
         fail('new support-player identity rule was not applied')
     if 'supportFictional?(div>=4?.72' not in html: fail('support development guard missing')
-    if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
-    if 'v18165RefreshVisibleDay' not in html: fail('overview per-round refresh missing')
-    if "v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)" not in html:
-        fail('national jump overview live refresh missing')
+    if not root18170:
+        if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
+        if 'v18165RefreshVisibleDay' not in html: fail('overview per-round refresh missing')
+    else:
+        if 'function v53ScheduleNationalJumpPaint()' not in html: fail('root nationaljump refresh missing')
 
     p.write_text(html,encoding='utf-8')
     print(json.dumps({
