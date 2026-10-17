@@ -20,11 +20,30 @@ def main():
       "t.v600PreferredBench=v602SortPlayerIds(list.slice(0,V600_BENCH_LIMIT))",
       "ids=typeof v602SortPlayerIds==='function'?v602SortPlayerIds(raw):raw",
       "return typeof v602SortPlayerIds==='function'?v602SortPlayerIds(ids):ids;",
-      "E.swapPlayers(state,t,source.id,destination.dataset.v5Player,m,sideIndex)"
+      "E.swapPlayers(state,t,source.id,destination.dataset.v5Player,m,sideIndex)",
+      "localizedNationalFreeAgentNames:true","reservePointerSwap:true",
+      "function v18171NationalGeneratedName(s,code,id,used=new Set())"
     ]
     for x in required:
         if x not in html: die('Marcador raiz ausente: '+x)
     if 'v18167NationalDrag' in html: die('Listener duplicado de drag nacional')
+
+    # O gerador da Coreia do Norte deve usar nomes coreanos e nunca cair no padrao brasileiro.
+    prk_block=re.search(r"PRK:\{familyFirst:true,g:\[(.*?)\],s:\[(.*?)\]\}",html,re.S)
+    if not prk_block: die('Pool PRK ausente')
+    prk_text=prk_block.group(0)
+    for bad in ['Joao','Lucas','Gabriel','Matheus','Rafael','Pedro','Silva','Santos','Oliveira']:
+        if bad in prk_text: die('Nome brasileiro contaminou pool PRK: '+bad)
+    if not all(x in prk_text for x in ['Kwang-song','Chol-min','Kim','Ri','Pak']):
+        die('Pool PRK nao contem identidade coreana suficiente')
+
+    # Mouse em reserva deve usar pointer; HTML drag nativo deve ser bloqueado no banco.
+    if "if(el.dataset.v5Slot===undefined){e.preventDefault();return;}" not in html:
+        die('Drag HTML nativo do banco ainda nao foi bloqueado')
+    if "if(e.pointerType==='mouse'&&el.dataset.v5Slot!==undefined)return;" not in html:
+        die('Mouse no banco ainda nao entra na rota pointer')
+    if "if(e.pointerType==='mouse'){v5Selection=v5Pointer;v5MarkSelection();}" not in html:
+        die('Selecao visual do reserva por pointer ausente')
 
     # Testa a regra de ordenacao com a mesma ordem usada pela fonte final.
     js_order = r'''
