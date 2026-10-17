@@ -124,7 +124,28 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     runtime=r'''
 <script id="futbr-v18163-parity-live">
 (()=>{
- let lastStamp='',scheduled=false;
+ let lastStamp='',scheduled=false,v18165LastObservedDay=null,v18165DayTimer=0;
+ function v18165RefreshVisibleDay(){
+  if(typeof state==='undefined'||!state||document.hidden)return;
+  const day=String(state.year)+'|'+String(state.day);
+  if(v18165LastObservedDay===null){v18165LastObservedDay=day;return;}
+  if(day===v18165LastObservedDay)return;
+  v18165LastObservedDay=day;
+  if(!['dashboard','competitions','national'].includes(String(typeof view!=='undefined'?view:'')))return;
+  try{
+   if(view==='competitions'&&typeof vCleanRefreshCompetitionShell80==='function'){
+    if(!vCleanRefreshCompetitionShell80())v53RefreshView(true);
+   }else{
+    v53RefreshView(true);
+   }
+  }catch(e){console.warn('[18.165] refresh por jornada:',e?.message||e);}
+ }
+ function v18165StartDayObserver(){
+  if(v18165DayTimer)return;
+  v18165LastObservedDay=typeof state!=='undefined'&&state?String(state.year)+'|'+String(state.day):null;
+  v18165DayTimer=setInterval(v18165RefreshVisibleDay,180);
+ }
+ v18165StartDayObserver();
  function nationalOnly(){try{return !!state?.v640National?.userTeam&&state.userEmployed===false;}catch(_){return false;}}
  function cleanNationalClubVisualResidue(){
   if(!nationalOnly())return;
@@ -160,10 +181,10 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
   window.v53PaintStatus=function(){const out=basePaint.apply(this,arguments);if(v53Sim?.active)schedule();return out;};
  }
  document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();cleanNationalClubVisualResidue();}});
- window.addEventListener('focus',()=>{schedule();cleanNationalClubVisualResidue();});
- queueMicrotask(cleanNationalClubVisualResidue);
+ window.addEventListener('focus',()=>{schedule();cleanNationalClubVisualResidue();v18165RefreshVisibleDay();});
+ queueMicrotask(()=>{cleanNationalClubVisualResidue();v18165RefreshVisibleDay();});
  window.GestorFC=window.GestorFC||{};
- window.GestorFC.parity18163={liveStandings:true,careerTypeIndependent:true,duplicateASA:DUP_ASA_PLACEHOLDER};
+ window.GestorFC.parity18163={liveStandings:true,overviewPerRound:true,dayObserverMs:180,careerTypeIndependent:true,duplicateASA:DUP_ASA_PLACEHOLDER};
 })();
 </script>
 '''.replace('DUP_ASA_PLACEHOLDER',repr(DUP_ASA_ID))
@@ -178,6 +199,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
         fail('new support-player identity rule was not applied')
     if 'supportFictional?(div>=4?.72' not in html: fail('support development guard missing')
     if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
+    if 'v18165RefreshVisibleDay' not in html: fail('overview per-round refresh missing')
 
     p.write_text(html,encoding='utf-8')
     print(json.dumps({
