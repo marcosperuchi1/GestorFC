@@ -121,13 +121,13 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     # --- 2b) "Avancar ate a selecao" already publishes a compact live delta every day.
     # Allow the same live repaint used in Vacation for Overview/National only.
     old_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nationaljump'&&v53Sim?.mode!=='nextmatch')refresh=true;"
-    new_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nextmatch'&&(v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)))refresh=true;"
+    new_jump_refresh="if(v53Sim?.mode!=='dayfast'&&v53Sim?.mode!=='nextmatch'&&(v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)))refresh=true;"
     html=replace_once(html,old_jump_refresh,new_jump_refresh,'national jump overview refresh')
 
     # national-jump-day is a progress event; keep the chrome/status current as the
     # corresponding vac-live packet updates state.day and the open Overview.
     old_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();continue;"
-    new_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();if(['dashboard','national'].includes(view)&&!document.hidden)try{v53RefreshView(false);}catch(e){}continue;"
+    new_jump_day="v53Sim.day=Number(m.day)||v53Sim.day;v53Sim.progress='Avancando ate a Selecao · jornada '+v53Sim.day;v53PaintStatus();if(['world','national'].includes(view)&&!document.hidden)try{v53RefreshView(false);}catch(e){}continue;"
     html=replace_once(html,old_jump_day,new_jump_day,'national jump progress repaint')
 
     # --- 3) Live standings repaint: once per completed world day.
@@ -143,7 +143,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
   if(v18165LastObservedDay===null){v18165LastObservedDay=day;return;}
   if(day===v18165LastObservedDay)return;
   v18165LastObservedDay=day;
-  if(!['dashboard','competitions','national'].includes(String(typeof view!=='undefined'?view:'')))return;
+  if(!['world','competitions','national'].includes(String(typeof view!=='undefined'?view:'')))return;
   try{
    if(view==='competitions'&&typeof vCleanRefreshCompetitionShell80==='function'){
     if(!vCleanRefreshCompetitionShell80())v53RefreshView(true);
@@ -170,7 +170,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
    if(!modalOpen&&typeof v128NationalTheme==='function')v128NationalTheme(state.v640National.userTeam);
   }catch(e){console.warn('[18.163] national visual isolation:',e?.message||e);}
  }
- function activeViewNeedsRefresh(){try{return ['dashboard','competitions','national','clubrankings'].includes(String(typeof view!=='undefined'?view:''));}catch(_){return false;}}
+ function activeViewNeedsRefresh(){try{return ['world','competitions','national','clubrankings'].includes(String(typeof view!=='undefined'?view:''));}catch(_){return false;}}
  function paint(){
   scheduled=false;
   if(typeof state==='undefined'||!state||document.hidden||!activeViewNeedsRefresh())return;
@@ -196,7 +196,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
  window.addEventListener('focus',()=>{schedule();cleanNationalClubVisualResidue();v18165RefreshVisibleDay();});
  queueMicrotask(()=>{cleanNationalClubVisualResidue();v18165RefreshVisibleDay();});
  window.GestorFC=window.GestorFC||{};
- window.GestorFC.parity18163={liveStandings:true,overviewPerRound:true,dayObserverMs:180,careerTypeIndependent:true,duplicateASA:DUP_ASA_PLACEHOLDER};
+ window.GestorFC.parity18163={liveStandings:true,overviewPerRound:true,overviewView:'world',dayObserverMs:180,careerTypeIndependent:true,duplicateASA:DUP_ASA_PLACEHOLDER};
 })();
 </script>
 '''.replace('DUP_ASA_PLACEHOLDER',repr(DUP_ASA_ID))
@@ -212,7 +212,7 @@ if(v18163JuveCatalog){{delete v18163JuveCatalog.v515WorldRating;delete v18163Juv
     if 'supportFictional?(div>=4?.72' not in html: fail('support development guard missing')
     if 'futbr-v18163-parity-live' not in html: fail('live standings parity patch missing')
     if 'v18165RefreshVisibleDay' not in html: fail('overview per-round refresh missing')
-    if "v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)" not in html:
+    if "v53Sim?.mode!=='nationaljump'||['world','national'].includes(view)" not in html:
         fail('national jump overview live refresh missing')
 
     p.write_text(html,encoding='utf-8')
