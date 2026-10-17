@@ -105,10 +105,14 @@ def main():
         die('Banco de reservas ainda nao ocupa toda a largura da coluna')
     if "v18165BaseStageResults" not in html:
         die('Resumo de resultados de selecoes ainda nao possui detalhes da partida')
-    if "v18165RefreshVisibleDay" not in html or "overviewPerRound:true" not in html:
-        die('Visao Geral ainda nao atualiza por mudanca de jornada')
+    if "v18165RefreshVisibleDay" not in html or "overviewPerRound:true" not in html or "overviewView:'world'" not in html:
+        die('Visao Geral real ainda nao atualiza por mudanca de jornada')
     if "v18166PrepareAiNationalOpponent" not in html:
         die('Selecao adversaria ainda pode iniciar partida sem elenco apto suficiente')
+    if "v18167SeedNationalPools" not in html or "initialNationalFreeAgents:true" not in html:
+        die('Selecoes pequenas ainda nao recebem profundidade inicial de jogadores livres')
+    if "nationalBenchOrderedByPosition:true" not in html or "v18167BaseLiveBench" not in html:
+        die('Banco nacional ainda nao esta ordenado por posicao em todas as telas')
     if "v53Sim?.mode!=='nationaljump'||['dashboard','national'].includes(view)" not in html:
         die('Avancar ate a selecao ainda nao atualiza Visao Geral/Selecoes por jornada')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
