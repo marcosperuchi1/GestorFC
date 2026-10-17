@@ -99,7 +99,7 @@ def main():
         die('Tema dinamico da carreira ainda nao deriva da equipe comandada')
     if "consultedProfileOwnTheme:true" not in html or "v18172ApplySurfaceToElement(modalEl,p.primary)" not in html:
         die('Ficha consultada ainda nao recebe tema completo proprio')
-    if "nationalProfileFinalOwnTheme:true" not in html or "function v18173PaintConsultedNationalProfile(code)" not in html or "v18173PaintConsultedNationalProfile(code);" not in html:
+    if "nationalProfileFinalOwnTheme:true" not in html or "function v18173PaintConsultedNationalProfile(code)" not in html or "v18173PaintConsultedNationalProfile(n);" not in html:
         die('Redefinicao final da ficha de selecao pode perder a paleta da selecao consultada')
     if "const surface=typeof v18172SurfaceVars==='function'?v18172SurfaceVars(p.primary)" not in html or "try{v18172ApplySurfaceToElement(profile,p.primary);}catch(e){}" not in html:
         die('v657ApplyNationalModalTheme ainda nao reaplica bg/panel/panel2/line da selecao consultada')
