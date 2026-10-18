@@ -180,6 +180,20 @@ console.log(JSON.stringify({ok:true,calls}));
     if "p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18170InitialNationalFreeAgent=true" not in html:
         die('jogador nacional de suporte nao e livre/ficticio')
 
+    # Carreiras longas: historicos grandes fragmentados, caches limitados e
+    # memoria derivada liberada antes da virada autoritativa.
+    long_markers=[
+        "18.180-long-career-bounded-memory",
+        "'scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'",
+        "if(m.size>48)m.delete(m.keys().next().value)",
+        "ranked.slice(0,180)",
+        "lastTransferTo=new Map()",
+        "G.v168?.stop?.();G.v168?.purge?.()"
+    ]
+    for marker in long_markers:
+        if marker not in html:
+            die('Otimizacao de carreira longa ausente: '+marker)
+
     report={'ok':True,'source':'final-transformed-index','ordering':ordering,'live_drag':drag,
             'nationaljump_root':True,'national_free_agents_root':True,'duplicate_drag':False}
     (root/'root-gameplay-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
