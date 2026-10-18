@@ -149,7 +149,9 @@ def main():
 window.GestorFC.longCareerMemory={
  version:'18.181-long-career-fast-checkpoint',
  scorerArchiveLimitPerCompetition:null,
- tableCacheEntries:48,\n  desktopBatchWrites:true,\n  sameSeasonHistoricalShardReuse:true,
+ tableCacheEntries:48,
+  desktopBatchWrites:true,
+  sameSeasonHistoricalShardReuse:true,
  shardedHistories:['scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'],
  snapshot:()=>({
   year:state?.year||0,day:state?.day||0,
