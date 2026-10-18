@@ -2,6 +2,8 @@ name: Build FutBR Manager Desktop RC1 Clean
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,7 +26,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/finalize_how_to_play.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/test_root_gameplay.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -73,9 +75,9 @@ jobs:
         shell: pwsh
         run: python .github/scripts/fix_national_match_parity.py "$env:FUTBR_PROJECT"
 
-      - name: Finalizar tela Como jogar
+      - name: Ocultar Como jogar
         shell: pwsh
-        run: python .github/scripts/finalize_how_to_play.py "$env:FUTBR_PROJECT"
+        run: python .github/scripts/hide_how_to_play_ui.py "$env:FUTBR_PROJECT"
 
       - name: Externalizar escudos
         shell: pwsh
