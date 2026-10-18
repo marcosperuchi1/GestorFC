@@ -116,9 +116,9 @@ def main():
 
     # scorerArchive is immutable during vacation and already exists in the saved
     # base. Never clone it into the vacation root again.
-    old="if(!safe(key)||key==='v538CareerArchive'||key==='v555CareerArchive'||key==='crestOverrides'||collections.includes(key))continue;"
-    new="if(!safe(key)||key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'||key==='crestOverrides'||collections.includes(key))continue;"
-    html=once(html,old,new,'vacation immutable scorer archive')
+    vac_marker="key==='v555CareerArchive'||key==='crestOverrides'"
+    vac_repl="key==='v555CareerArchive'||key==='scorerArchive'||key==='crestOverrides'"
+    html=once(html,vac_marker,vac_repl,'vacation immutable scorer archive')
 
     # 4) Avoid allocating a filtered transfers array once for every player while
     # building the annual career archive.
