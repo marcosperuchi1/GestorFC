@@ -35,14 +35,13 @@ def main():
     compact=r"""function v94CompactScorerArchive(stats){
  const out={};
  for(const [key,rows] of Object.entries(stats||{})){
-  const ranked=[];
+  const packed={};
   for(const [pid,r] of Object.entries(rows||{})){
    const goals=Number(r?.goals)||0,assists=Number(r?.assists)||0,apps=Number(r?.apps)||0,minutes=Number(r?.minutes)||0;
-   if(goals<=0&&assists<=0)continue;
-   ranked.push({id:r.id||pid,name:r.name||'',natCode:r.natCode||'UNK',real:!!r.real,star:!!r.star,goals,assists,apps,minutes,clubs:r.clubs||{}});
+   if(apps<=0&&goals<=0&&assists<=0)continue;
+   packed[r.id||pid]={id:r.id||pid,name:r.name||'',natCode:r.natCode||'UNK',real:!!r.real,star:!!r.star,goals,assists,apps,minutes,clubs:r.clubs||{}};
   }
-  ranked.sort((a,b)=>b.goals-a.goals||b.assists-a.assists||a.minutes-b.minutes);
-  if(ranked.length)out[key]=Object.fromEntries(ranked.slice(0,180).map(r=>[r.id,r]));
+  if(Object.keys(packed).length)out[key]=packed;
  }
  return out;
 }"""
