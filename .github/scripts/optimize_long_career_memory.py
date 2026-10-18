@@ -26,8 +26,8 @@ def main():
     new="const rows=v540RawTable(s,c,d);m.set(token,rows.slice());if(m.size>48)m.delete(m.keys().next().value);return rows;"
     html=once(html,old,new,'bounded table cache')
 
-    # 3) Keep historical scorer screens useful without retaining thousands of full rows
-    # per competition/year. UI shows 150 rows, so retain a safety margin of 180.
+    # 3) Preserve every historical scorer row. Memory is reduced only by stripping
+    # redundant fields; no player/statistical record is discarded.
     start=html.find('function v94CompactScorerArchive(stats){')
     if start<0: fail('v94CompactScorerArchive ausente')
     end=html.find('\nfunction v94PackCurrentCareerArchive',start)
