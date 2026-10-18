@@ -112,6 +112,10 @@ jobs:
         shell: pwsh
         run: python .github/scripts/optimize_save_load.py "$env:FUTBR_PROJECT"
 
+      - name: Otimizar memoria de carreiras longas
+        shell: pwsh
+        run: python .github/scripts/optimize_long_career_memory.py "$env:FUTBR_PROJECT"
+
       - name: Testar gameplay raiz
         shell: pwsh
         run: python .github/scripts/test_root_gameplay.py "$env:FUTBR_PROJECT"
