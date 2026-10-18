@@ -186,7 +186,7 @@ console.log(JSON.stringify({ok:true,calls}));
         "18.180-long-career-bounded-memory",
         "'scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'",
         "if(m.size>48)m.delete(m.keys().next().value)",
-        "ranked.slice(0,180)",
+        "Object.fromEntries(ranked.map(r=>[r.id,r]))",
         "lastTransferTo=new Map()",
         "G.v168?.stop?.();G.v168?.purge?.()"
     ]
