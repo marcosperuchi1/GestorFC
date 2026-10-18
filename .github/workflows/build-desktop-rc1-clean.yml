@@ -2,8 +2,6 @@ name: Build FutBR Manager Desktop RC1 Clean
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
