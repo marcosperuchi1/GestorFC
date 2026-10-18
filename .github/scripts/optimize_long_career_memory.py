@@ -98,12 +98,12 @@ def main():
     new=old+"\\n async function v18181RawWriteMany(entries){if(!entries?.length)return true;const d=await database();if(!d)return hostRequest('raw-write-many',{entries});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of entries)os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no lote de checkpoint'));tx.onabort=()=>rej(tx.error||Error('Lote de checkpoint interrompido'));});}"
     html=once(html,old,new,'worker batch helper')
 
-    old="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}\\n  if(m.operation==='raw-delete')"
-    new="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}\\n  if(m.operation==='raw-write-many'){await window.FutBRDesktop.writeMany(m.entries||[]);return true;}\\n  if(m.operation==='raw-delete')"
-    html=once(html,old,new,'desktop worker batch bridge')
-    old="if(m.operation==='raw-write')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(m.value,m.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento'));tx.onabort=()=>rej(tx.error||Error('Gravação interrompida'));});\\n if(m.operation==='raw-delete')"
-    new="if(m.operation==='raw-write')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(m.value,m.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento'));tx.onabort=()=>rej(tx.error||Error('Gravação interrompida'));});\\n if(m.operation==='raw-write-many')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of m.entries||[])os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento em lote'));tx.onabort=()=>rej(tx.error||Error('Gravação em lote interrompida'));});\\n if(m.operation==='raw-delete')"
-    html=once(html,old,new,'browser worker batch bridge')
+    bridge="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}"
+    insert="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}\n  if(m.operation==='raw-write-many'){await window.FutBRDesktop.writeMany(m.entries||[]);return true;}"
+    html=once(html,bridge,insert,'desktop worker batch bridge')
+    bridge="if(m.operation==='raw-write')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(m.value,m.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento'));tx.onabort=()=>rej(tx.error||Error('Gravação interrompida'));});"
+    insert=bridge+"\n if(m.operation==='raw-write-many')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of m.entries||[])os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento em lote'));tx.onabort=()=>rej(tx.error||Error('Gravação em lote interrompida'));});"
+    html=once(html,bridge,insert,'browser worker batch bridge')
 
     # Worker full saves use the same same-season archive reuse and batched writes.
     save_worker=html.find("async function save(s){")
