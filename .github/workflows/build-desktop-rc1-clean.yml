@@ -2,6 +2,8 @@ name: Build FutBR Manager Desktop RC1 Clean
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -72,6 +74,17 @@ jobs:
       - name: Unificar partidas de selecao e clube
         shell: pwsh
         run: python .github/scripts/fix_national_match_parity.py "$env:FUTBR_PROJECT"
+
+      - name: Diagnosticar crescimento de memoria
+        shell: pwsh
+        run: python .github/scripts/diagnose_memory_growth.py "$env:FUTBR_PROJECT" > memory-growth-diagnostic.txt
+
+      - name: Publicar diagnostico de memoria
+        uses: actions/upload-artifact@v4
+        with:
+          name: Memory-Growth-Diagnostic
+          path: memory-growth-diagnostic.txt
+          retention-days: 1
 
       - name: Ocultar Como jogar
         shell: pwsh
