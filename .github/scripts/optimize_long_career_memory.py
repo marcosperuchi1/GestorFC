@@ -63,7 +63,14 @@ def main():
     new="v168DropStateCaches(state);v168StopBackground();try{if(typeof v53PatchQueue!=='undefined')v53PatchQueue.length=0;}catch(e){}const tNext=performance.now();E.nextSeason(state);v168Stats.nextSeasonMs=performance.now()-tNext;"
     html=once(html,old,new,'pre-rollover transient purge')
 
-    # 6) Expose diagnostics for long-career testing.
+    # 6) v169 is the final rollover authority. Purge caches/workers BEFORE its
+    # E.nextSeason call too, otherwise the old derived world can coexist with the
+    # freshly-created calendar at the exact peak that caused the OOM.
+    old="try{G.v168?.stop?.();}catch(e){}try{G.v100?.repair?.stopBackground?.(true);}catch(e){}"
+    new="try{G.v168?.stop?.();G.v168?.purge?.();}catch(e){}try{G.v170?.release?.();}catch(e){}try{G.v100?.repair?.stopBackground?.(true);}catch(e){}"
+    html=once(html,old,new,'v169 pre-rollover purge')
+
+    # 7) Expose diagnostics for long-career testing.
     marker="window.GestorFC.v168={"
     if marker not in html: fail('v168 diagnostics ausente')
     diag=r"""
