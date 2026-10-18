@@ -183,12 +183,16 @@ console.log(JSON.stringify({ok:true,calls}));
     # Carreiras longas: historicos grandes fragmentados, caches limitados e
     # memoria derivada liberada antes da virada autoritativa.
     long_markers=[
-        "18.180-long-career-bounded-memory",
+        "18.181-long-career-fast-checkpoint",
         "'scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'",
         "if(m.size>48)m.delete(m.keys().next().value)",
         "packed[r.id||pid]={id:r.id||pid",
         "lastTransferTo=new Map()",
-        "G.v168?.stop?.();G.v168?.purge?.()"
+        "G.v168?.stop?.();G.v168?.purge?.()",
+        "desktopBatchWrites:true",
+        "sameSeasonHistoricalShardReuse:true",
+        "raw-write-many",
+        "scorerArchiveLimitPerCompetition:null"
     ]
     for marker in long_markers:
         if marker not in html:
