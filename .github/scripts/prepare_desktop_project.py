@@ -324,7 +324,7 @@ html.futbr-desktop .v548-auth-foot{display:none!important}
 </style>
 '''
     if 'futbr-desktop-auth-green' not in html:
-        html=replace_once(html,'</head>',auth_theme+'\\n</head>','green auth theme')
+        html=replace_once(html,'</head>',auth_theme+'\n</head>','green auth theme')
 
     start_theme=r'''
 <style id="futbr-desktop-start-green">
@@ -362,7 +362,7 @@ html.futbr-desktop .welcome.v570-career-start .v658-career-hero img.futbr125-her
 </style>
 '''
     if 'futbr-desktop-start-green' not in html:
-        html=replace_once(html,'</head>',start_theme+'\\n</head>','green start theme')
+        html=replace_once(html,'</head>',start_theme+'\n</head>','green start theme')
 
     auth_fetch_old="""async function v580Fetch(path,{method='POST',token=null,body=null}={}){
  const headers={'apikey':V580_SUPABASE_KEY,'Content-Type':'application/json'};if(token)headers.Authorization='Bearer '+token;
