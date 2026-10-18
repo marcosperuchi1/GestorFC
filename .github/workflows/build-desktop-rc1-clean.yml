@@ -77,7 +77,7 @@ jobs:
 
       - name: Diagnosticar crescimento de memoria
         shell: pwsh
-        run: python .github/scripts/diagnose_memory_growth.py "$env:FUTBR_PROJECT" > memory-growth-diagnostic.txt
+        run: python "$env:FUTBR_PROJECT" > memory-growth-diagnostic.txt
 
       - name: Publicar diagnostico de memoria
         uses: actions/upload-artifact@v4
