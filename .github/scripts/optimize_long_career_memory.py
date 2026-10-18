@@ -19,7 +19,10 @@ def main():
     # 1) Historical collections must not travel inside the monolithic root object.
     old="const SHARDS=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','crestOverrides'];"
     new="const SHARDS=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive','crestOverrides'];"
-    html=once(html,old,new,'long-career sharded histories')
+    html=once(html,old,new,'long-career UI sharded histories')
+    old="const V171_FORMAT='GFC_SHARDED_171',V171_SHARDS=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','crestOverrides'];"
+    new="const V171_FORMAT='GFC_SHARDED_171',V171_SHARDS=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive','crestOverrides'];"
+    html=once(html,old,new,'long-career worker sharded histories')
 
     # 2) Bound the per-season league-table cache even before rollover.
     old="const rows=v540RawTable(s,c,d);m.set(token,rows.slice());return rows;"
@@ -35,17 +38,79 @@ def main():
     compact=r"""function v94CompactScorerArchive(stats){
  const out={};
  for(const [key,rows] of Object.entries(stats||{})){
-  const packed={};
+  let kept=null;
   for(const [pid,r] of Object.entries(rows||{})){
-   const goals=Number(r?.goals)||0,assists=Number(r?.assists)||0,apps=Number(r?.apps)||0,minutes=Number(r?.minutes)||0;
-   if(apps<=0&&goals<=0&&assists<=0)continue;
-   packed[r.id||pid]={id:r.id||pid,name:r.name||'',natCode:r.natCode||'UNK',real:!!r.real,star:!!r.star,goals,assists,apps,minutes,clubs:r.clubs||{}};
+   const goals=Number(r?.goals)||0,assists=Number(r?.assists)||0;
+   if(goals<=0&&assists<=0)continue;
+   (kept??={})[pid]={id:r.id||pid,name:r.name||'',natCode:r.natCode||'UNK',real:!!r.real,star:!!r.star,goals,assists,apps:Number(r?.apps)||0,minutes:Number(r?.minutes)||0,clubs:r.clubs||{},byClub:r.byClub||{}};
   }
-  if(Object.keys(packed).length)out[key]=packed;
+  if(kept)out[key]=kept;
  }
  return out;
 }"""
     html=html[:start]+compact+html[end:]
+
+    # 4) Batch native desktop writes. The previous path performed one Tauri IPC
+    # call per shard chunk; a season checkpoint could issue hundreds of calls.
+    ui_start=html.find(" async function writeCollection(token,key,value,limit){")
+    if ui_start<0: ui_start=html.find("async function writeCollection(token,key,value,limit){")
+    ui_end=html.find(" async function saveSharded(",ui_start)
+    if ui_end<0: ui_end=html.find("async function saveSharded(",ui_start)
+    if ui_start<0 or ui_end<0: fail('writeCollection UI ausente')
+    ui_write=r"""async function writeCollection(token,key,value,limit){
+  const isArray=Array.isArray(value),keys=[];let rows=[],idx=0,writes=0,pending=[];
+  const native=!!window.FutBRDesktop?.directStorage;
+  const commit=async(force=false)=>{
+   if(!pending.length)return;
+   const target=key==='players'?2:key==='allTimeStats'?6:4;
+   if(!force&&pending.length<target)return;
+   const batch=pending.splice(0,pending.length);
+   if(native)await window.FutBRDesktop.writeMany(batch);
+   else for(const entry of batch)await dbWrite(entry.key,entry.value);
+   await new Promise(r=>setTimeout(r,0));
+  };
+  const flush=async()=>{
+   if(!rows.length)return;const payload=rows;rows=[];const ck=shardKey(token,key,idx++);keys.push(ck);pending.push({key:ck,value:payload});writes++;
+   if(key==='players')stats.playerChunksWritten++;
+   if(v18121NewSeasonPreparation&&(key!=='players'||writes===1||writes%10===0)){v53Sim.progress=key==='players'?'Salvando jogadores · bloco '+writes:'Salvando '+key+' da nova temporada';try{v53PaintStatus();}catch(e){}}
+   await commit(false);
+  };
+  for(const id in (value||{})){rows.push([id,value[id]]);if(rows.length>=limit)await flush();}
+  await flush();await commit(true);return {isArray,length:isArray?value.length:0,keys};
+ }
+ """
+    html=html[:ui_start]+ui_write+html[ui_end:]
+
+    # Historical archives are immutable during an active season. After the first
+    # checkpoint of a new year, reuse their shard keys instead of rewriting them
+    # on every ordinary save.
+    old="for(const key of SHARDS){const value=s[key];if(value==null)continue;const reuse=mode==='employment'&&old?.format===FORMAT&&!['teams','coaches'].includes(key)&&old.collections?.[key];if(reuse){collections[key]=old.collections[key];continue;}const limit=key==='players'?2400:key==='teams'?420:key==='coaches'?520:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?700:120;collections[key]=await writeCollection(token,key,value,limit);}"
+    new="const stableSeasonShards=new Set(['v538CareerArchive','v555CareerArchive','scorerArchive']);for(const key of SHARDS){const value=s[key];if(value==null)continue;const employmentReuse=mode==='employment'&&old?.format===FORMAT&&!['teams','coaches'].includes(key)&&old.collections?.[key],seasonReuse=old?.format===FORMAT&&Number(old.year)===Number(s.year)&&!s.seasonDone&&stableSeasonShards.has(key)&&old.collections?.[key];if(employmentReuse||seasonReuse){collections[key]=old.collections[key];continue;}const limit=key==='players'?2400:key==='teams'?420:key==='coaches'?520:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?700:(key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'?1:120);collections[key]=await writeCollection(token,key,value,limit);}"
+    html=once(html,old,new,'reuse stable UI shards')
+
+    # Worker bridge supports batched writes too, avoiding hundreds of UI<->Rust
+    # round-trips during vacation checkpoints.
+    old="async function v93RawWrite(key,value){const d=await database();if(!d)return hostRequest('raw-write',{key,value});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(value,key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no checkpoint'));tx.onabort=()=>rej(tx.error||Error('Checkpoint interrompido'));});}"
+    new=old+"\\n async function v18181RawWriteMany(entries){if(!entries?.length)return true;const d=await database();if(!d)return hostRequest('raw-write-many',{entries});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of entries)os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no lote de checkpoint'));tx.onabort=()=>rej(tx.error||Error('Lote de checkpoint interrompido'));});}"
+    html=once(html,old,new,'worker batch helper')
+
+    old="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}\\n  if(m.operation==='raw-delete')"
+    new="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}\\n  if(m.operation==='raw-write-many'){await window.FutBRDesktop.writeMany(m.entries||[]);return true;}\\n  if(m.operation==='raw-delete')"
+    html=once(html,old,new,'desktop worker batch bridge')
+    old="if(m.operation==='raw-write')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(m.value,m.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento'));tx.onabort=()=>rej(tx.error||Error('Gravação interrompida'));});\\n if(m.operation==='raw-delete')"
+    new="if(m.operation==='raw-write')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(m.value,m.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento'));tx.onabort=()=>rej(tx.error||Error('Gravação interrompida'));});\\n if(m.operation==='raw-write-many')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of m.entries||[])os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Erro de armazenamento em lote'));tx.onabort=()=>rej(tx.error||Error('Gravação em lote interrompida'));});\\n if(m.operation==='raw-delete')"
+    html=once(html,old,new,'browser worker batch bridge')
+
+    # Worker full saves use the same same-season archive reuse and batched writes.
+    old="for(const key of V171_SHARDS){const value=s[key];if(value==null)continue;const isArray=Array.isArray(value),keys=[],limit=key==='players'?2200:key==='teams'?380:key==='coaches'?500:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?650:120;let rows=[],chunk=0,done=0;\\n   const flush=async()=>{if(!rows.length)return;const ck=v171ShardKey(token,key,chunk++);await v93RawWrite(ck,rows);keys.push(ck);rows=[];if(++done%6===0)await new Promise(r=>setTimeout(r,0));};\\n   for(const id in value){if(!safe(id))continue;rows.push([id,value[id]]);if(rows.length>=limit)await flush();}await flush();collections[key]={isArray,length:isArray?value.length:0,keys};\\n  }"
+    new="const v18181Stable=new Set(['v538CareerArchive','v555CareerArchive','scorerArchive']);for(const key of V171_SHARDS){const value=s[key];if(value==null)continue;const sameSeason=old?.format===V171_FORMAT&&Number(old.year)===Number(s.year)&&!s.seasonDone&&v18181Stable.has(key)&&old.collections?.[key];if(sameSeason){collections[key]=old.collections[key];continue;}const isArray=Array.isArray(value),keys=[],limit=key==='players'?2200:key==='teams'?380:key==='coaches'?500:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?650:(key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'?1:120);let rows=[],chunk=0,done=0,pending=[];\\n   const commit=async(force=false)=>{if(!pending.length)return;const target=key==='players'?2:key==='allTimeStats'?6:4;if(!force&&pending.length<target)return;await v18181RawWriteMany(pending.splice(0,pending.length));await new Promise(r=>setTimeout(r,0));};\\n   const flush=async()=>{if(!rows.length)return;const payload=rows;rows=[];const ck=v171ShardKey(token,key,chunk++);keys.push(ck);pending.push({key:ck,value:payload});done++;await commit(false);};\\n   for(const id in value){if(!safe(id))continue;rows.push([id,value[id]]);if(rows.length>=limit)await flush();}await flush();await commit(true);collections[key]={isArray,length:isArray?value.length:0,keys};\\n  }"
+    html=once(html,old,new,'worker batched sharded save')
+
+    # scorerArchive is immutable during vacation and already exists in the saved
+    # base. Never clone it into the vacation root again.
+    old="if(!safe(key)||key==='v538CareerArchive'||key==='v555CareerArchive'||key==='crestOverrides'||collections.includes(key))continue;"
+    new="if(!safe(key)||key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'||key==='crestOverrides'||collections.includes(key))continue;"
+    html=once(html,old,new,'vacation immutable scorer archive')
 
     # 4) Avoid allocating a filtered transfers array once for every player while
     # building the annual career archive.
@@ -74,9 +139,9 @@ def main():
     if marker not in html: fail('v168 diagnostics ausente')
     diag=r"""
 window.GestorFC.longCareerMemory={
- version:'18.180-long-career-bounded-memory',
- scorerArchiveLimitPerCompetition:180,
- tableCacheEntries:48,
+ version:'18.181-long-career-fast-checkpoint',
+ scorerArchiveLimitPerCompetition:null,
+ tableCacheEntries:48,\n  desktopBatchWrites:true,\n  sameSeasonHistoricalShardReuse:true,
  shardedHistories:['scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'],
  snapshot:()=>({
   year:state?.year||0,day:state?.day||0,
