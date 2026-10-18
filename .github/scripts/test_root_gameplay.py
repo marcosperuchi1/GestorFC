@@ -186,7 +186,7 @@ console.log(JSON.stringify({ok:true,calls}));
         "18.181-long-career-fast-checkpoint",
         "'scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'",
         "if(m.size>48)m.delete(m.keys().next().value)",
-        "packed[r.id||pid]={id:r.id||pid",
+        "(kept??={})[pid]={id:r.id||pid",
         "lastTransferTo=new Map()",
         "G.v168?.stop?.();G.v168?.purge?.()",
         "desktopBatchWrites:true",
