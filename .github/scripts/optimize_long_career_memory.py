@@ -95,7 +95,7 @@ def main():
     # Worker bridge supports batched writes too, avoiding hundreds of UI<->Rust
     # round-trips during vacation checkpoints.
     old="async function v93RawWrite(key,value){const d=await database();if(!d)return hostRequest('raw-write',{key,value});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite');tx.objectStore('saves').put(value,key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no checkpoint'));tx.onabort=()=>rej(tx.error||Error('Checkpoint interrompido'));});}"
-    new=old+"\\n async function v18181RawWriteMany(entries){if(!entries?.length)return true;const d=await database();if(!d)return hostRequest('raw-write-many',{entries});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of entries)os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no lote de checkpoint'));tx.onabort=()=>rej(tx.error||Error('Lote de checkpoint interrompido'));});}"
+    new=old+chr(10)+" async function v18181RawWriteMany(entries){if(!entries?.length)return true;const d=await database();if(!d)return hostRequest('raw-write-many',{entries});return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const e of entries)os.put(e.value,e.key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha no lote de checkpoint'));tx.onabort=()=>rej(tx.error||Error('Lote de checkpoint interrompido'));});}"
     html=once(html,old,new,'worker batch helper')
 
     bridge="if(m.operation==='raw-write'){await window.FutBRDesktop.write(m.key,m.value);return true;}"
