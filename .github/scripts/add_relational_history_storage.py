@@ -42,6 +42,19 @@ struct HistoryStatWrite {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct HistoryClubStatWrite {
+    player_id: String,
+    season: i64,
+    club_id: String,
+    apps: i64,
+    goals: i64,
+    assists: i64,
+    yellow: i64,
+    red: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct HistoryTransferWrite {
     player_id: String,
     season: i64,
@@ -96,6 +109,19 @@ fn ensure_history_schema(conn: &Connection) -> Result<(), String> {
         CREATE INDEX IF NOT EXISTS idx_pss_player_season ON player_season_stats(player_id,season);
         CREATE INDEX IF NOT EXISTS idx_pss_comp_season ON player_season_stats(competition_id,season);
         CREATE INDEX IF NOT EXISTS idx_pss_club_season ON player_season_stats(club_id,season);
+        CREATE TABLE IF NOT EXISTS player_club_season(
+            player_id TEXT NOT NULL,
+            season INTEGER NOT NULL,
+            club_id TEXT NOT NULL,
+            apps INTEGER NOT NULL DEFAULT 0,
+            goals INTEGER NOT NULL DEFAULT 0,
+            assists INTEGER NOT NULL DEFAULT 0,
+            yellow INTEGER NOT NULL DEFAULT 0,
+            red INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(player_id,season,club_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_pcs_player_season ON player_club_season(player_id,season);
+        CREATE INDEX IF NOT EXISTS idx_pcs_club_season ON player_club_season(club_id,season);
         CREATE TABLE IF NOT EXISTS player_career_totals(
             player_id TEXT PRIMARY KEY,
             apps INTEGER NOT NULL DEFAULT 0,
@@ -140,6 +166,7 @@ fn ensure_history_schema(conn: &Connection) -> Result<(), String> {
 fn history_store_season(
     season: i64,
     stats: Vec<HistoryStatWrite>,
+    club_stats: Vec<HistoryClubStatWrite>,
     transfers: Vec<HistoryTransferWrite>,
     retirements: Vec<HistoryRetirementWrite>,
     db: State<'_, DesktopDb>,
@@ -149,6 +176,7 @@ fn history_store_season(
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     tx.execute("INSERT OR REPLACE INTO history_seasons(season,closed_at) VALUES(?1,unixepoch('now')*1000)", params![season]).map_err(|e| e.to_string())?;
     tx.execute("DELETE FROM player_season_stats WHERE season=?1", params![season]).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM player_club_season WHERE season=?1", params![season]).map_err(|e| e.to_string())?;
     tx.execute("DELETE FROM transfer_history WHERE season=?1", params![season]).map_err(|e| e.to_string())?;
     tx.execute("DELETE FROM retirement_history WHERE season=?1", params![season]).map_err(|e| e.to_string())?;
 
@@ -162,6 +190,16 @@ fn history_store_season(
                 x.player_id,x.season,x.competition_id,x.club_id,
                 x.apps,x.starts,x.minutes,x.goals,x.assists,x.yellow,x.red
             ]).map_err(|e| e.to_string())?;
+        }
+    }
+
+    {
+        let mut stmt = tx.prepare(
+            "INSERT INTO player_club_season(player_id,season,club_id,apps,goals,assists,yellow,red)
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8)"
+        ).map_err(|e| e.to_string())?;
+        for x in &club_stats {
+            stmt.execute(params![x.player_id,x.season,x.club_id,x.apps,x.goals,x.assists,x.yellow,x.red]).map_err(|e| e.to_string())?;
         }
     }
 
@@ -256,6 +294,32 @@ fn history_player_seasons(
 }
 
 #[tauri::command]
+fn history_player_club_seasons(
+    player_id: String,
+    db: State<'_, DesktopDb>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let conn = db.0.lock().map_err(|_| "Banco ocupado".to_string())?;
+    ensure_history_schema(&conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT season,club_id,apps,goals,assists,yellow,red
+         FROM player_club_season WHERE player_id=?1
+         ORDER BY season DESC,club_id ASC"
+    ).map_err(|e| e.to_string())?;
+    let rows=stmt.query_map(params![player_id],|row|{
+        Ok(serde_json::json!({
+            "year":row.get::<_,i64>(0)?,
+            "teamId":row.get::<_,String>(1)?,
+            "apps":row.get::<_,i64>(2)?,
+            "goals":row.get::<_,i64>(3)?,
+            "assists":row.get::<_,i64>(4)?,
+            "yellow":row.get::<_,i64>(5)?,
+            "red":row.get::<_,i64>(6)?
+        }))
+    }).map_err(|e|e.to_string())?;
+    rows.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())
+}
+
+#[tauri::command]
 fn history_competition_ranking(
     season: i64,
     competition_id: String,
@@ -308,7 +372,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
     lib = once(
         lib,
         "            kv_put_many,\n            open_external_url,",
-        "            kv_put_many,\n            history_store_season,\n            history_player_totals,\n            history_player_seasons,\n            history_competition_ranking,\n            history_database_info,\n            open_external_url,",
+        "            kv_put_many,\n            history_store_season,\n            history_player_totals,\n            history_player_seasons,\n            history_player_club_seasons,\n            history_competition_ranking,\n            history_database_info,\n            open_external_url,",
         "history handlers",
     )
 
@@ -320,6 +384,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
  window.FutBRDesktop.storeHistorySeason=(payload)=>window.__TAURI__.core.invoke('history_store_season',payload||{});
  window.FutBRDesktop.playerHistoryTotals=(playerId)=>window.__TAURI__.core.invoke('history_player_totals',{playerId:String(playerId)});
  window.FutBRDesktop.playerHistorySeasons=(playerId)=>window.__TAURI__.core.invoke('history_player_seasons',{playerId:String(playerId)});
+ window.FutBRDesktop.playerClubHistory=(playerId)=>window.__TAURI__.core.invoke('history_player_club_seasons',{playerId:String(playerId)});
  window.FutBRDesktop.competitionHistoryRanking=(season,competitionId,limit=150)=>window.__TAURI__.core.invoke('history_competition_ranking',{season:Number(season),competitionId:String(competitionId),limit:Number(limit)||150});
  window.FutBRDesktop.historyDatabaseInfo=()=>window.__TAURI__.core.invoke('history_database_info');
 
@@ -336,7 +401,17 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
     });
    }
   }
-  const transfers=(s?.transfers||[]).filter(x=>Number(x?.year)===Number(year)).map(x=>({
+  const clubStats=[];
+  const packed=s?.v555CareerArchive?.[year];
+  if(packed?.p){
+   for(const pid of Object.keys(packed.p)){
+    const rows=typeof v555PackedRows==='function'?v555PackedRows(s,year,pid):[];
+    for(const r of rows)if(r?.teamId)clubStats.push({playerId:String(pid),season:Number(year),clubId:String(r.teamId),apps:n(r.apps),goals:n(r.goals),assists:n(r.assists),yellow:n(r.yellow),red:n(r.red)});
+   }
+  }else{
+   for(const [pid,rows] of Object.entries(s?.v538CareerArchive?.[year]||{}))for(const r of rows||[])if(r?.teamId)clubStats.push({playerId:String(pid),season:Number(year),clubId:String(r.teamId),apps:n(r.apps),goals:n(r.goals),assists:n(r.assists),yellow:n(r.yellow),red:n(r.red)});
+  }
+    const transfers=(s?.transfers||[]).filter(x=>Number(x?.year)===Number(year)).map(x=>({
    playerId:String(x?.id||x?.playerId||''),season:Number(year),
    fromClubId:x?.from==null?null:String(x.from),toClubId:x?.to==null?null:String(x.to),
    day:Number.isFinite(Number(x?.day))?Number(x.day):null,fee:Number.isFinite(Number(x?.fee))?Number(x.fee):null
@@ -345,7 +420,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
    playerId:String(x?.id||x?.playerId||x||''),season:Number(year),
    day:Number.isFinite(Number(x?.day))?Number(x.day):null,clubId:x?.clubId==null?null:String(x.clubId)
   })).filter(x=>x.playerId&&x.playerId!=='[object Object]');
-  return {season:Number(year),stats,transfers,retirements};
+  return {season:Number(year),stats,clubStats,transfers,retirements};
  }
  async function mirrorSeason(s,year){
   if(!s||!Number.isFinite(Number(year)))return false;
