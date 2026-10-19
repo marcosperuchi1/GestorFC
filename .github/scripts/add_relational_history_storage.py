@@ -486,8 +486,9 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
 
     # Final document-boundary cleanup. Literal backslash-n sequences between
     # HTML tags become visible text nodes in WebView2 (the "\\n" seen on blank boot).
-    html = re.sub(r'(</(?:script|style)>)\\\\n(?=\\s*<)', r'\\1\n', html, flags=re.I)
-    html = re.sub(r'(<body\\b[^>]*>)\\\\n(?=\\s*<)', r'\\1\n', html, count=1, flags=re.I)
+    # Match the two literal characters backslash+n between HTML tags.
+    # The prior pattern was over-escaped and therefore missed the visible "\\n".
+    html = re.sub(r'(?<=>)\\\\n(?=\\s*<)', '\n', html)
 
     lib_path.write_text(lib, encoding="utf-8")
     index_path.write_text(html, encoding="utf-8")
