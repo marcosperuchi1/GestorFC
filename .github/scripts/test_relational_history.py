@@ -53,6 +53,7 @@ global.window={
   FutBRDesktop:{available:true},
   __TAURI__:{core:{invoke:async(cmd,args)=>{
     if(cmd==='history_player_club_seasons'){
+      if(args?.playerId==='p-empty') return [];
       return [{year:2025,teamId:'t-old',apps:12,goals:7,assists:6,yellow:2,red:1}];
     }
     if(cmd==='history_store_season'){
@@ -81,7 +82,7 @@ global.state={
 global.v555PackedRows=(s,year,pid)=>pid==='p1'?[{
   year:2025,teamId:'t-old',apps:12,goals:7,assists:6,yellow:2,red:1
 }]:[];
-global.v539CareerRows=(pid)=>[
+global.v539CareerRows=(pid)=>pid==='p-empty'?[{scope:'club',year:2025,teamId:'legacy-empty',teamName:'Legado Preservado',apps:8,goals:3,assists:2,yellow:1,red:0}]:[
   {scope:'club',year:2026,teamId:'t-now',teamName:'Clube Atual',apps:3,goals:2,assists:1,yellow:0,red:0},
   {scope:'club',year:2025,teamId:'legacy-old',teamName:'Legado Antigo',apps:99,goals:99,assists:99,yellow:9,red:9},
   {scope:'national',year:2025,teamCode:'BRA',teamName:'Brasil',apps:4,goals:1,assists:2,yellow:1,red:0}
@@ -95,6 +96,13 @@ global.E={
     js += "\n" + bridge + "\n"
     js += r"""
 (async()=>{
+  const emptyLoaded=await window.GestorFC.relationalHistory.hydratePlayerCareer('p-empty');
+  if(emptyLoaded.length) throw Error('SQLite vazio deveria retornar zero linhas');
+  const emptyRows=v539CareerRows('p-empty');
+  if(!emptyRows.some(r=>r.teamId==='legacy-empty'&&r.apps===8&&r.goals===3&&r.assists===2)){
+    throw Error('SQLite vazio apagou o fallback legado: '+JSON.stringify(emptyRows));
+  }
+
   const before=v539CareerRows('p1');
   if(!before.some(r=>r.teamId==='legacy-old'&&r.goals===99)){
     throw Error('fallback anterior ao SQLite nao preservou a carreira atual');
@@ -139,6 +147,7 @@ global.E={
   console.log(JSON.stringify({
     ok:true,
     fallbackBeforeHydration:true,
+    emptySqlitePreservesLegacy:true,
     rowsAfterHydration:rows.length,
     closedClub:{apps:closed.apps,goals:closed.goals,assists:closed.assists,yellow:closed.yellow,red:closed.red},
     currentClub:{apps:current.apps,goals:current.goals,assists:current.assists},
