@@ -170,6 +170,14 @@ def main():
         die('Worker da nova carreira ainda nao usa cache transitorio parse-once')
     if "shardReadConcurrency:8" not in html:
         die('Leitura paralela dos blocos do save nao foi ativada')
+    if "indexedDbBatchTransaction:true" not in html or "async function v18183DbWriteMany(entries)" not in html:
+        die('Salvamento fragmentado ainda abre transacoes IndexedDB por shard')
+    if "playerShardTransactionBatch:4" not in html:
+        die('Lote de shards de jogadores nao foi ativado')
+    if "function v18182NationalIndex(s)" not in html or "indexedBuild:true" not in html:
+        die('Criacao de carreira ainda varre todos os jogadores repetidamente por selecao')
+    if re.search(r'</(?:script|style)>\\\\n(?=\\s*<)',html,re.I):
+        die('HTML final ainda possui quebra de linha literal visivel entre tags')
     if "blankScreenRecovery:true" not in html:
         die('Recuperacao automatica de tela vazia ausente')
     if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
