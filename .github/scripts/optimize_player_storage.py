@@ -33,7 +33,8 @@ def main():
 
     worker_anchor=" const V171_FORMAT='GFC_SHARDED_171',V171_SHARDS="
     if worker_anchor not in html: fail('worker V171 anchor ausente')
-    html=html.replace(worker_anchor,' '+helper('v18191w')+worker_anchor,1)
+    stream_helper="""function v18191wPostPackedPlayerRows(kind,base,rows){const packed=rows.map(([id,p])=>v18191wPackPlayer(p,id)),bytes=new TextEncoder().encode(JSON.stringify(packed)).buffer;self.postMessage({kind,...base,format:'player-packed-buffer-v1',bytes},[bytes]);}\n"""
+    html=html.replace(worker_anchor,' '+helper('v18191w')+stream_helper+worker_anchor,1)
 
     old_decode=""" async function v171DecodeManifest(x){
   const s={...(x.root||{})};
@@ -67,6 +68,30 @@ def main():
   return s;
  }"""
     html=replace_once(html,old_decode,new_decode,'worker packed-player decoder')
+
+    html=replace_once(
+        html,
+        "const flushCreate=async()=>{if(!rows.length)return;v171PostRows('create-stream-part',{id:m.id,done,total},rows);",
+        "const flushCreate=async()=>{if(!rows.length)return;v18191wPostPackedPlayerRows('create-stream-part',{id:m.id,done,total},rows);",
+        'packed create stream'
+    )
+    html=replace_once(
+        html,
+        "const flushNext=async()=>{if(!rows.length)return;v171PostRows('create-stream-part',{id:m.id,done,total,key:'players'},rows);",
+        "const flushNext=async()=>{if(!rows.length)return;v18191wPostPackedPlayerRows('create-stream-part',{id:m.id,done,total,key:'players'},rows);",
+        'packed next-season stream'
+    )
+
+    ui_anchor="// 5.3: one authoritative simulation, incremental view updates and worker checkpoints."
+    ui_helper=helper('v18191u')
+    if ui_anchor not in html: fail('UI stream anchor ausente')
+    html=html.replace(ui_anchor,ui_helper+"\n"+ui_anchor,1)
+    html=replace_once(
+        html,
+        "rows=m.format==='json-buffer'&&m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[]);m.bytes=null;for(const [id,p] of rows)dst[id]=p;",
+        "rows=m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[]);if(m.format==='player-packed-buffer-v1')rows=rows.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});m.bytes=null;for(const [id,p] of rows)dst[id]=p;",
+        'packed stream UI decoder'
+    )
 
     save_worker=html.find('async function save(s){')
     if save_worker<0: fail('worker save ausente')
@@ -106,7 +131,7 @@ def main():
 
     marker="G.v171={version:V,freshCareerOnly:true,storageKey:KEY,memory:{"
     if marker in html:
-        html=html.replace(marker,"G.v171={version:V,freshCareerOnly:true,storageKey:KEY,playerStorage:{format:'FUTBR_PLAYERS_PACKED_GZIP_V1',lossless:true,unknownFields:'extra',gzip:true},memory:{",1)
+        html=html.replace(marker,"G.v171={version:V,freshCareerOnly:true,storageKey:KEY,playerStorage:{format:'FUTBR_PLAYERS_PACKED_GZIP_V1',lossless:true,unknownFields:'extra',gzip:true,workerStream:'player-packed-buffer-v1'},memory:{",1)
 
     path.write_text(html,encoding='utf-8')
     print('packed player storage applied')
