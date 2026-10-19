@@ -1,5 +1,5 @@
 from __future__ import annotations
-import subprocess, sys
+import sys
 from pathlib import Path
 
 def fail(msg):
@@ -198,12 +198,7 @@ window.GestorFC.createCheckpointOptimization={
 
     path.write_text(html,encoding='utf-8')
 
-    relational = Path(__file__).with_name('add_relational_history_storage.py')
-    if not relational.exists():
-        fail('add_relational_history_storage.py ausente')
-    subprocess.run([sys.executable, str(relational), str(Path(sys.argv[1]).resolve())], check=True)
-
-    print('Long-career memory optimization applied with relational history foundation.')
+    print('Long-career memory optimization applied; relational layer is applied explicitly by the build pipeline.')
 
 if __name__=='__main__':
     main()
