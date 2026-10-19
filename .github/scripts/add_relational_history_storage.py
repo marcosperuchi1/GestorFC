@@ -389,6 +389,18 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
  window.FutBRDesktop.historyDatabaseInfo=()=>window.__TAURI__.core.invoke('history_database_info');
 
  const status={version:'19.0-shadow-v2',mode:'shadow-validation',engine:'sqlite-rusqlite',authoritative:false,lastSeason:null,lastRows:0,lastMs:0,lastError:null};
+ const careerCache=new Map(),careerLoading=new Map();
+ async function hydratePlayerCareer(pid){
+  pid=String(pid||'');if(!pid)return [];
+  if(careerCache.has(pid))return careerCache.get(pid);
+  if(careerLoading.has(pid))return careerLoading.get(pid);
+  const p=window.FutBRDesktop.playerClubHistory(pid).then(rows=>{
+   const out=(rows||[]).map(r=>({...r,teamName:E.team(state,r.teamId)?.name||r.teamId,scope:'club',legacy:false,clubIds:[r.teamId]}));
+   careerCache.set(pid,out);careerLoading.delete(pid);return out;
+  }).catch(e=>{careerLoading.delete(pid);console.warn('[FutBR] leitura relacional da carreira:',e);return [];});
+  careerLoading.set(pid,p);return p;
+ }
+
  function n(v){const x=Number(v);return Number.isFinite(x)?x:0;}
  function seasonPayload(s,year){
   const archive=(s?.scorerArchive||[]).find(a=>Number(a?.year)===Number(year));
@@ -432,6 +444,30 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
    return true;
   }catch(e){status.lastError=String(e?.message||e);console.warn('[FutBR] histórico relacional:',e);return false;}
  }
+ const baseCareerRows=v539CareerRows;
+ v539CareerRows=function(pid){
+  const cached=careerCache.get(String(pid||''));
+  if(!cached)return baseCareerRows(pid);
+  const live=baseCareerRows(pid).filter(r=>r?.scope==='national'||Number(r?.year)===Number(state?.year));
+  const rows=[],seen=new Set();
+  for(const r of [...cached,...live]){
+   const k=[r?.scope||'club',r?.year,r?.teamId||r?.teamCode||''].join('|');
+   if(seen.has(k))continue;seen.add(k);rows.push(r);
+  }
+  return rows.sort((a,b)=>b.year-a.year||(a.scope===b.scope?String(a.teamName||'').localeCompare(String(b.teamName||''),'pt-BR'):(a.scope==='club'?-1:1)));
+ };
+ v538CareerRows=v539CareerRows;
+ document.addEventListener('click',async e=>{
+  const btn=e.target?.closest?.('[data-action="player"][data-player]');
+  if(!btn||btn.dataset.v190RelationalReplay==='1')return;
+  const pid=String(btn.dataset.player||'');
+  if(!pid||careerCache.has(pid))return;
+  e.preventDefault();e.stopImmediatePropagation();
+  await hydratePlayerCareer(pid);
+  btn.dataset.v190RelationalReplay='1';
+  try{btn.click();}finally{delete btn.dataset.v190RelationalReplay;}
+ },true);
+
  const baseNextSeason=E.nextSeason;
  E.nextSeason=function(s,...args){
   const closed=s?.seasonDone?Number(s.year):null;
@@ -439,7 +475,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
   if(Number.isFinite(closed))setTimeout(()=>mirrorSeason(out||s,closed),1200);
   return out;
  };
- G.relationalHistory={...status,mirrorSeason:(year)=>mirrorSeason(state,Number(year)),status:()=>({...status})};
+ G.relationalHistory={...status,mirrorSeason:(year)=>mirrorSeason(state,Number(year)),hydratePlayerCareer,status:()=>({...status,careerCachePlayers:careerCache.size})};
 })();
 </script>
 """
