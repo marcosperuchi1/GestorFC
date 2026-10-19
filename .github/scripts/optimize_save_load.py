@@ -52,8 +52,8 @@ def main():
  if(!state)renderWelcome();
 }"""
     new_boot="""async function v548Boot(){
- const localPreload=Promise.resolve(loadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});
- const authPromise=Promise.resolve(v580RestoreRemoteSession()).catch(e=>{console.warn('[FutBR] sessao remota no boot:',e?.message||e);return null;});
+ const localPreload=Promise.resolve().then(()=>loadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});
+ const authPromise=Promise.resolve().then(()=>v580RestoreRemoteSession()).catch(e=>{console.warn('[FutBR] sessao remota no boot:',e?.message||e);return null;});
  let timeoutId=0;
  const timeout=new Promise(resolve=>{timeoutId=setTimeout(()=>resolve(null),6000);});
  const authenticated=await Promise.race([authPromise,timeout]);
@@ -171,12 +171,26 @@ def main():
 <script id="futbr-desktop-load-optimization">
 window.GestorFC=window.GestorFC||{};
 window.GestorFC.desktopLoadOptimization={
- version:'18.162',
+ version:'18.192',
  shardReadConcurrency:8,
  playerBase:'lazy-login-prefetch-one-click',
  blankScreenRecovery:true,
+ bootPromiseSafe:true,
+ emptyAppWatchdog:true,
  seasonEndLanding:'squad'
 };
+(()=>{
+ const rescue=()=>{
+  const app=document.getElementById('app');if(!app||app.innerHTML.trim())return false;
+  try{v548RenderAuth('login','A inicializacao foi recuperada. Entre para continuar.');return true;}
+  catch(e){
+   console.error('[FutBR] recuperacao final do boot:',e);
+   try{app.innerHTML=typeof v548AuthHTML==='function'?v548AuthHTML():'<div style="padding:32px;color:white">Nao foi possivel montar a tela inicial. Reinicie o jogo.</div>';}catch(_){}
+   return true;
+  }
+ };
+ setTimeout(rescue,2500);setTimeout(rescue,7000);
+})();
 </script>
 '''
     if 'futbr-desktop-load-optimization' not in html:
@@ -193,6 +207,10 @@ window.GestorFC.desktopLoadOptimization={
         fail("prefetch silencioso da base na tela de login ausente")
     if "blankScreenRecovery:true" not in html:
         fail("load optimization marker missing")
+    if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html:
+        fail("boot remoto ainda pode escapar por excecao sincrona")
+    if "emptyAppWatchdog:true" not in html:
+        fail("watchdog final de tela vazia ausente")
 
     index.write_text(html,encoding="utf-8")
     print("save load optimization applied")
