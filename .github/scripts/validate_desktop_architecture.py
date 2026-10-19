@@ -77,6 +77,10 @@ def main():
         die('Boot desktop ainda bloqueia a entrada esperando a base inicial de jogadores')
     if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
         die('Validacao remota ainda pode deixar o boot em tela vazia indefinidamente')
+    if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html or "bootPromiseSafe:true" not in html:
+        die('Boot ainda pode escapar por excecao sincrona antes da tela de login')
+    if "emptyAppWatchdog:true" not in html or "setTimeout(rescue,2500)" not in html:
+        die('Watchdog final para app vazio ausente')
     if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
         die('Tela de login nao inicia preload silencioso da base de jogadores')
     if "const loaded=await v53Call('load',{key:STORE});" not in html or "rosterPromise" in html:
@@ -178,9 +182,15 @@ def main():
         die('Lote de shards de jogadores nao foi ativado')
     if "function v18182NationalIndex(s)" not in html or "indexedBuild:true" not in html:
         die('Criacao de carreira ainda varre todos os jogadores repetidamente por selecao')
+    if "compactInitialAcademies:true" not in html or "academyDepthMatchesRollover:true" not in html or "v18190InitialAcademyTarget" not in html:
+        die('Primeira temporada ainda cria profundidade excessiva de base para todos os clubes')
+    if "FUTBR_PLAYERS_PACKED_GZIP_V1" not in html or "unknownFields:'extra'" not in html:
+        die('Jogadores ainda sao persistidos como objetos completos sem compactacao lossless')
+    if "v18191wDecodePlayerChunk" not in html or "v18191mEncodePlayerChunk" not in html:
+        die('Codec compacto de jogadores nao esta ligado a leitura e gravacao')
     if "18.185-single-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "intermediatePersistCoalesced:true" not in html:
         die('Criacao de carreira ainda pode executar checkpoints completos duplicados')
-    if re.search(r'</(?:script|style)>\\\\n(?=\\s*<)',html,re.I):
+    if re.search(r'(?<=>)\\n(?=\s*<)',html):
         die('HTML final ainda possui quebra de linha literal visivel entre tags')
     if "blankScreenRecovery:true" not in html:
         die('Recuperacao automatica de tela vazia ausente')
