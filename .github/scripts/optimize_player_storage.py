@@ -89,7 +89,7 @@ def main():
     html=replace_once(
         html,
         "rows=m.format==='json-buffer'&&m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[]);m.bytes=null;for(const [id,p] of rows)dst[id]=p;",
-        "rows=m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[]);if(m.format==='player-packed-buffer-v1')rows=rows.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});m.bytes=null;for(const [id,p] of rows)dst[id]=p;",
+        "let rows=m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[]);if(m.format==='player-packed-buffer-v1')rows=rows.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});m.bytes=null;for(const [id,p] of rows)dst[id]=p;",
         'packed stream UI decoder'
     )
 
