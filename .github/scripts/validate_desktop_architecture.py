@@ -188,8 +188,12 @@ def main():
         die('Jogadores ainda sao persistidos como objetos completos sem compactacao lossless')
     if "v18191wDecodePlayerChunk" not in html or "v18191mEncodePlayerChunk" not in html:
         die('Codec compacto de jogadores nao esta ligado a leitura e gravacao')
-    if "18.185-single-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "intermediatePersistCoalesced:true" not in html:
-        die('Criacao de carreira ainda pode executar checkpoints completos duplicados')
+    if "18.193-background-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "foregroundBlocking:false" not in html:
+        die('Criacao de carreira ainda pode bloquear a interface aguardando checkpoint completo')
+    if "initialSaveBackground:true" not in html or "advanceWaitsPendingCheckpoint:true" not in html:
+        die('Politica segura de primeiro checkpoint em segundo plano ausente')
+    if "18.185-single-create-checkpoint" in html or "if(state)await finalCreateCheckpoint()" in html:
+        die('Checkpoint completo ainda bloqueia o retorno da nova carreira')
     if re.search(r'(?<=>)\\n(?=\s*<)',html):
         die('HTML final ainda possui quebra de linha literal visivel entre tags')
     if "blankScreenRecovery:true" not in html:
