@@ -133,7 +133,8 @@ def main():
     if marker in html:
         html=html.replace(marker,"G.v171={version:V,freshCareerOnly:true,storageKey:KEY,playerStorage:{format:'FUTBR_PLAYERS_PACKED_GZIP_V1',lossless:true,unknownFields:'extra',gzip:true,workerStream:'player-packed-buffer-v1',playerChunkSize:900,playerTransactionBatch:8},memory:{",1)
 
-    html=html.replace('playerShardTransactionBatch:4','playerShardTransactionBatch:8',1)\n    path.write_text(html,encoding='utf-8')
+    html=html.replace('playerShardTransactionBatch:4','playerShardTransactionBatch:8',1)
+    path.write_text(html,encoding='utf-8')
     print('packed player storage applied')
 
 if __name__=='__main__': main()
