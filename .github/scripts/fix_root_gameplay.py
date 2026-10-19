@@ -253,15 +253,15 @@ function v53ScheduleNationalJumpPaint(){
         "drop transient source record"
     )
 
-    # 18.190 - categorias de base sob demanda para clubes da IA.
-    # Na criacao inicial preservamos os jovens reais/excedentes ja existentes,
-    # mas deixamos de fabricar 14 jogadores completos para cada um dos milhares
-    # de clubes. A base do clube do usuario continua completa imediatamente.
+    # 18.190 - a primeira temporada usa a mesma profundidade sustentavel
+    # aplicada nas viradas seguintes: 6/8/10 jovens para IA conforme nivel e
+    # 14 para o clube humano. Isso evita criar mais de 20 mil objetos que seriam
+    # descartados/compactados na primeira virada, sem deixar academias inativas.
     html=once(
         html,
         "while(t.academy.length<14&&t.academy.length<30)createProspect(s,t,t.academy.length);if(Array.isArray(t.lineup))",
-        "const v18190InitialAcademyTarget=t.id===s.user?14:t.academy.length;if(t.id!==s.user&&t.academy.length<14)t.v18190AcademyVirtual={target:14,year:s.year};while(t.academy.length<v18190InitialAcademyTarget&&t.academy.length<30)createProspect(s,t,t.academy.length);if(Array.isArray(t.lineup))",
-        "lazy initial AI academies"
+        "const v18190InitialAcademyTarget=t.id===s.user?14:((Number(t.division)||1)===1&&(Number(t.base)||55)>=72?10:((Number(t.division)||1)<=2||(Number(t.base)||55)>=64?8:6));while(t.academy.length<v18190InitialAcademyTarget&&t.academy.length<30)createProspect(s,t,t.academy.length);if(Array.isArray(t.lineup))",
+        "compact initial AI academies"
     )
 
     # Plano Gratuito: bloqueio autoritativo de carreira por selecao.
@@ -743,35 +743,7 @@ if(typeof v643PrepareNationalCareer==='function'){
  v643PrepareNationalCareer=async function(options={}){if(!v18177FullAccess()){toast('Carreira por selecao requer Premium.','error');return;}return v18177BaseNationalPrepare(options);};
 }
 
-// 18.190 - materializacao sob demanda da base de um clube consultado.
-// O estado virtual ocupa apenas alguns bytes por clube. Os objetos de jogadores
-// passam a existir quando a base daquele clube realmente e aberta.
-function v18190EnsureViewedAcademy(t){
- if(!state||!t||t.id===state.user||!t.v18190AcademyVirtual)return 0;
- t.academy=Array.isArray(t.academy)?t.academy:[];
- const target=Math.max(t.academy.length,Math.min(14,Number(t.v18190AcademyVirtual.target)||14));
- let created=0,guard=0;
- while(t.academy.length<target&&t.academy.length<30&&guard++<30){
-  const before=t.academy.length;
-  try{E.createProspect(state,t,t.academy.length);}catch(e){console.warn('[18.190] base sob demanda:',e?.message||e);break;}
-  if(t.academy.length<=before)break;
-  created+=t.academy.length-before;
- }
- if(t.academy.length>=target)delete t.v18190AcademyVirtual;
- if(created){
-  try{persist(false);}catch(e){}
- }
- return created;
-}
-if(typeof v603AcademyPlayers==='function'){
- const v18190BaseAcademyPlayers=v603AcademyPlayers;
- v603AcademyPlayers=function(t){
-  try{v18190EnsureViewedAcademy(t);}catch(e){console.warn('[18.190] materializacao da base:',e?.message||e);}
-  return v18190BaseAcademyPlayers(t);
- };
-}
-
-window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,nationalRootSurfaceFollowsConsulted:true,premiumBuyOnWelcome:true,freeNationalStartBlocked:true,freeNationalStartCoreGate:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,lazyAIAcademies:true,academyOnDemand:true,liveDragUsesCoreV5Execute:true};
+window.GestorFC.root18170={nationalJumpLiveOverview:true,benchPositionOrder:true,nationalFreeAgentsAtCreation:true,localizedNationalFreeAgentNames:true,reservePointerSwap:true,dragGhost:true,dynamicCareerSurfaceTheme:true,consultedProfileOwnTheme:true,nationalProfileFinalOwnTheme:true,nationalProfileForcedSurface:true,nationalModalOwnRootTheme:true,nationalModalThemePinsV128:true,nationalRootSurfaceFollowsConsulted:true,premiumBuyOnWelcome:true,freeNationalStartBlocked:true,freeNationalStartCoreGate:true,nationalNamesNeverNumeric:true,fastCareerSeedRefs:true,compactInitialAcademies:true,academyDepthMatchesRollover:true,liveDragUsesCoreV5Execute:true};
 </script>
 '''
 
