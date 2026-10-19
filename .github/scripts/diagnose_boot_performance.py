@@ -62,7 +62,7 @@ def main():
     for name in [
       "loadLocal","loadSelected","renderWelcome","v548EnterGame","v548RenderAuth",
       "doSave","saveSharded","writeCollection","dbWrite","v171DecodeManifest",
-      "v52FlushSave","v52SaveNow","v52ScheduleSave","v53Call"
+      "v52FlushSave","v52SaveNow","v52ScheduleSave","v52EncodeSnapshot","v52RequestSave","ensureSaved","v53Saved","v53Prepare","v53Call"
     ]:
       block=find_function(html,name)
       report["functions"][name]=block[:24000] if block else None
