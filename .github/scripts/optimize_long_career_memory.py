@@ -57,16 +57,26 @@ def main():
     ui_end=html.find(" async function saveSharded(",ui_start)
     if ui_end<0: ui_end=html.find("async function saveSharded(",ui_start)
     if ui_start<0 or ui_end<0: fail('writeCollection UI ausente')
-    ui_write=r"""async function writeCollection(token,key,value,limit){
+    ui_write=r"""async function v18183DbWriteMany(entries){
+  if(!entries?.length)return true;
+  if(window.FutBRDesktop?.directStorage){await window.FutBRDesktop.writeMany(entries);return true;}
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+   const tx=db.transaction('saves','readwrite'),os=tx.objectStore('saves');
+   for(const entry of entries)os.put(entry.value,entry.key);
+   tx.oncomplete=()=>resolve(true);
+   tx.onerror=()=>reject(tx.error||Error('Falha ao gravar lote de shards'));
+   tx.onabort=()=>reject(tx.error||Error('Lote de shards interrompido'));
+  });
+ }
+ async function writeCollection(token,key,value,limit){
   const isArray=Array.isArray(value),keys=[];let rows=[],idx=0,writes=0,pending=[];
-  const native=!!window.FutBRDesktop?.directStorage;
   const commit=async(force=false)=>{
    if(!pending.length)return;
-   const target=key==='players'?2:key==='allTimeStats'?6:4;
+   const target=key==='players'?4:key==='allTimeStats'?8:6;
    if(!force&&pending.length<target)return;
    const batch=pending.splice(0,pending.length);
-   if(native)await window.FutBRDesktop.writeMany(batch);
-   else for(const entry of batch)await dbWrite(entry.key,entry.value);
+   await v18183DbWriteMany(batch);
    await new Promise(r=>setTimeout(r,0));
   };
   const flush=async()=>{
@@ -151,6 +161,8 @@ window.GestorFC.longCareerMemory={
  scorerArchiveLimitPerCompetition:null,
  tableCacheEntries:48,
   desktopBatchWrites:true,
+  indexedDbBatchTransaction:true,
+  playerShardTransactionBatch:4,
   sameSeasonHistoricalShardReuse:true,
  shardedHistories:['scorerArchive','transfers','retirements','history','internationalHistory','v735NationalArchive'],
  snapshot:()=>({
