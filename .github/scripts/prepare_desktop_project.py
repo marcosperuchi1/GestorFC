@@ -240,7 +240,10 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
         patched_csp=patched_csp.replace("img-src ","img-src 'self' ",1)
     html=html[:csp_tag.start()]+patched_csp+html[csp_tag.end():]
 
-    # remove literal backslash-n artifacts near desktop bridge
+    # Remove literal backslash-n artifacts only at the document/body boundary
+    # and around the desktop bridge. A leaked "\\n" becomes a visible text node.
+    html=re.sub(r'(</head>)\\\\n\\s*(<body\\b)',r'\\1\n\\2',html,count=1,flags=re.I)
+    html=re.sub(r'(<body\\b[^>]*>)\\\\n\\s*',r'\\1',html,count=1,flags=re.I)
     html=html.replace('<body class="">\\n<script id="futbr-desktop-native-bridge">','<body class=""><script id="futbr-desktop-native-bridge">')
     html=html.replace('</script>\\n\n<div id="app"','</script>\n<div id="app"')
     html=html.replace('\\n<style id="futbr-desktop-native-style">','<style id="futbr-desktop-native-style">')
