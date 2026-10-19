@@ -53,9 +53,9 @@ def main():
     asset=(root/'src'/manifest['asset']).resolve()
     if not asset.exists(): die('Base externa ausente')
 
-    world=const_obj(html,'WorldCatalog',html.find('WorldCatalog'))
-    idx=const_obj(html,'V310_ROSTER_INDEX',html.find('V310_ROSTER_INDEX'))
-    sources=const_obj(html,'V310_ROSTER_SOURCES',html.find('V310_ROSTER_SOURCES'))
+    world=const_obj(html,'WorldCatalog',0)
+    idx=const_obj(html,'V310_ROSTER_INDEX',0)
+    sources=const_obj(html,'V310_ROSTER_SOURCES',0)
     dec=function_block(html,'v310DecodeCompactRoster')
     a=html.find('const Engine = (() => {');b=html.find("if(typeof module!=='undefined'&&module.exports)",a)
     if a<0 or b<a: die('Engine ausente')
