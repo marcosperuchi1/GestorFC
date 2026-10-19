@@ -2,6 +2,8 @@ name: Build FutBR Manager Desktop RC1 Clean
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,7 +26,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/diagnose_player_profile.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -102,6 +104,17 @@ jobs:
       - name: Otimizar memoria de carreiras longas
         shell: pwsh
         run: python .github/scripts/optimize_long_career_memory.py "$env:FUTBR_PROJECT"
+
+      - name: Diagnosticar ficha do jogador
+        shell: pwsh
+        run: python .github/scripts/diagnose_player_profile.py "$env:FUTBR_PROJECT" > player-profile-diagnostic.txt
+
+      - name: Publicar diagnostico da ficha
+        uses: actions/upload-artifact@v4
+        with:
+          name: Player-Profile-Diagnostic
+          path: player-profile-diagnostic.txt
+          retention-days: 1
 
       - name: Testar gameplay raiz
         shell: pwsh
