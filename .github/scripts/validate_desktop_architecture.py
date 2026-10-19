@@ -192,6 +192,12 @@ def main():
         die('Transferencia Worker para UI ainda envia jogadores no formato expandido')
     if "v18191wDecodePlayerChunk" not in html or "v18191mEncodePlayerChunk" not in html:
         die('Codec compacto de jogadores nao esta ligado a leitura e gravacao')
+    bad_stream="const key=m.key||'players',dst=rec.state[key]||(rec.state[key]={}),rows=m.bytes instanceof ArrayBuffer?"
+    good_stream="const key=m.key||'players',dst=rec.state[key]||(rec.state[key]={});let rows=m.bytes instanceof ArrayBuffer?"
+    if bad_stream in html:
+        die('Create-stream ainda reatribui uma constante e pode perder todos os jogadores')
+    if good_stream not in html:
+        die('Receptor mutavel do create-stream nao foi instalado')
     if "18.193-background-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "foregroundBlocking:false" not in html:
         die('Criacao de carreira ainda pode bloquear a interface aguardando checkpoint completo')
     if "initialSaveBackground:true" not in html or "advanceWaitsPendingCheckpoint:true" not in html:
