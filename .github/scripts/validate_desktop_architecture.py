@@ -73,10 +73,12 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
-    if "async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}" not in html:
-        die('Login ainda pode exigir segundo clique por renderizar antes da base de jogadores')
+    if "async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:'" not in html:
+        die('Boot desktop ainda bloqueia a entrada esperando a base inicial de jogadores')
     if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
         die('Tela de login nao inicia preload silencioso da base de jogadores')
+    if "const loaded=await v53Call('load',{key:STORE});" not in html or "rosterPromise" in html:
+        die('Carregamento de save ainda espera a base inicial desnecessariamente')
     if html.count('"name":"ASA"') != 1:
         die('Catalogo inicial ainda possui ASA duplicado')
     if "supportFictional?(div>=4?.72" not in html:
