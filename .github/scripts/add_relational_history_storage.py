@@ -224,6 +224,80 @@ fn history_player_totals(
         Ok(None)
     }
 }
+
+
+#[tauri::command]
+fn history_player_seasons(
+    player_id: String,
+    db: State<'_, DesktopDb>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let conn = db.0.lock().map_err(|_| "Banco ocupado".to_string())?;
+    ensure_history_schema(&conn)?;
+    let mut stmt = conn.prepare(
+        "SELECT season,competition_id,club_id,apps,starts,minutes,goals,assists,yellow,red
+         FROM player_season_stats WHERE player_id=?1
+         ORDER BY season DESC,competition_id ASC"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map(params![player_id], |row| {
+        Ok(serde_json::json!({
+            "season":row.get::<_,i64>(0)?,
+            "competitionId":row.get::<_,String>(1)?,
+            "clubId":row.get::<_,Option<String>>(2)?,
+            "apps":row.get::<_,i64>(3)?,
+            "starts":row.get::<_,i64>(4)?,
+            "minutes":row.get::<_,i64>(5)?,
+            "goals":row.get::<_,i64>(6)?,
+            "assists":row.get::<_,i64>(7)?,
+            "yellow":row.get::<_,i64>(8)?,
+            "red":row.get::<_,i64>(9)?
+        }))
+    }).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>,_>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn history_competition_ranking(
+    season: i64,
+    competition_id: String,
+    limit: Option<i64>,
+    db: State<'_, DesktopDb>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let conn = db.0.lock().map_err(|_| "Banco ocupado".to_string())?;
+    ensure_history_schema(&conn)?;
+    let take=limit.unwrap_or(150).clamp(1,1000);
+    let mut stmt = conn.prepare(
+        "SELECT player_id,club_id,apps,minutes,goals,assists,yellow,red
+         FROM player_season_stats
+         WHERE season=?1 AND competition_id=?2
+         ORDER BY goals DESC,assists DESC,minutes ASC,player_id ASC
+         LIMIT ?3"
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map(params![season,competition_id,take], |row| {
+        Ok(serde_json::json!({
+            "playerId":row.get::<_,String>(0)?,
+            "clubId":row.get::<_,Option<String>>(1)?,
+            "apps":row.get::<_,i64>(2)?,
+            "minutes":row.get::<_,i64>(3)?,
+            "goals":row.get::<_,i64>(4)?,
+            "assists":row.get::<_,i64>(5)?,
+            "yellow":row.get::<_,i64>(6)?,
+            "red":row.get::<_,i64>(7)?
+        }))
+    }).map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>,_>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, String> {
+    let conn = db.0.lock().map_err(|_| "Banco ocupado".to_string())?;
+    ensure_history_schema(&conn)?;
+    let seasons:i64=conn.query_row("SELECT COUNT(*) FROM history_seasons",[],|r|r.get(0)).map_err(|e|e.to_string())?;
+    let stats:i64=conn.query_row("SELECT COUNT(*) FROM player_season_stats",[],|r|r.get(0)).map_err(|e|e.to_string())?;
+    let players:i64=conn.query_row("SELECT COUNT(*) FROM player_career_totals",[],|r|r.get(0)).map_err(|e|e.to_string())?;
+    let transfers:i64=conn.query_row("SELECT COUNT(*) FROM transfer_history",[],|r|r.get(0)).map_err(|e|e.to_string())?;
+    let retirements:i64=conn.query_row("SELECT COUNT(*) FROM retirement_history",[],|r|r.get(0)).map_err(|e|e.to_string())?;
+    Ok(serde_json::json!({"seasons":seasons,"statRows":stats,"players":players,"transfers":transfers,"retirements":retirements}))
+}
 """
     lib = once(
         lib,
@@ -234,7 +308,7 @@ fn history_player_totals(
     lib = once(
         lib,
         "            kv_put_many,\n            open_external_url,",
-        "            kv_put_many,\n            history_store_season,\n            history_player_totals,\n            open_external_url,",
+        "            kv_put_many,\n            history_store_season,\n            history_player_totals,\n            history_player_seasons,\n            history_competition_ranking,\n            history_database_info,\n            open_external_url,",
         "history handlers",
     )
 
@@ -245,6 +319,9 @@ fn history_player_totals(
  const G=window.GestorFC=window.GestorFC||{};
  window.FutBRDesktop.storeHistorySeason=(payload)=>window.__TAURI__.core.invoke('history_store_season',payload||{});
  window.FutBRDesktop.playerHistoryTotals=(playerId)=>window.__TAURI__.core.invoke('history_player_totals',{playerId:String(playerId)});
+ window.FutBRDesktop.playerHistorySeasons=(playerId)=>window.__TAURI__.core.invoke('history_player_seasons',{playerId:String(playerId)});
+ window.FutBRDesktop.competitionHistoryRanking=(season,competitionId,limit=150)=>window.__TAURI__.core.invoke('history_competition_ranking',{season:Number(season),competitionId:String(competitionId),limit:Number(limit)||150});
+ window.FutBRDesktop.historyDatabaseInfo=()=>window.__TAURI__.core.invoke('history_database_info');
 
  const status={version:'19.0-shadow-v2',mode:'shadow-validation',engine:'sqlite-rusqlite',authoritative:false,lastSeason:null,lastRows:0,lastMs:0,lastError:null};
  function n(v){const x=Number(v);return Number.isFinite(x)?x:0;}
