@@ -75,6 +75,8 @@ def main():
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
     if "async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:'" not in html:
         die('Boot desktop ainda bloqueia a entrada esperando a base inicial de jogadores')
+    if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
+        die('Validacao remota ainda pode deixar o boot em tela vazia indefinidamente')
     if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
         die('Tela de login nao inicia preload silencioso da base de jogadores')
     if "const loaded=await v53Call('load',{key:STORE});" not in html or "rosterPromise" in html:
