@@ -178,6 +178,8 @@ def main():
         die('Lote de shards de jogadores nao foi ativado')
     if "function v18182NationalIndex(s)" not in html or "indexedBuild:true" not in html:
         die('Criacao de carreira ainda varre todos os jogadores repetidamente por selecao')
+    if "18.185-single-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "intermediatePersistCoalesced:true" not in html:
+        die('Criacao de carreira ainda pode executar checkpoints completos duplicados')
     if re.search(r'</(?:script|style)>\\\\n(?=\\s*<)',html,re.I):
         die('HTML final ainda possui quebra de linha literal visivel entre tags')
     if "blankScreenRecovery:true" not in html:
