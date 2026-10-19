@@ -389,14 +389,16 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
  window.FutBRDesktop.historyDatabaseInfo=()=>window.__TAURI__.core.invoke('history_database_info');
 
  const status={version:'19.0-shadow-v2',mode:'shadow-validation',engine:'sqlite-rusqlite',authoritative:false,lastSeason:null,lastRows:0,lastMs:0,lastError:null};
- const careerCache=new Map(),careerLoading=new Map();
+ const careerCache=new Map(),careerLoading=new Map(),careerEmpty=new Set();
  async function hydratePlayerCareer(pid){
   pid=String(pid||'');if(!pid)return [];
   if(careerCache.has(pid))return careerCache.get(pid);
   if(careerLoading.has(pid))return careerLoading.get(pid);
   const p=window.FutBRDesktop.playerClubHistory(pid).then(rows=>{
    const out=(rows||[]).map(r=>({...r,teamName:E.team(state,r.teamId)?.name||r.teamId,scope:'club',legacy:false,clubIds:[r.teamId]}));
-   careerCache.set(pid,out);careerLoading.delete(pid);return out;
+   careerLoading.delete(pid);
+   if(out.length){careerCache.set(pid,out);careerEmpty.delete(pid);}else{careerCache.delete(pid);careerEmpty.add(pid);}
+   return out;
   }).catch(e=>{careerLoading.delete(pid);console.warn('[FutBR] leitura relacional da carreira:',e);return [];});
   careerLoading.set(pid,p);return p;
  }
@@ -437,7 +439,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
  async function mirrorSeason(s,year){
   if(!s||!Number.isFinite(Number(year)))return false;
   const payload=seasonPayload(s,year),t=performance.now();
-  if(!payload.stats.length)return false;
+  if(!payload.stats.length&&!payload.clubStats.length)return false;
   try{
    await window.FutBRDesktop.storeHistorySeason(payload);
    status.lastSeason=Number(year);status.lastRows=payload.stats.length;status.lastMs=Math.round(performance.now()-t);status.lastError=null;
@@ -461,7 +463,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
   const btn=e.target?.closest?.('[data-action="player"][data-player]');
   if(!btn||btn.dataset.v190RelationalReplay==='1')return;
   const pid=String(btn.dataset.player||'');
-  if(!pid||careerCache.has(pid))return;
+  if(!pid||careerCache.has(pid)||careerEmpty.has(pid))return;
   e.preventDefault();e.stopImmediatePropagation();
   await hydratePlayerCareer(pid);
   btn.dataset.v190RelationalReplay='1';
@@ -475,7 +477,7 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
   if(Number.isFinite(closed))setTimeout(()=>mirrorSeason(out||s,closed),1200);
   return out;
  };
- G.relationalHistory={...status,mirrorSeason:(year)=>mirrorSeason(state,Number(year)),hydratePlayerCareer,status:()=>({...status,careerCachePlayers:careerCache.size})};
+ G.relationalHistory={...status,mirrorSeason:(year)=>mirrorSeason(state,Number(year)),hydratePlayerCareer,status:()=>({...status,careerCachePlayers:careerCache.size,careerEmptyPlayers:careerEmpty.size})};
 })();
 </script>
 """
