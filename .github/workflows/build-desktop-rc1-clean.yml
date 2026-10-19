@@ -113,6 +113,15 @@ jobs:
         shell: pwsh
         run: python .github/scripts/diagnose_boot_performance.py "$env:FUTBR_PROJECT"
 
+      - name: Publicar diagnostico antecipado
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Boot-Performance-Diagnostic
+          path: ${{ env.FUTBR_PROJECT }}/boot-performance-diagnostic.json
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
       - name: Testar integridade do historico relacional
         shell: pwsh
         run: python .github/scripts/test_relational_history.py "$env:FUTBR_PROJECT"
