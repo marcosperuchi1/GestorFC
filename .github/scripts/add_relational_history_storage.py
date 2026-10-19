@@ -1,5 +1,5 @@
 from __future__ import annotations
-import sys
+import re, sys
 from pathlib import Path
 
 def fail(msg):
@@ -483,6 +483,11 @@ fn history_database_info(db: State<'_, DesktopDb>) -> Result<serde_json::Value, 
 """
     if 'futbr-relational-history-bridge' not in html:
         html = once(html, "</body>", bridge + "\n</body>", "history bridge")
+
+    # Final document-boundary cleanup. Literal backslash-n sequences between
+    # HTML tags become visible text nodes in WebView2 (the "\\n" seen on blank boot).
+    html = re.sub(r'(</(?:script|style)>)\\\\n(?=\\s*<)', r'\\1\n', html, flags=re.I)
+    html = re.sub(r'(<body\\b[^>]*>)\\\\n(?=\\s*<)', r'\\1\n', html, count=1, flags=re.I)
 
     lib_path.write_text(lib, encoding="utf-8")
     index_path.write_text(html, encoding="utf-8")
