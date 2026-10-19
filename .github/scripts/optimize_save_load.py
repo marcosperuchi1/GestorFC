@@ -70,6 +70,11 @@ def main():
     if old_boot in html:
         html=html.replace(old_boot,new_boot,1)
 
+    boot_call="v548Boot();"
+    boot_safe="v548Boot().catch(e=>{console.error('[FutBR] falha fatal no boot:',e);try{v548RenderAuth('login','A inicializacao foi recuperada. Entre para continuar.');}catch(_){} });"
+    if boot_call in html:
+        html=html.replace(boot_call,boot_safe,1)
+
     # 2. Existing careers do not depend on the initial roster database to boot.
     # Start the 7 MB source in parallel, but never block menu/save restoration on it.
     old_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
@@ -209,6 +214,8 @@ window.GestorFC.desktopLoadOptimization={
         fail("load optimization marker missing")
     if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html:
         fail("boot remoto ainda pode escapar por excecao sincrona")
+    if "v548Boot().catch(e=>{console.error('[FutBR] falha fatal no boot:'" not in html:
+        fail("chamada final do boot ainda pode rejeitar sem recuperar a interface")
     if "emptyAppWatchdog:true" not in html:
         fail("watchdog final de tela vazia ausente")
 
