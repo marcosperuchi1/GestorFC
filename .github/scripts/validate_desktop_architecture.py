@@ -178,7 +178,7 @@ def main():
         die('Leitura paralela dos blocos do save nao foi ativada')
     if "indexedDbBatchTransaction:true" not in html or "async function v18183DbWriteMany(entries)" not in html:
         die('Salvamento fragmentado ainda abre transacoes IndexedDB por shard')
-    if "playerShardTransactionBatch:4" not in html:
+    if "playerShardTransactionBatch:8" not in html:
         die('Lote de shards de jogadores nao foi ativado')
     if "function v18182NationalIndex(s)" not in html or "indexedBuild:true" not in html:
         die('Criacao de carreira ainda varre todos os jogadores repetidamente por selecao')
@@ -186,6 +186,10 @@ def main():
         die('Primeira temporada ainda cria profundidade excessiva de base para todos os clubes')
     if "FUTBR_PLAYERS_PACKED_GZIP_V1" not in html or "unknownFields:'extra'" not in html:
         die('Jogadores ainda sao persistidos como objetos completos sem compactacao lossless')
+    if "playerChunkSize:900" not in html or "playerTransactionBatch:8" not in html:
+        die('Tamanho de bloco do save compacto nao esta limitado para reduzir pico de memoria')
+    if "player-packed-buffer-v1" not in html or "v18191wPostPackedPlayerRows" not in html:
+        die('Transferencia Worker para UI ainda envia jogadores no formato expandido')
     if "v18191wDecodePlayerChunk" not in html or "v18191mEncodePlayerChunk" not in html:
         die('Codec compacto de jogadores nao esta ligado a leitura e gravacao')
     if "18.193-background-create-checkpoint" not in html or "oneAuthoritativeCheckpoint:true" not in html or "foregroundBlocking:false" not in html:
