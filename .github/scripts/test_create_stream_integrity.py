@@ -24,12 +24,12 @@ def extract_balanced(src,start):
     die('Objeto nao fechado')
 
 def const_obj(src,name):
-    m=re.search(r'const\\s+'+re.escape(name)+r'\\s*=\\s*',src)
+    m=re.search(r'const\s+'+re.escape(name)+r'\s*=\s*',src)
     if not m: die(name+' ausente')
     return extract_balanced(src,m.end())
 
 def function_block(src,name):
-    m=re.search(r'function\\s+'+re.escape(name)+r'\\s*\\(',src)
+    m=re.search(r'function\s+'+re.escape(name)+r'\s*\(',src)
     if not m: die(name+' ausente')
     b=src.find('{',m.end());depth=0;quote=None;esc=False
     for i in range(b,len(src)):
@@ -69,9 +69,9 @@ def main():
     compact=function_block(html,'v124CompactColdPlayer')
 
     # The compact helper depends on these sets.
-    m1=re.search(r"const v124SkipFalse=new Set\\((\\[[^;]+\\])\\);",html)
-    m2=re.search(r"const v124SkipZero=new Set\\((\\[[^;]+\\])\\);",html)
-    m3=re.search(r"const v124SkipEmpty=new Set\\((\\[[^;]+\\])\\);",html)
+    m1=re.search(r"const v124SkipFalse=new Set\((\[[^;]+\])\);",html)
+    m2=re.search(r"const v124SkipZero=new Set\((\[[^;]+\])\);",html)
+    m3=re.search(r"const v124SkipEmpty=new Set\((\[[^;]+\])\);",html)
     if not (m1 and m2 and m3): die('sets de compactacao fria ausentes')
 
     a=html.find('const Engine = (() => {');b=html.find("if(typeof module!=='undefined'&&module.exports)",a)
