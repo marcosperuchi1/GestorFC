@@ -38,11 +38,10 @@ def main():
  }"""
     html=replace_once(html,old_decode,new_decode,"parallel sharded decode")
 
-    # 2. The login must remain one-click. The player base can stay lazy while the
-    # auth screen is open, but once credentials are accepted the SAME submit waits
-    # for the already-running load before rendering any screen that reads it sync.
+    # 2. Existing careers do not depend on the initial roster database to boot.
+    # Start the 7 MB source in parallel, but never block menu/save restoration on it.
     old_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
-    new_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
+    new_enter="""async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:',e?.message||e));}catch(e){}renderWelcome();await loadLocal();}"""
     if old_enter in html:
         html=html.replace(old_enter,new_enter,1)
 
@@ -71,9 +70,7 @@ def main():
  busy=true;block('Carregando '+target.name+'...');
  try{
   await ready;
-  const rosterPromise=typeof v310StartRosterLoad==='function'
-   ?v310StartRosterLoad()
-   :Promise.resolve(null);
+  try{if(typeof v310StartRosterLoad==='function')v310StartRosterLoad().catch(e=>console.warn('[FutBR] base local durante load:',e?.message||e));}catch(e){}
   const check=target.archived?await get(ARCHIVE+id).catch(()=>null):await get(BASE).catch(()=>null);
   const owner=check?.root?.v548Access?.owner;
   if(owner&&owner!==signedAccount()&&v548Session?.plan!=='author')throw Error('Este save pertence a outra conta.');
@@ -95,10 +92,7 @@ def main():
   try{if(v53Worker&&!v53Sim.active){v53Worker.terminate();v53Worker=null;v53WorkerReady=null;}}catch(e){}
 
   block('Abrindo '+target.name+'...');
-  const [loaded]=await Promise.all([
-   v53Call('load',{key:STORE}),
-   rosterPromise
-  ]);
+  const loaded=await v53Call('load',{key:STORE});
   if(!loaded)throw Error('Nenhuma carreira salva foi encontrada.');
   if(!loaded.players||!loaded.teams||!loaded.schedule||!loaded.competitions)
    throw Error('O save está incompleto. A versão anterior foi preservada; não avance a carreira.');
@@ -161,8 +155,8 @@ window.GestorFC.desktopLoadOptimization={
         fail("sequential shard decoder still present")
     if eager in html:
         fail("eager player base load still present")
-    if "async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}" not in html:
-        fail("login ainda pode renderizar antes da base local ficar pronta")
+    if "base local em segundo plano" not in html or "renderWelcome();await loadLocal();" not in html:
+        fail("boot de save ainda depende da base inicial de jogadores")
     if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
         fail("prefetch silencioso da base na tela de login ausente")
     if "blankScreenRecovery:true" not in html:
