@@ -98,7 +98,7 @@ def main():
     loop_start=html.find("const v18181Stable=new Set(['v538CareerArchive'",save_worker)
     loop_end=html.find(' const manifest=',loop_start)
     if loop_start<0 or loop_end<0: fail('worker shard loop ausente')
-    worker_loop="""const v18181Stable=new Set(['v538CareerArchive','v555CareerArchive','scorerArchive']);for(const key of V171_SHARDS){const value=s[key];if(value==null)continue;const sameSeason=old?.format===V171_FORMAT&&Number(old.year)===Number(s.year)&&!s.seasonDone&&v18181Stable.has(key)&&old.collections?.[key];if(sameSeason){collections[key]=old.collections[key];continue;}const isArray=Array.isArray(value),keys=[],limit=key==='players'?1800:key==='teams'?380:key==='coaches'?500:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?650:(key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'?1:120);let rows=[],chunk=0,done=0,pending=[];const commit=async(force=false)=>{if(!pending.length)return;const target=key==='players'?4:key==='allTimeStats'?6:4;if(!force&&pending.length<target)return;await v18181RawWriteMany(pending.splice(0,pending.length));await new Promise(r=>setTimeout(r,0));};const flush=async()=>{if(!rows.length)return;const raw=rows;rows=[];const payload=key==='players'?await v18191wEncodePlayerChunk(raw):raw,ck=v171ShardKey(token,key,chunk++);keys.push(ck);pending.push({key:ck,value:payload});done++;await commit(false);};for(const id in value){if(!safe(id))continue;rows.push([id,value[id]]);if(rows.length>=limit)await flush();}await flush();await commit(true);collections[key]={isArray,length:isArray?value.length:0,keys,...(key==='players'?{encoding:v18191wPlayerFormat}:null)};}"""
+    worker_loop="""const v18181Stable=new Set(['v538CareerArchive','v555CareerArchive','scorerArchive']);for(const key of V171_SHARDS){const value=s[key];if(value==null)continue;const sameSeason=old?.format===V171_FORMAT&&Number(old.year)===Number(s.year)&&!s.seasonDone&&v18181Stable.has(key)&&old.collections?.[key];if(sameSeason){collections[key]=old.collections[key];continue;}const isArray=Array.isArray(value),keys=[],limit=key==='players'?900:key==='teams'?380:key==='coaches'?500:key==='schedule'?4:key==='competitionStats'?4:key==='allTimeStats'?650:(key==='v538CareerArchive'||key==='v555CareerArchive'||key==='scorerArchive'?1:120);let rows=[],chunk=0,done=0,pending=[];const commit=async(force=false)=>{if(!pending.length)return;const target=key==='players'?8:key==='allTimeStats'?6:4;if(!force&&pending.length<target)return;await v18181RawWriteMany(pending.splice(0,pending.length));await new Promise(r=>setTimeout(r,0));};const flush=async()=>{if(!rows.length)return;const raw=rows;rows=[];const payload=key==='players'?await v18191wEncodePlayerChunk(raw):raw,ck=v171ShardKey(token,key,chunk++);keys.push(ck);pending.push({key:ck,value:payload});done++;await commit(false);};for(const id in value){if(!safe(id))continue;rows.push([id,value[id]]);if(rows.length>=limit)await flush();}await flush();await commit(true);collections[key]={isArray,length:isArray?value.length:0,keys,...(key==='players'?{encoding:v18191wPlayerFormat}:null)};}"""
     html=html[:loop_start]+worker_loop+html[loop_end:]
 
     main_anchor='async function v18183DbWriteMany(entries){'
@@ -113,7 +113,7 @@ def main():
     new_write="""async function writeCollection(token,key,value,limit){
   const isArray=Array.isArray(value),keys=[];let rows=[],idx=0,writes=0,pending=[];
   const commit=async(force=false)=>{
-   if(!pending.length)return;const target=key==='players'?4:key==='allTimeStats'?8:6;if(!force&&pending.length<target)return;
+   if(!pending.length)return;const target=key==='players'?8:key==='allTimeStats'?8:6;if(!force&&pending.length<target)return;
    const batch=pending.splice(0,pending.length);await v18183DbWriteMany(batch);await new Promise(r=>setTimeout(r,0));
   };
   const flush=async()=>{
@@ -127,13 +127,13 @@ def main():
  }
  """
     html=html[:ws]+new_write+html[we:]
-    html=html.replace("const limit=key==='players'?2400:key==='teams'?420", "const limit=key==='players'?1800:key==='teams'?420",1)
+    html=html.replace("const limit=key==='players'?2400:key==='teams'?420", "const limit=key==='players'?900:key==='teams'?420",1)
 
     marker="G.v171={version:V,freshCareerOnly:true,storageKey:KEY,memory:{"
     if marker in html:
-        html=html.replace(marker,"G.v171={version:V,freshCareerOnly:true,storageKey:KEY,playerStorage:{format:'FUTBR_PLAYERS_PACKED_GZIP_V1',lossless:true,unknownFields:'extra',gzip:true,workerStream:'player-packed-buffer-v1'},memory:{",1)
+        html=html.replace(marker,"G.v171={version:V,freshCareerOnly:true,storageKey:KEY,playerStorage:{format:'FUTBR_PLAYERS_PACKED_GZIP_V1',lossless:true,unknownFields:'extra',gzip:true,workerStream:'player-packed-buffer-v1',playerChunkSize:900,playerTransactionBatch:8},memory:{",1)
 
-    path.write_text(html,encoding='utf-8')
+    html=html.replace('playerShardTransactionBatch:4','playerShardTransactionBatch:8',1)\n    path.write_text(html,encoding='utf-8')
     print('packed player storage applied')
 
 if __name__=='__main__': main()
