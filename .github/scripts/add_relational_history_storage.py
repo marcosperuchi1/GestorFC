@@ -242,15 +242,52 @@ fn history_player_totals(
 <script id="futbr-relational-history-bridge">
 (()=>{
  if(!window.FutBRDesktop?.available)return;
+ const G=window.GestorFC=window.GestorFC||{};
  window.FutBRDesktop.storeHistorySeason=(payload)=>window.__TAURI__.core.invoke('history_store_season',payload||{});
  window.FutBRDesktop.playerHistoryTotals=(playerId)=>window.__TAURI__.core.invoke('history_player_totals',{playerId:String(playerId)});
- window.GestorFC=window.GestorFC||{};
- window.GestorFC.relationalHistory={
-   version:'19.0-shadow-v1',
-   mode:'shadow-validation',
-   engine:'sqlite-rusqlite',
-   authoritative:false
+
+ const status={version:'19.0-shadow-v2',mode:'shadow-validation',engine:'sqlite-rusqlite',authoritative:false,lastSeason:null,lastRows:0,lastMs:0,lastError:null};
+ function n(v){const x=Number(v);return Number.isFinite(x)?x:0;}
+ function seasonPayload(s,year){
+  const archive=(s?.scorerArchive||[]).find(a=>Number(a?.year)===Number(year));
+  const stats=[];
+  for(const [competitionId,db] of Object.entries(archive?.competitions||{})){
+   for(const [pid,row] of Object.entries(db||{})){
+    stats.push({
+     playerId:String(row?.id||pid),season:Number(year),competitionId:String(competitionId),clubId:null,
+     apps:n(row?.apps),starts:0,minutes:n(row?.minutes),goals:n(row?.goals),assists:n(row?.assists),yellow:0,red:0
+    });
+   }
+  }
+  const transfers=(s?.transfers||[]).filter(x=>Number(x?.year)===Number(year)).map(x=>({
+   playerId:String(x?.id||x?.playerId||''),season:Number(year),
+   fromClubId:x?.from==null?null:String(x.from),toClubId:x?.to==null?null:String(x.to),
+   day:Number.isFinite(Number(x?.day))?Number(x.day):null,fee:Number.isFinite(Number(x?.fee))?Number(x.fee):null
+  })).filter(x=>x.playerId);
+  const retirements=(s?.retirements||[]).filter(x=>Number(x?.year)===Number(year)).map(x=>({
+   playerId:String(x?.id||x?.playerId||x||''),season:Number(year),
+   day:Number.isFinite(Number(x?.day))?Number(x.day):null,clubId:x?.clubId==null?null:String(x.clubId)
+  })).filter(x=>x.playerId&&x.playerId!=='[object Object]');
+  return {season:Number(year),stats,transfers,retirements};
+ }
+ async function mirrorSeason(s,year){
+  if(!s||!Number.isFinite(Number(year)))return false;
+  const payload=seasonPayload(s,year),t=performance.now();
+  if(!payload.stats.length)return false;
+  try{
+   await window.FutBRDesktop.storeHistorySeason(payload);
+   status.lastSeason=Number(year);status.lastRows=payload.stats.length;status.lastMs=Math.round(performance.now()-t);status.lastError=null;
+   return true;
+  }catch(e){status.lastError=String(e?.message||e);console.warn('[FutBR] histórico relacional:',e);return false;}
+ }
+ const baseNextSeason=E.nextSeason;
+ E.nextSeason=function(s,...args){
+  const closed=s?.seasonDone?Number(s.year):null;
+  const out=baseNextSeason(s,...args);
+  if(Number.isFinite(closed))setTimeout(()=>mirrorSeason(out||s,closed),1200);
+  return out;
  };
+ G.relationalHistory={...status,mirrorSeason:(year)=>mirrorSeason(state,Number(year)),status:()=>({...status})};
 })();
 </script>
 """
