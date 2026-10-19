@@ -38,6 +38,38 @@ def main():
  }"""
     html=replace_once(html,old_decode,new_decode,"parallel sharded decode")
 
+    # 1b. Commercial session restore must never leave WebView2 on an empty shell.
+    # Server validation remains authoritative; a slow request merely reveals the
+    # login screen while the same validation continues in the background.
+    old_boot="""async function v548Boot(){
+ // 18.94: inicia apenas a leitura local de catalogo/editor em paralelo com a
+ // validacao remota da licenca. Nunca libera uma carreira antes de validar o acesso.
+ const localPreload=loadLocal(false);
+ const authPromise=v580RestoreRemoteSession();
+ const authenticated=await authPromise;
+ if(!authenticated){localPreload.catch(()=>{});v548RenderAuth('login');return;}
+ try{await localPreload;}catch(e){console.warn('[18.94] Leitura inicial:',e?.message||e);}
+ if(!state)renderWelcome();
+}"""
+    new_boot="""async function v548Boot(){
+ const localPreload=Promise.resolve(loadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});
+ const authPromise=Promise.resolve(v580RestoreRemoteSession()).catch(e=>{console.warn('[FutBR] sessao remota no boot:',e?.message||e);return null;});
+ let timeoutId=0;
+ const timeout=new Promise(resolve=>{timeoutId=setTimeout(()=>resolve(null),6000);});
+ const authenticated=await Promise.race([authPromise,timeout]);
+ if(timeoutId)clearTimeout(timeoutId);
+ if(authenticated){
+  await localPreload;
+  if(!state)renderWelcome();
+  return;
+ }
+ await localPreload;
+ v548RenderAuth('login','Validando sua sessao. Se necessario, entre novamente.');
+ authPromise.then(session=>{if(session&&!state){v548EnterGame().catch(e=>console.warn('[FutBR] entrada apos validacao:',e?.message||e));}}).catch(()=>{});
+}"""
+    if old_boot in html:
+        html=html.replace(old_boot,new_boot,1)
+
     # 2. Existing careers do not depend on the initial roster database to boot.
     # Start the 7 MB source in parallel, but never block menu/save restoration on it.
     old_enter="""async function v548EnterGame(){await v310StartRosterLoad();renderWelcome();await loadLocal();}"""
