@@ -182,66 +182,18 @@ window.GestorFC.longCareerMemory={
     html=html.replace(marker,diag+marker,1)
 
     create_checkpoint=r"""
-<script id="futbr-single-create-checkpoint">
-(()=>{
- let consolidating=false,forceFlush=false;
- const basePersist=persist,baseFlush=v52FlushSave,basePrepare=v53Prepare;
- persist=function(notify=false){
-  if(consolidating&&state){
-   try{E.invalidateMarket(state);}catch(e){}
-   try{v52MarketIndex=null;}catch(e){}
-   v52SaveStats.requests++;v52PendingState=state;v52SaveDirty=true;v52NotifySave||=notify;
-   try{updateSaveStatus();}catch(e){}
-   return Promise.resolve(true);
-  }
-  return basePersist(notify);
- };
- v52FlushSave=async function(...args){
-  if(consolidating&&!forceFlush)return null;
-  return baseFlush(...args);
- };
- async function finalCreateCheckpoint(){
-  if(!state)return;
-  v52PendingState=state;v52SaveDirty=true;
-  forceFlush=true;
-  try{await baseFlush();if(v52SavePromise)await v52SavePromise;}
-  finally{forceFlush=false;}
-  if(!saveOK)throw Error('Nao foi possivel concluir o checkpoint da nova carreira.');
- }
- v53Prepare=async function(op,params={}){
-  if(op!=='create')return basePrepare(op,params);
-  // Preserve an older mounted career before entering create consolidation.
-  await baseFlush();if(v52SavePromise)await v52SavePromise;
-  consolidating=true;
-  try{
-   const out=await basePrepare(op,params);
-   if(state)await finalCreateCheckpoint();
-   return out;
-  }finally{consolidating=false;}
- };
- if(typeof v643PrepareNationalCareer==='function'){
-  const baseNational=v643PrepareNationalCareer;
-  v643PrepareNationalCareer=async function(options={}){
-   await baseFlush();if(v52SavePromise)await v52SavePromise;
-   consolidating=true;
-   try{
-    const out=await baseNational(options);
-    if(state)await finalCreateCheckpoint();
-    return out;
-   }finally{consolidating=false;}
-  };
- }
- window.GestorFC=window.GestorFC||{};
- window.GestorFC.createCheckpointOptimization={
-  version:'18.185-single-create-checkpoint',
-  oneAuthoritativeCheckpoint:true,
-  intermediatePersistCoalesced:true,
-  previousCareerFlushedBeforeCreate:true
- };
-})();
+<script id="futbr-background-create-checkpoint-policy">
+window.GestorFC=window.GestorFC||{};
+window.GestorFC.createCheckpointOptimization={
+ version:'18.193-background-create-checkpoint',
+ oneAuthoritativeCheckpoint:true,
+ foregroundBlocking:false,
+ initialSaveBackground:true,
+ advanceWaitsPendingCheckpoint:true
+};
 </script>
 """
-    if 'futbr-single-create-checkpoint' not in html:
+    if 'futbr-background-create-checkpoint-policy' not in html:
         html=html.replace('</body>',create_checkpoint+'\n</body>',1)
 
     path.write_text(html,encoding='utf-8')
