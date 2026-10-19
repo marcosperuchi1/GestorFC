@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: futbr-desktop-rc1
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     name: Tauri Windows x64 - portatil e instalador
