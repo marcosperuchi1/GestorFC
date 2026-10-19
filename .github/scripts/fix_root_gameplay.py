@@ -459,40 +459,52 @@ function v18171NationalGeneratedName(s,code,id,used=new Set()){
  const first=g[h%g.length]||'Alex',last=sn[(h>>>8)%sn.length]||'Silva',extra=sn[(h>>>16)%sn.length]||'Costa';
  return (familyFirst?last+' '+first+' '+extra:first+' '+last+' '+extra).trim();
 }
-function v18171RepairNationalSupportNames(s,code){
- const n=String(code||'').toUpperCase(),players=v640Eligible(s,n),support=players.filter(p=>p?.generatedNationalSupport||p?.v18170InitialNationalFreeAgent),used=new Set(players.filter(p=>!support.includes(p)).map(p=>v18171NameKey(p.name)).filter(Boolean));
+function v18182NationalIndex(s){
+ const map=new Map();
+ for(const p of Object.values(s?.players||{})){
+  const code=String(p?.natCode||'').toUpperCase();if(!code)continue;
+  let list=map.get(code);if(!list){list=[];map.set(code,list);}list.push(p);
+ }
+ return map;
+}
+function v18171RepairNationalSupportNames(s,code,poolOverride=null){
+ const n=String(code||'').toUpperCase(),players=poolOverride||v640Eligible(s,n),support=players.filter(p=>p?.generatedNationalSupport||p?.v18170InitialNationalFreeAgent),supportSet=new Set(support),used=new Set(players.filter(p=>!supportSet.has(p)).map(p=>v18171NameKey(p.name)).filter(Boolean));
  support.sort((a,b)=>String(a.id).localeCompare(String(b.id))).forEach(p=>{const clean=p.v18171LocalizedName&&p.natCode===n&&!/\d/.test(String(p.name||''));if(clean){used.add(v18171NameKey(p.name));return;}p.natCode=n;p.name=v18171NationalGeneratedName(s,n,p.id,used).replace(/\s*\d+\s*$/,'').trim();p.localized=true;p.nationalityKnown=true;p.v18171LocalizedName=true;used.add(v18171NameKey(p.name));});
  return support.length;
 }
-function v18171RepairAllNationalSupportNames(s){if(!s?.players)return 0;let n=0;for(const a of v640AssocCatalog())n+=v18171RepairNationalSupportNames(s,a.code);return n;}
-function v18170NationalPoolBase(s,code,pos,conf){
- const all=v640Eligible(s,code),same=all.filter(p=>p.pos===pos).sort((a,b)=>E.overall(b)-E.overall(a)).slice(0,5),top=all.slice(0,18);
+function v18171RepairAllNationalSupportNames(s){
+ if(!s?.players)return 0;const index=v18182NationalIndex(s);let n=0;
+ for(const a of v640AssocCatalog()){const code=String(a.code||'').toUpperCase();n+=v18171RepairNationalSupportNames(s,code,index.get(code)||[]);}
+ return n;
+}
+function v18170NationalPoolBase(s,code,pos,conf,poolOverride=null){
+ const all=poolOverride||v640Eligible(s,code),same=all.filter(p=>p.pos===pos).sort((a,b)=>E.overall(b)-E.overall(a)).slice(0,5),top=all.slice(0,18);
  const sample=same.length?same:top,avg=sample.length?E.avg(sample.map(E.overall)):(V640_CONF_BASE[conf]||62);
  return E.clamp(Math.round(avg),45,86);
 }
-function v18170EnsureNationalPool(s,code,f=null){
+function v18170EnsureNationalPool(s,code,f=null,poolOverride=null){
  const t=v640Team(s,code);if(!t||!s?.players)return {code,created:0};
- const target=V18170_NATIONAL_POOL_TARGET,pool=v640Eligible(s,code),key=f?v641NationalDisciplineKey(s,f):null;
+ const target=V18170_NATIONAL_POOL_TARGET,pool=poolOverride||v640Eligible(s,code),key=f?v641NationalDisciplineKey(s,f):null;
  const available=f?pool.filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0)):pool;
- const counts={GOL:0,ZAG:0,LAT:0,VOL:0,MEI:0,ATA:0},created=[];
+ const counts={GOL:0,ZAG:0,LAT:0,VOL:0,MEI:0,ATA:0},created=[],usedNames=new Set(pool.map(x=>v18171NameKey(x.name)).filter(Boolean));
  for(const p of available)if(Object.hasOwn(counts,p.pos))counts[p.pos]++;
  s.free=Array.isArray(s.free)?s.free:[];
  for(const pos of ['GOL','ZAG','LAT','VOL','MEI','ATA']){
   let missing=Math.max(0,(target[pos]||0)-(counts[pos]||0));
   while(missing-->0){
-   const base=v18170NationalPoolBase(s,code,pos,t.conf),age=20+Math.floor(E.rng(s)*10),id=E.createPlayer(s,pos,base,age),p=s.players[id];
+   const base=v18170NationalPoolBase(s,code,pos,t.conf,pool),age=20+Math.floor(E.rng(s)*10),id=E.createPlayer(s,pos,base,age),p=s.players[id];
    if(!p)throw Error('Falha ao criar jogador livre para '+t.name+'.');
    p.natCode=code;p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18170InitialNationalFreeAgent=true;
-   p.name=v18171NationalGeneratedName(s,code,id,new Set(v640Eligible(s,code).filter(x=>x.id!==id).map(x=>v18171NameKey(x.name)).filter(Boolean)));p.localized=true;p.nationalityKnown=true;p.v18171LocalizedName=true;
+   p.name=v18171NationalGeneratedName(s,code,id,usedNames);usedNames.add(v18171NameKey(p.name));p.localized=true;p.nationalityKnown=true;p.v18171LocalizedName=true;
    p.star=false;p.starCandidate=false;p.editorStarOverride=false;
    try{v200ApplyDatabaseOVR(p,base);}catch(e){}
    const now=E.overall(p);p.potential=Math.max(now,Math.min(90,now+(age<=22?5:age<=26?3:1)));
-   if(!s.free.includes(id))s.free.push(id);created.push(id);counts[pos]=(counts[pos]||0)+1;
+   pool.push(p);if(!s.free.includes(id))s.free.push(id);created.push(id);counts[pos]=(counts[pos]||0)+1;
   }
  }
  if(created.length)t.v18170InitialSupport=(t.v18170InitialSupport||0)+created.length;
  if(f){
-  const playable=v640Eligible(s,code).filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0))
+  const playable=pool.filter(p=>p&&!Number(p.injury)&&!(E.disciplineRecord(p,key).ban>0))
    .sort((a,b)=>(typeof v165CallupScore==='function'?v165CallupScore(b)-v165CallupScore(a):E.overall(b)-E.overall(a))||(Number(a.age)||99)-(Number(b.age)||99));
   t.roster=playable.slice(0,26).map(p=>p.id);
  }
@@ -500,11 +512,12 @@ function v18170EnsureNationalPool(s,code,f=null){
 }
 function v18170EnsureAllNationalPools(s){
  if(!s||s.v18170NationalPools?.done)return s?.v18170NationalPools||null;
- v640EnsureState(s);let total=0,nations=0;const rows={};
+ v640EnsureState(s);const index=v18182NationalIndex(s);let total=0,nations=0;const rows={};
  for(const a of v640AssocCatalog()){
-  const r=v18170EnsureNationalPool(s,a.code);if(r.created){rows[a.code]=r.created;total+=r.created;nations++;}
+  const code=String(a.code||'').toUpperCase();let pool=index.get(code);if(!pool){pool=[];index.set(code,pool);}
+  const r=v18170EnsureNationalPool(s,code,null,pool);if(r.created){rows[code]=r.created;total+=r.created;nations++;}
  }
- s.v18170NationalPools={done:true,year:s.year,totalCreated:total,nations,createdByNation:rows,freeAgents:true,target:26,ovrModel:'existing-nationality-position-average'};
+ s.v18170NationalPools={done:true,year:s.year,totalCreated:total,nations,createdByNation:rows,freeAgents:true,target:26,ovrModel:'existing-nationality-position-average',indexedBuild:true};
  return s.v18170NationalPools;
 }
 '''
