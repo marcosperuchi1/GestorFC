@@ -90,10 +90,10 @@ def main():
     ]:
         if marker not in html: die('Bloqueio Premium da carreira de selecao incompleto: '+marker)
 
-    # Criacao de carreira: a segunda passagem deve reutilizar a referencia
-    # transitoria do registro da base em vez de reconstruir Maps por nome.
+    # Criacao de carreira: bases antigas podem usar referencia transitoria;
+    # a base consolidada deve elimina-la para nao duplicar o mundo em RAM.
     for marker in [
-        "p.v18175SeedRoster=rp",
+        "p.v18175SeedRoster=data?.prebuiltInitial?null:rp",
         "const info=db[t.id];",
         "p.real?(p.v18175SeedRoster||null):null",
         "if(p.v18175SeedRoster)delete p.v18175SeedRoster;"
