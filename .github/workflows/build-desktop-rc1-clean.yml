@@ -1,6 +1,8 @@
 name: Build FutBR Manager Desktop RC1 Clean
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +27,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Preparar smoke test do navegador
+        shell: pwsh
+        run: python -m pip install playwright
+
       - name: Preparar scripts da base consolidada
         shell: pwsh
         run: |
@@ -45,7 +51,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/consolidate_initial_database.py .github/scripts/test_initial_database.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/test_runtime_boot.py .github/scripts/finalize_prebuilt_boot.py .github/scripts/consolidate_initial_database.py .github/scripts/test_initial_database.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -140,6 +146,10 @@ jobs:
         shell: pwsh
         run: python .github/scripts/add_relational_history_storage.py "$env:FUTBR_PROJECT"
 
+      - name: Finalizar boot com base precompilada
+        shell: pwsh
+        run: python .github/scripts/finalize_prebuilt_boot.py "$env:FUTBR_PROJECT"
+
       - name: Diagnosticar boot e desempenho final
         shell: pwsh
         run: python .github/scripts/diagnose_boot_performance.py "$env:FUTBR_PROJECT"
@@ -171,6 +181,10 @@ jobs:
       - name: Testar login independente da base inicial
         shell: pwsh
         run: python .github/scripts/test_login_boot.py "$env:FUTBR_PROJECT"
+
+      - name: Testar boot real da tela de login
+        shell: pwsh
+        run: python .github/scripts/test_runtime_boot.py "$env:FUTBR_PROJECT"
 
       - name: Testar base inicial consolidada
         shell: pwsh
@@ -243,6 +257,7 @@ jobs:
           Copy-Item 'create-stream-integrity-tests.json' 'artifacts/create-stream-integrity-tests.json'
           Copy-Item 'direct-load-tests.json' 'artifacts/direct-load-tests.json'
           Copy-Item 'login-boot-tests.json' 'artifacts/login-boot-tests.json'
+          Copy-Item 'runtime-boot-tests.json' 'artifacts/runtime-boot-tests.json'
           Copy-Item 'initial-database-tests.json' 'artifacts/initial-database-tests.json'
           Copy-Item 'initial-database-consolidation.json' 'artifacts/initial-database-consolidation.json'
           Copy-Item 'create-performance-tests.json' 'artifacts/create-performance-tests.json'
