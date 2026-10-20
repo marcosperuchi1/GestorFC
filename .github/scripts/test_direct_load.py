@@ -15,7 +15,7 @@ def function_block(src,name):
             elif ch=='\\': esc=True
             elif ch==quote: quote=None
             continue
-        if ch in ("'",'"','\`'): quote=ch;continue
+        if ch in ("'",'"','`'): quote=ch;continue
         if ch=='{': depth+=1
         elif ch=='}':
             depth-=1
@@ -32,10 +32,14 @@ def main():
     codec=html[ca:cb]
     hydrate=function_block(html,'v18194HydrateManifest')
 
-    if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
-        die('landing direto no elenco nao foi instalado')
+    if html.count("view=loaded?.v640National?.userTeam?'national':'squad';") < 2:
+        die('uma das rotas de continuar carreira nao abre direto no elenco')
     if "noWorkerWorldCloneOnLoad:true" not in html:
         die('marcador de carregamento direto ausente')
+    if "initialRosterDeferredOnResume:true" not in html:
+        die('base inicial ainda nao foi adiada ao continuar save')
+    if "base local no login:" in html or "base local durante load:" in html:
+        die('continuar carreira ainda dispara preload da base inicial')
 
     js=r"""
 const assert=require('assert');
