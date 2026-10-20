@@ -91,7 +91,8 @@ def main():
 
     old_quick = "  const loaded=await v53Call('load',{key:STORE});if(!loaded)throw Error('Nenhuma carreira salva foi encontrada.');"
     new_quick = r"""  const v18194Loader=window.GestorFC?.v171?.loadDirect;
-  const loaded=typeof v18194Loader==='function'?await v18194Loader():await v53Call('load',{key:STORE});
+  let loaded=typeof v18194Loader==='function'?await v18194Loader():null;
+  if(!loaded)loaded=await v53Call('load',{key:STORE});
   if(!loaded)throw Error('Nenhuma carreira salva foi encontrada.');"""
     html = once(html, old_quick, new_quick, "quick continue direct loader")
     html = once(
@@ -108,9 +109,10 @@ def main():
     segment=html[load_start:load_end]
     old_load = "  const loaded=await v53Call('load',{key:STORE});"
     new_load = r"""  const v18194Loader=window.GestorFC?.v171?.loadDirect;
-  const loaded=typeof v18194Loader==='function'
+  let loaded=typeof v18194Loader==='function'
    ?await v18194Loader(p=>{if(p?.key==='players'&&(p.done===p.total||p.done%24===0))block('Abrindo '+target.name+' · jogadores '+p.done+'/'+p.total+' blocos');})
-   :await v53Call('load',{key:STORE});"""
+   :null;
+  if(!loaded)loaded=await v53Call('load',{key:STORE});"""
     segment = once(segment, old_load, new_load, "loadSelected direct loader")
     segment = once(
         segment,
@@ -149,6 +151,7 @@ window.GestorFC.directLoadOptimization={
  workerWorldCloneOnLoad:false,
  incrementalManifestHydration:true,
  batchReadTransactions:true,
+ legacySaveFallback:true,
  initialRosterDeferredOnResume:true
 };
 (()=>{
@@ -176,6 +179,8 @@ window.GestorFC.directLoadOptimization={
         fail("runtime marker ausente")
     if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
         fail("dashboard obsoleto ainda pode abrir em carreira de clube")
+    if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
+        fail("fallback para saves antigos ausente")
     if "initialRosterDeferredOnResume:true" not in html or "base local para nova carreira" not in html:
         fail("base inicial ainda e carregada desnecessariamente ao continuar save")
 
