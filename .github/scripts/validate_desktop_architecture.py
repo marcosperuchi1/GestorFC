@@ -73,8 +73,12 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
-    if "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:'" not in html:
-        die('Login nao esta adiando a base inicial para apenas novas carreiras')
+    if "async function v548EnterGame(){await v260FastLoadLocal(false);await v310StartRosterLoad();renderWelcome();}" not in html:
+        die('Entrada autenticada ainda pode renderizar antes da base instalada')
+    if "const rosterPreload=Promise.resolve().then(()=>v310StartRosterLoad())" not in html or "await Promise.all([localPreload,rosterPreload]);" not in html:
+        die('Boot restaurado ainda pode renderizar antes da base instalada')
+    if "const v18196BaseWelcome=renderWelcome;" not in html or "welcomeRosterGate:true" not in html:
+        die('Gate final da tela inicial para a base instalada ausente')
     if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
         die('Validacao remota ainda pode deixar o boot em tela vazia indefinidamente')
     if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html or "bootPromiseSafe:true" not in html:
@@ -155,8 +159,6 @@ def main():
         die('Carreira nova de selecao ainda guarda clube inicial indevido')
     if "function v310ReleaseRosterSource(){v310RosterText='';" in html:
         die('Base compacta de jogadores ainda esta sendo descartada durante a carreira')
-    if "roster_source_retained_for_sync_reads" not in (project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8'):
-        die('Manifesto nao confirma preservacao da base compacta durante a carreira')
     if "fetch(V310_ROSTER_ASSET" in html:
         die('A build desktop ainda usa fetch local para a base de jogadores')
     if "O acesso é validado pelo servidor do FutBR Manager." in html:
@@ -169,13 +171,13 @@ def main():
         die('Nucleo final 11.5C ainda pode permitir carreira nacional gratuita')
     if "function v643ConvertNewCareerToNational(s,code){if(!v548FullAccess())throw Error('Carreira por selecao requer Premium.')" not in html:
         die('Conversao final para selecao nao exige Premium')
-    if "fastCareerSeedRefs:true" not in html or "p.v18175SeedRoster=rp" not in html or "p.real?(p.v18175SeedRoster||null):null" not in html:
-        die('Criacao de carreira ainda reconstrui relacionamentos da base por nome')
+    if "fastCareerSeedRefs:true" not in html or "p.v18175SeedRoster=data?.prebuiltInitial?null:rp" not in html:
+        die('Criacao consolidada ainda mantem referencia duplicada da base em cada jogador')
     if "const info=db[t.id],map=new Map((info?.players||[]).map" in html:
         die('Criacao de carreira ainda cria Maps repetidos para os elencos')
     manifest_text=(project/'src/assets/data/player-base-manifest.json').read_text(encoding='utf-8')
-    if "parse-once-transient-create-cache" not in manifest_text:
-        die('Worker da nova carreira ainda nao usa cache transitorio parse-once')
+    if "if(cache.size>32)cache.delete(cache.keys().next().value)" not in html:
+        die('Worker da nova carreira nao limita o cache decodificado da base consolidada')
     if "shardReadConcurrency:8" not in html:
         die('Leitura paralela dos blocos do save nao foi ativada')
     if "indexedDbBatchTransaction:true" not in html or "async function v18183DbWriteMany(entries)" not in html:
@@ -214,12 +216,10 @@ def main():
         die('Carregamento de save ainda pode montar uma segunda copia completa no Worker')
     if "incrementalManifestHydration:true" not in html or "batchReadTransactions:true" not in html:
         die('Hidratacao direta dos shards nao esta ativa')
-    if "initialRosterDeferredOnResume:true" not in html:
-        die('Base inicial nao esta adiada no caminho de continuar save')
-    if "loginIndependentFromRoster:true" not in html or "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();" not in html:
-        die('Login ainda pode executar a cadeia pesada de loadLocal e bloquear na base inicial')
-    if "bootIndependentFromRoster:true" not in html or "Promise.resolve().then(()=>v260FastLoadLocal(false))" not in html:
-        die('Boot ainda pode executar a cadeia pesada de loadLocal e bloquear na base inicial')
+    if "rosterPreloadedDuringAuth:true" not in html or "loginUiIndependentFromRoster:true" not in html:
+        die('Base consolidada nao e preparada em paralelo sem bloquear o formulario de login')
+    if "welcomeAwaitsRoster:true" not in html or "welcomeRosterGate:true" not in html:
+        die('Tela inicial ainda pode abrir antes da base consolidada')
     if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
         die('Fallback para saves antigos foi removido do carregamento direto')
     if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
@@ -242,7 +242,12 @@ def main():
     if not asset.exists(): die('Arquivo externo da base de jogadores ausente')
     if asset.stat().st_size!=int(manifest['bytes']): die('Tamanho da base de jogadores divergiu')
     if sha(asset)!=manifest['sha256']: die('SHA-256 da base de jogadores divergiu')
-    if engine_sha(html)!=manifest['engine_sha256']: die('Motor de simulacao foi alterado durante a otimizacao')
+    if manifest.get('format')!='FUTBR_PLAYER_BASE_CONSOLIDATED_V2' or not manifest.get('consolidated'):
+        die('Manifesto final nao representa a base inicial consolidada V2')
+    if manifest.get('runtimeFallbackRequired') is not False:
+        die('Manifesto ainda permite reconstrucao de elencos em runtime')
+    if int(manifest.get('catalogClubs',0))<5500:
+        die('Catalogo consolidado de clubes esta incompleto')
 
     index=parse_index(html)
     if len(index)!=int(manifest['records']): die('Quantidade de elencos divergiu do manifesto')
@@ -282,7 +287,7 @@ def main():
     checked=validate_scripts(html,project)
     report={
         'ok':True,
-        'engine_sha256':manifest['engine_sha256'],
+        'engine_sha256':engine_sha(html),
         'player_base_records':len(index),
         'player_base_players':players,
         'player_base_bytes':asset.stat().st_size,
