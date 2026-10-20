@@ -41,17 +41,25 @@ def main():
         if x not in html: die('Marcador raiz ausente: '+x)
     if 'v18167NationalDrag' in html: die('Listener duplicado de drag nacional')
 
-    # Hub de Rankings: Artilheiros e Tecnicos precisam de rotas finais explicitas
-    # para impedir que o conteudo de uma aba seja reaproveitado pela outra.
+    # Integridade final: Artilheiros usa renderer proprio e a carreira nova
+    # nao pode mais ser reconstruida pela compatibilidade 5.82.
     for marker in [
-        "futbr-ranking-route-18197",
-        "if(view==='rankings')return v18197RankingHub(`<div class=\"v615-rankings-shell\">${scorersPage()}</div>`);",
-        "if(view==='coaches')return v18197RankingHub(coachesPage());",
-        "explicitScorersRoute:true",
-        "explicitCoachesRoute:true"
+        "futbr-final-integrity-18198",
+        "directScorerRenderer:true",
+        "legacyProtectedRosterRepairDisabled:true",
+        "initialSeniorCap:32",
+        "window.v18198EnforceInitialSquads",
+        "window.v18198EnforceInitialSquads?.(out)",
+        "V579_INITIAL_MAIN=32",
+        "V582_MAX_INITIAL_SENIORS=32",
+        "out.v582InitialRosterSource='prebuilt-consolidated'"
     ]:
         if marker not in html:
-            die('Rota final de Rankings incompleta: '+marker)
+            die('Integridade final 18.198 incompleta: '+marker)
+    if "try{v582RepairFreshProtectedCareer?.(out);}catch(e){}" in html:
+        die('Reconstrucao legacy 5.82 ainda roda apos a nova carreira')
+    if "futbr-ranking-route-18197" in html:
+        die('Guard antigo de Artilheiros ainda permanece no HTML final')
 
     # Simulacao nacional: qualidade real do XI domina, Elo e apenas ajuste secundario.
     for marker in [
