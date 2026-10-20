@@ -103,8 +103,10 @@ def main():
     )
 
     boot_old="const localPreload=Promise.resolve().then(()=>loadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});"
-    boot_new="const localPreload=Promise.resolve().then(()=>v260FastLoadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});"
+    boot_new="""const localPreload=Promise.resolve().then(()=>v260FastLoadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});
+ const rosterPreload=Promise.resolve().then(()=>v310StartRosterLoad()).catch(e=>{console.error('[FutBR] base instalada no boot:',e?.message||e);return null;});"""
     html=html.replace(boot_old,boot_new,1)
+    html=html.replace("if(authenticated){\n  await localPreload;\n  if(!state)renderWelcome();", "if(authenticated){\n  await Promise.all([localPreload,rosterPreload]);\n  if(!state)renderWelcome();",1)
 
     load_start=html.find("async function loadSelected(id){")
     load_end=html.find("\nasync function doSave(",load_start)
@@ -126,12 +128,12 @@ def main():
     )
     html=html[:load_start]+segment+html[load_end:]
 
-    # Existing saves do not need the 7 MB initial roster source. Defer it until
-    # loadLocal confirms there is no saved career to continue.
+    # The login UI must never wait for the player database, but every welcome/new-career
+    # screen is allowed to render only after the installed consolidated base is ready.
     auth_prefetch="try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:',e?.message||e));}catch(e){}"
     html=html.replace(auth_prefetch,"",1)
     enter_old="""async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:',e?.message||e));}catch(e){}renderWelcome();await loadLocal();}"""
-    enter_new="""async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:',e?.message||e));}catch(e){}}"""
+    enter_new="""async function v548EnterGame(){await v260FastLoadLocal(false);await v310StartRosterLoad();renderWelcome();}"""
     html=html.replace(enter_old,enter_new,1)
 
     load_start=html.find("async function loadSelected(id){")
@@ -156,12 +158,25 @@ window.GestorFC.directLoadOptimization={
  incrementalManifestHydration:true,
  batchReadTransactions:true,
  legacySaveFallback:true,
- initialRosterDeferredOnResume:true,
- loginIndependentFromRoster:true,
- bootIndependentFromRoster:true
+ rosterPreloadedDuringAuth:true,
+ loginUiIndependentFromRoster:true,
+ welcomeAwaitsRoster:true,
+ welcomeRosterGate:true
 };
 (()=>{
  const normalize=()=>{try{if(state&&!state?.v640National?.userTeam&&view==='dashboard')view='squad';}catch(e){}};
+ const v18196BaseWelcome=renderWelcome;
+ renderWelcome=function(...args){
+  try{
+   if(typeof v548Session!=='undefined'&&!v548Session){
+    try{v548RenderAuth?.('login');}catch(e){}
+    return document.getElementById('app');
+   }
+   if(typeof v310RosterText==='string'&&v310RosterText)return v18196BaseWelcome(...args);
+   v310StartRosterLoad().then(()=>{try{if(!state&&(typeof v548Session==='undefined'||v548Session))v18196BaseWelcome(...args);}catch(e){console.error('[FutBR] welcome apos base:',e);}}).catch(e=>{console.error('[FutBR] base instalada indisponivel:',e);});
+   return document.getElementById('app');
+  }catch(e){console.error('[FutBR] gate da tela inicial:',e);return document.getElementById('app');}
+ };
  document.addEventListener('click',e=>{
   const b=e.target?.closest?.('[data-action="nav"][data-view="dashboard"]');
   if(!b||state?.v640National?.userTeam)return;
@@ -187,12 +202,14 @@ window.GestorFC.directLoadOptimization={
         fail("dashboard obsoleto ainda pode abrir em carreira de clube")
     if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
         fail("fallback para saves antigos ausente")
-    if "loginIndependentFromRoster:true" not in html or "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();" not in html:
-        fail("login ainda depende da cadeia de loadLocal que toca na base inicial")
-    if "bootIndependentFromRoster:true" not in html or "Promise.resolve().then(()=>v260FastLoadLocal(false))" not in html:
-        fail("boot ainda depende da cadeia de loadLocal que toca na base inicial")
-    if "initialRosterDeferredOnResume:true" not in html or "base local para nova carreira" not in html:
-        fail("base inicial ainda e carregada desnecessariamente ao continuar save")
+    if "loginUiIndependentFromRoster:true" not in html or "async function v548EnterGame(){await v260FastLoadLocal(false);await v310StartRosterLoad();renderWelcome();}" not in html:
+        fail("entrada autenticada ainda pode renderizar antes da base instalada")
+    if "rosterPreloadedDuringAuth:true" not in html or "const rosterPreload=Promise.resolve().then(()=>v310StartRosterLoad())" not in html:
+        fail("boot nao inicia a base consolidada em paralelo com a autenticacao")
+    if "await Promise.all([localPreload,rosterPreload]);" not in html:
+        fail("restauracao automatica ainda pode renderizar antes da base instalada")
+    if "welcomeRosterGate:true" not in html or "const v18196BaseWelcome=renderWelcome;" not in html:
+        fail("renderWelcome ainda pode ser chamado antes da base instalada")
 
     index.write_text(html, encoding="utf-8")
     print("direct sharded load optimization applied")
