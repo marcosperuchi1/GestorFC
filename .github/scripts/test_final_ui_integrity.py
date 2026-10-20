@@ -31,12 +31,30 @@ def main():
         "const V582_VERSION='5.82',V582_MAX_INITIAL_SENIORS=32;",
         "out.v582InitialRosterSource='prebuilt-consolidated'",
         "window.v18198EnforceInitialSquads?.(out)",
+        "window.v18198ScorersPage=v18198ScorersPage;",
         "directScorerRenderer:true",
         "initialSeniorCap:32",
+        "futbr-terminal-scorers-18199",
+        "physicalLastLayer:true",
+        "captureNavigation:true",
+        "directPagePaint:true",
+        "window.v18199PaintScorers=v18199Paint",
+        ".v677-ranking-tab[data-view=\"rankings\"]",
+        "e.stopImmediatePropagation()",
     ]
     for marker in required:
         if marker not in html:
             die('Marcador final ausente: '+marker)
+
+    # O fix precisa estar depois de TODOS os scripts historicos anexados apos </html>.
+    terminal_pos=html.rfind('futbr-terminal-scorers-18199')
+    if terminal_pos < 0:
+        die('Camada terminal de Artilheiros ausente')
+    trailing=html[terminal_pos:]
+    if 'futbr-root-18170-fixes' in trailing or 'futbr-v18164-national-match-parity' in trailing:
+        die('Existe patch historico depois da camada terminal de Artilheiros')
+    if html.rfind('renderPage=function') > html.rfind("const v18199BaseRenderPage=renderPage"):
+        die('Outra definicao de renderPage ficou depois da camada terminal')
 
     js=r"""
 const assert=require('assert');
@@ -90,6 +108,8 @@ console.log(JSON.stringify({
  ok:true,
  scorersMounted:true,
  stalePageRemoved:true,
+ terminalLayer:true,
+ captureNavigation:true,
  roster:t.roster.length,
  academy:t.academy.length,
  overlaps:0,
