@@ -25,10 +25,27 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Preparar scripts da base consolidada
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Expand-GzipBase64([string[]]$parts,[string]$dest) {
+            $b64 = ($parts | Sort-Object | ForEach-Object { Get-Content $_ -Raw }) -join ''
+            $bytes = [Convert]::FromBase64String($b64)
+            $input = [IO.MemoryStream]::new($bytes)
+            $gzip = [IO.Compression.GZipStream]::new($input,[IO.Compression.CompressionMode]::Decompress)
+            $output = [IO.File]::Create($dest)
+            try { $gzip.CopyTo($output) } finally { $output.Dispose(); $gzip.Dispose(); $input.Dispose() }
+          }
+          $parts = Get-ChildItem '.github/scripts/consolidate_initial_database.py.gz.b64.part*' | ForEach-Object FullName
+          if (-not $parts) { throw 'Partes do consolidador nao encontradas.' }
+          Expand-GzipBase64 $parts '.github/scripts/consolidate_initial_database.py'
+          Expand-GzipBase64 @('.github/scripts/test_initial_database.py.gz.b64') '.github/scripts/test_initial_database.py'
+
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/consolidate_initial_database.py .github/scripts/test_initial_database.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -95,6 +112,10 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Consolidar base inicial completa
+        shell: pwsh
+        run: python .github/scripts/consolidate_initial_database.py "$env:FUTBR_PROJECT"
+
       - name: Endurecer salvamento de temporada
         shell: pwsh
         run: python .github/scripts/harden_save_storage.py "$env:FUTBR_PROJECT"
@@ -150,6 +171,10 @@ jobs:
       - name: Testar login independente da base inicial
         shell: pwsh
         run: python .github/scripts/test_login_boot.py "$env:FUTBR_PROJECT"
+
+      - name: Testar base inicial consolidada
+        shell: pwsh
+        run: python .github/scripts/test_initial_database.py "$env:FUTBR_PROJECT"
 
       - name: Benchmark obrigatorio de criacao e save
         shell: pwsh
@@ -218,6 +243,8 @@ jobs:
           Copy-Item 'create-stream-integrity-tests.json' 'artifacts/create-stream-integrity-tests.json'
           Copy-Item 'direct-load-tests.json' 'artifacts/direct-load-tests.json'
           Copy-Item 'login-boot-tests.json' 'artifacts/login-boot-tests.json'
+          Copy-Item 'initial-database-tests.json' 'artifacts/initial-database-tests.json'
+          Copy-Item 'initial-database-consolidation.json' 'artifacts/initial-database-consolidation.json'
           Copy-Item 'create-performance-tests.json' 'artifacts/create-performance-tests.json'
           Copy-Item 'boot-performance-diagnostic.json' 'artifacts/boot-performance-diagnostic.json'
           Copy-Item 'src/assets/data/player-base-manifest.json' 'artifacts/player-base-manifest.json'
