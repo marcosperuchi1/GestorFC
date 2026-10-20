@@ -208,6 +208,14 @@ def main():
         die('HTML final ainda possui quebra de linha literal visivel entre tags')
     if "blankScreenRecovery:true" not in html:
         die('Recuperacao automatica de tela vazia ausente')
+    if "18.194-direct-sharded-load" not in html or "noWorkerWorldCloneOnLoad:true" not in html:
+        die('Carregamento de save ainda pode montar uma segunda copia completa no Worker')
+    if "incrementalManifestHydration:true" not in html or "batchReadTransactions:true" not in html:
+        die('Hidratacao direta dos shards nao esta ativa')
+    if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
+        die('Carreira de clube ainda nao abre diretamente no Elenco')
+    if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
+        die('Dashboard obsoleto ainda pode abrir em carreira de clube')
     if "v4CrestURL=function(t){const r=v53Record(t.id);return r?.data||'';};" in html:
         die('Ainda existe resolvedor final de escudo que ignora arquivos locais')
     if "supabase_proxy" not in html or "supabaseRequest:request=>call('supabase_proxy'" not in html:
