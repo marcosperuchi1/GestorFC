@@ -35,7 +35,7 @@ def main():
       "const use=v18176NationalModalCode||v18176OpeningNationalCode||code;",
       "try{v18172ApplyCareerSurface(p.primary);}catch(e){}",
       "window.open('https://futbrmanager.com.br/','_blank','noopener,noreferrer')",
-      "p.v18175SeedRoster=rp","p.real?(p.v18175SeedRoster||null):null"
+      "p.v18175SeedRoster=data?.prebuiltInitial?null:rp","p.real?(p.v18175SeedRoster||null):null"
     ]
     for x in required:
         if x not in html: die('Marcador raiz ausente: '+x)
