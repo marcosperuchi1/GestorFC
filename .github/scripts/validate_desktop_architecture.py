@@ -73,16 +73,16 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
-    if "async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:'" not in html:
-        die('Boot desktop ainda bloqueia a entrada esperando a base inicial de jogadores')
+    if "async function v548EnterGame(){renderWelcome();await loadLocal();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:'" not in html:
+        die('Boot nao esta adiando a base inicial para apenas novas carreiras')
     if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
         die('Validacao remota ainda pode deixar o boot em tela vazia indefinidamente')
     if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html or "bootPromiseSafe:true" not in html:
         die('Boot ainda pode escapar por excecao sincrona antes da tela de login')
     if "emptyAppWatchdog:true" not in html or "setTimeout(rescue,2500)" not in html:
         die('Watchdog final para app vazio ausente')
-    if "v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:'" not in html:
-        die('Tela de login nao inicia preload silencioso da base de jogadores')
+    if "base local no login:" in html or "base local durante load:" in html:
+        die('Continuar save ainda carrega a base inicial de jogadores desnecessariamente')
     if "const loaded=await v53Call('load',{key:STORE});" not in html or "rosterPromise" in html:
         die('Carregamento de save ainda espera a base inicial desnecessariamente')
     if html.count('"name":"ASA"') != 1:
@@ -212,6 +212,8 @@ def main():
         die('Carregamento de save ainda pode montar uma segunda copia completa no Worker')
     if "incrementalManifestHydration:true" not in html or "batchReadTransactions:true" not in html:
         die('Hidratacao direta dos shards nao esta ativa')
+    if "initialRosterDeferredOnResume:true" not in html:
+        die('Base inicial nao esta adiada no caminho de continuar save')
     if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
         die('Carreira de clube ainda nao abre diretamente no Elenco')
     if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
