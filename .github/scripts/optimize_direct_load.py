@@ -120,6 +120,21 @@ def main():
     )
     html=html[:load_start]+segment+html[load_end:]
 
+    # Existing saves do not need the 7 MB initial roster source. Defer it until
+    # loadLocal confirms there is no saved career to continue.
+    auth_prefetch="try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:',e?.message||e));}catch(e){}"
+    html=html.replace(auth_prefetch,"",1)
+    enter_old="""async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:',e?.message||e));}catch(e){}renderWelcome();await loadLocal();}"""
+    enter_new="""async function v548EnterGame(){renderWelcome();await loadLocal();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:',e?.message||e));}catch(e){}}"""
+    html=html.replace(enter_old,enter_new,1)
+
+    load_start=html.find("async function loadSelected(id){")
+    load_end=html.find("\nasync function doSave(",load_start)
+    segment=html[load_start:load_end]
+    load_prefetch="  try{if(typeof v310StartRosterLoad==='function')v310StartRosterLoad().catch(e=>console.warn('[FutBR] base local durante load:',e?.message||e));}catch(e){}\n"
+    segment=segment.replace(load_prefetch,"",1)
+    html=html[:load_start]+segment+html[load_end:]
+
     runtime = r"""
 <style id="futbr-obsolete-dashboard-removal">
 body:not(.v128-national-career) [data-action="nav"][data-view="dashboard"]{display:none!important}
@@ -133,7 +148,8 @@ window.GestorFC.directLoadOptimization={
  dashboardRemovedForClub:true,
  workerWorldCloneOnLoad:false,
  incrementalManifestHydration:true,
- batchReadTransactions:true
+ batchReadTransactions:true,
+ initialRosterDeferredOnResume:true
 };
 (()=>{
  const normalize=()=>{try{if(state&&!state?.v640National?.userTeam&&view==='dashboard')view='squad';}catch(e){}};
@@ -160,6 +176,8 @@ window.GestorFC.directLoadOptimization={
         fail("runtime marker ausente")
     if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
         fail("dashboard obsoleto ainda pode abrir em carreira de clube")
+    if "initialRosterDeferredOnResume:true" not in html or "base local para nova carreira" not in html:
+        fail("base inicial ainda e carregada desnecessariamente ao continuar save")
 
     index.write_text(html, encoding="utf-8")
     print("direct sharded load optimization applied")
