@@ -84,9 +84,12 @@ function v310WorkerLoadRosters(bytes){{
  const bytes=fs.readFileSync({json.dumps(str(asset))});BundledRosters=v310WorkerLoadRosters(bytes);
  const t0=performance.now();const s=Engine.createCareer({{club:'t6',manager:'Benchmark',difficulty:'normal',rosterData:BundledRosters,seed:123456789}});const createMs=performance.now()-t0;
  const players=Object.keys(s.players||{{}}).length,academy=(s.teams||[]).reduce((n,t)=>n+(t.academy?.length||0),0);
+ const rosterSizes=(s.teams||[]).map(t=>({{id:t.id,name:t.name,roster:(t.roster||[]).length,academy:(t.academy||[]).length}}));
+ const maxRoster=Math.max(0,...rosterSizes.map(x=>x.roster)),clubsOver32=rosterSizes.filter(x=>x.roster>32);
+ if(clubsOver32.length)throw Error('Clubes acima do teto de 32: '+JSON.stringify(clubsOver32.slice(0,20)));
  const ids=Object.keys(s.players||{{}});let encodedChars=0,chunks=0;const t1=performance.now();
  for(let i=0;i<ids.length;i+=900){{const rows=ids.slice(i,i+900).map(id=>[id,s.players[id]]);const enc=await v18191mEncodePlayerChunk(rows);encodedChars+=String(enc.data||'').length;chunks++;}}
- const saveCodecMs=performance.now()-t1,result={{ok:true,createMs:Math.round(createMs),players,academy,heapMiB:Math.round(process.memoryUsage().heapUsed/1048576),rssMiB:Math.round(process.memoryUsage().rss/1048576),saveCodecMs:Math.round(saveCodecMs),playerChunks:chunks,playerBase64MiB:Math.round(encodedChars/1048576*100)/100}};
+ const saveCodecMs=performance.now()-t1,result={{ok:true,createMs:Math.round(createMs),players,academy,maxRoster,clubsOver32:clubsOver32.length,heapMiB:Math.round(process.memoryUsage().heapUsed/1048576),rssMiB:Math.round(process.memoryUsage().rss/1048576),saveCodecMs:Math.round(saveCodecMs),playerChunks:chunks,playerBase64MiB:Math.round(encodedChars/1048576*100)/100}};
  console.log(JSON.stringify(result));
 }})().catch(e=>{{console.error(e);process.exit(1);}});
 """
