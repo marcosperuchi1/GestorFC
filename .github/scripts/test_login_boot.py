@@ -15,7 +15,7 @@ def function_block(src,name):
             elif ch=='\\': esc=True
             elif ch==quote: quote=None
             continue
-        if ch in ("'",'"','\`'): quote=ch; continue
+        if ch in ("'",'"','`'): quote=ch; continue
         if ch=='{': depth+=1
         elif ch=='}':
             depth-=1
