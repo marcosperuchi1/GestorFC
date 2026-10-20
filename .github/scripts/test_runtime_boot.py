@@ -1,11 +1,15 @@
 from __future__ import annotations
-import json, os, sys
+import json, os, shutil, sys
 from pathlib import Path
 
 
 def find_browser() -> str | None:
     candidates = []
-    for env_name in ('PROGRAMFILES', 'PROGRAMFILES(X86)', 'LOCALAPPDATA'):
+    for exe in ('chrome', 'chrome.exe', 'msedge', 'msedge.exe', 'chromium', 'chromium.exe'):
+        found = shutil.which(exe)
+        if found:
+            candidates.append(Path(found))
+    for env_name in ('PROGRAMFILES', 'ProgramFiles', 'PROGRAMFILES(X86)', 'ProgramFiles(x86)', 'LOCALAPPDATA', 'LocalAppData'):
         base = os.environ.get(env_name)
         if not base:
             continue
