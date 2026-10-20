@@ -193,8 +193,8 @@ console.log(JSON.stringify({ok:true,calls}));
         if x not in html: die('nationaljump sem refresh raiz: '+x)
 
     # Prova estrutural da geracao mundial e do reparo de saves antigos.
-    if "if(out&&op==='create')v18170EnsureAllNationalPools(out);" not in html:
-        die('geracao mundial de jogadores livres nao ligada ao create')
+    if "if(out&&op==='create'){v18170EnsureAllNationalPools(out);try{window.v18198EnforceInitialSquads?.(out);" not in html:
+        die('geracao mundial ou teto final de elenco nao ligados ao create')
     if 'v18170EnsureNationalPool(state,enemy,f);' not in html:
         die('reparo de adversario por partida nao ligado')
     if "p.clubId=null;p.real=false;p.generatedNationalSupport=true;p.v18170InitialNationalFreeAgent=true" not in html:
