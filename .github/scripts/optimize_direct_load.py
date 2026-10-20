@@ -102,6 +102,10 @@ def main():
         "quick continue squad landing",
     )
 
+    boot_old="const localPreload=Promise.resolve().then(()=>loadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});"
+    boot_new="const localPreload=Promise.resolve().then(()=>v260FastLoadLocal(false)).catch(e=>{console.warn('[FutBR] leitura local no boot:',e?.message||e);return null;});"
+    html=html.replace(boot_old,boot_new,1)
+
     load_start=html.find("async function loadSelected(id){")
     load_end=html.find("\nasync function doSave(",load_start)
     if load_start<0 or load_end<0:
@@ -127,7 +131,7 @@ def main():
     auth_prefetch="try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local no login:',e?.message||e));}catch(e){}"
     html=html.replace(auth_prefetch,"",1)
     enter_old="""async function v548EnterGame(){try{v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local em segundo plano:',e?.message||e));}catch(e){}renderWelcome();await loadLocal();}"""
-    enter_new="""async function v548EnterGame(){renderWelcome();await loadLocal();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:',e?.message||e));}catch(e){}}"""
+    enter_new="""async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:',e?.message||e));}catch(e){}}"""
     html=html.replace(enter_old,enter_new,1)
 
     load_start=html.find("async function loadSelected(id){")
@@ -152,7 +156,9 @@ window.GestorFC.directLoadOptimization={
  incrementalManifestHydration:true,
  batchReadTransactions:true,
  legacySaveFallback:true,
- initialRosterDeferredOnResume:true
+ initialRosterDeferredOnResume:true,
+ loginIndependentFromRoster:true,
+ bootIndependentFromRoster:true
 };
 (()=>{
  const normalize=()=>{try{if(state&&!state?.v640National?.userTeam&&view==='dashboard')view='squad';}catch(e){}};
@@ -181,6 +187,10 @@ window.GestorFC.directLoadOptimization={
         fail("dashboard obsoleto ainda pode abrir em carreira de clube")
     if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
         fail("fallback para saves antigos ausente")
+    if "loginIndependentFromRoster:true" not in html or "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();" not in html:
+        fail("login ainda depende da cadeia de loadLocal que toca na base inicial")
+    if "bootIndependentFromRoster:true" not in html or "Promise.resolve().then(()=>v260FastLoadLocal(false))" not in html:
+        fail("boot ainda depende da cadeia de loadLocal que toca na base inicial")
     if "initialRosterDeferredOnResume:true" not in html or "base local para nova carreira" not in html:
         fail("base inicial ainda e carregada desnecessariamente ao continuar save")
 
