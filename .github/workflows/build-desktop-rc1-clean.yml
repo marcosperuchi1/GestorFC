@@ -143,6 +143,10 @@ jobs:
         shell: pwsh
         run: python .github/scripts/test_create_stream_integrity.py "$env:FUTBR_PROJECT"
 
+      - name: Testar carregamento direto dos shards
+        shell: pwsh
+        run: python .github/scripts/test_direct_load.py "$env:FUTBR_PROJECT"
+
       - name: Benchmark obrigatorio de criacao e save
         shell: pwsh
         run: python .github/scripts/test_create_performance.py "$env:FUTBR_PROJECT"
@@ -208,6 +212,7 @@ jobs:
           Copy-Item 'relational-history-tests.json' 'artifacts/relational-history-tests.json'
           Copy-Item 'player-storage-tests.json' 'artifacts/player-storage-tests.json'
           Copy-Item 'create-stream-integrity-tests.json' 'artifacts/create-stream-integrity-tests.json'
+          Copy-Item 'direct-load-tests.json' 'artifacts/direct-load-tests.json'
           Copy-Item 'create-performance-tests.json' 'artifacts/create-performance-tests.json'
           Copy-Item 'boot-performance-diagnostic.json' 'artifacts/boot-performance-diagnostic.json'
           Copy-Item 'src/assets/data/player-base-manifest.json' 'artifacts/player-base-manifest.json'
