@@ -214,6 +214,8 @@ def main():
         die('Hidratacao direta dos shards nao esta ativa')
     if "initialRosterDeferredOnResume:true" not in html:
         die('Base inicial nao esta adiada no caminho de continuar save')
+    if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
+        die('Fallback para saves antigos foi removido do carregamento direto')
     if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
         die('Carreira de clube ainda nao abre diretamente no Elenco')
     if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
