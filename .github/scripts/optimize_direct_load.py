@@ -89,19 +89,36 @@ def main():
         1,
     )
 
+    old_quick = "  const loaded=await v53Call('load',{key:STORE});if(!loaded)throw Error('Nenhuma carreira salva foi encontrada.');"
+    new_quick = r"""  const v18194Loader=window.GestorFC?.v171?.loadDirect;
+  const loaded=typeof v18194Loader==='function'?await v18194Loader():await v53Call('load',{key:STORE});
+  if(!loaded)throw Error('Nenhuma carreira salva foi encontrada.');"""
+    html = once(html, old_quick, new_quick, "quick continue direct loader")
+    html = once(
+        html,
+        "  state=loaded;saved=loaded;view=loaded?.v640National?.userTeam?'national':'dashboard';",
+        "  state=loaded;saved=loaded;view=loaded?.v640National?.userTeam?'national':'squad';",
+        "quick continue squad landing",
+    )
+
+    load_start=html.find("async function loadSelected(id){")
+    load_end=html.find("\nasync function doSave(",load_start)
+    if load_start<0 or load_end<0:
+        fail("loadSelected ausente")
+    segment=html[load_start:load_end]
     old_load = "  const loaded=await v53Call('load',{key:STORE});"
     new_load = r"""  const v18194Loader=window.GestorFC?.v171?.loadDirect;
   const loaded=typeof v18194Loader==='function'
    ?await v18194Loader(p=>{if(p?.key==='players'&&(p.done===p.total||p.done%24===0))block('Abrindo '+target.name+' · jogadores '+p.done+'/'+p.total+' blocos');})
    :await v53Call('load',{key:STORE});"""
-    html = once(html, old_load, new_load, "loadSelected direct loader")
-
-    html = once(
-        html,
+    segment = once(segment, old_load, new_load, "loadSelected direct loader")
+    segment = once(
+        segment,
         "  view=loaded?.v640National?.userTeam?'national':(loaded.seasonDone?'squad':'dashboard');",
         "  view=loaded?.v640National?.userTeam?'national':'squad';",
         "club save landing squad",
     )
+    html=html[:load_start]+segment+html[load_end:]
 
     runtime = r"""
 <style id="futbr-obsolete-dashboard-removal">
@@ -137,8 +154,8 @@ window.GestorFC.directLoadOptimization={
         fail("loadSelected ainda depende apenas do Worker")
     if "noWorkerWorldCloneOnLoad:true" not in html:
         fail("marcador de load sem clone ausente")
-    if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
-        fail("carreira de clube ainda nao abre no elenco")
+    if html.count("view=loaded?.v640National?.userTeam?'national':'squad';") < 2:
+        fail("uma das rotas de continuar carreira ainda nao abre no elenco")
     if "18.194-direct-sharded-load" not in html:
         fail("runtime marker ausente")
     if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
