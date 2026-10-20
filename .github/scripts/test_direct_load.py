@@ -36,8 +36,8 @@ def main():
         die('uma das rotas de continuar carreira nao abre direto no elenco')
     if "noWorkerWorldCloneOnLoad:true" not in html:
         die('marcador de carregamento direto ausente')
-    if "initialRosterDeferredOnResume:true" not in html:
-        die('base inicial ainda nao foi adiada ao continuar save')
+    if "rosterPreloadedDuringAuth:true" not in html or "welcomeRosterGate:true" not in html:
+        die('base consolidada nao esta preparada antes da tela inicial')
     if "base local no login:" in html or "base local durante load:" in html:
         die('continuar carreira ainda dispara preload da base inicial')
 
