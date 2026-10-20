@@ -53,7 +53,11 @@ def main():
     trailing=html[terminal_pos:]
     if 'futbr-root-18170-fixes' in trailing or 'futbr-v18164-national-match-parity' in trailing:
         die('Existe patch historico depois da camada terminal de Artilheiros')
-    if html.rfind('renderPage=function') > html.rfind("const v18199BaseRenderPage=renderPage"):
+    terminal_base=html.rfind("const v18199BaseRenderPage=renderPage")
+    terminal_render=html.find("renderPage=function",terminal_base)
+    if terminal_base < 0 or terminal_render < 0:
+        die('Definicao terminal de renderPage ausente')
+    if html.find("renderPage=function",terminal_render+1) >= 0:
         die('Outra definicao de renderPage ficou depois da camada terminal')
 
     js=r"""
