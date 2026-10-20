@@ -83,7 +83,9 @@ def main():
         die('Watchdog final para app vazio ausente')
     if "base local no login:" in html or "base local durante load:" in html:
         die('Continuar save ainda carrega a base inicial de jogadores desnecessariamente')
-    if "const loaded=await v53Call('load',{key:STORE});" not in html or "rosterPromise" in html:
+    if "const v18194Loader=window.GestorFC?.v171?.loadDirect;" not in html or html.count("if(!loaded)loaded=await v53Call('load',{key:STORE});") < 2:
+        die('Carregamento direto ou fallback seguro das duas rotas de save nao foi instalado')
+    if "rosterPromise" in html:
         die('Carregamento de save ainda espera a base inicial desnecessariamente')
     if html.count('"name":"ASA"') != 1:
         die('Catalogo inicial ainda possui ASA duplicado')
