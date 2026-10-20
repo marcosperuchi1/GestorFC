@@ -115,6 +115,27 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
         "teto de 32 seniors e excedente na base",
     )
 
+    # Duas camadas historicas ainda tentavam aumentar/reconstruir o profissional
+    # depois que o Worker ja havia devolvido a divisao correta 32 + academia.
+    html = replace_once(
+        html,
+        "const V579_VERSION='5.79',V579_INITIAL_MAIN=35;",
+        "const V579_VERSION='5.79',V579_INITIAL_MAIN=32;",
+        "limite legado 5.79",
+    )
+    html = replace_once(
+        html,
+        "const V582_VERSION='5.82',V582_MAX_INITIAL_SENIORS=60;",
+        "const V582_VERSION='5.82',V582_MAX_INITIAL_SENIORS=32;",
+        "limite legado 5.82",
+    )
+    html = replace_once(
+        html,
+        "  try{v582RepairFreshProtectedCareer?.(out);}catch(e){}\n",
+        "  // A base consolidada ja e a autoridade. Nao reconstruir o clube protegido.\n  out.v582InitialRosterIntegrity=1;out.v582InitialRosterSource='prebuilt-consolidated';\n",
+        "reconstrucao 5.82 depois da nova carreira",
+    )
+
     # Monte o formulario imediatamente. A base de jogadores so pode ser aberta
     # depois que uma sessao valida existir. Isso vale tanto para sessao restaurada
     # quanto para login manual (v548EnterGame ja aguarda a base).
@@ -177,29 +198,161 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
     if "await localPreload;\n v548RenderAuth" in boot:
         fail("login ainda espera leitura local")
 
-    # O hub de Rankings possui muitas camadas historicas de renderizacao.
-    # Fixa a rota final de Artilheiros para que nunca reutilize a pagina de
-    # Tecnicos enquanto a aba ativa ja aponta para 'rankings'.
+    # A cadeia historica de scorersPage acumulou wrappers que podem falhar antes
+    # de page.innerHTML ser substituido. O sintoma e a aba Artilheiros ativa com
+    # o conteudo anterior ainda visivel. A rota final usa um renderer independente
+    # que le diretamente competitionStats/scorerArchive/allTimeStats e, quando ja
+    # existente, o historico de selecoes.
     ranking_guard = r'''
-<script id="futbr-ranking-route-18197">
+<script id="futbr-final-integrity-18198">
 (()=>{
  const G=window.GestorFC=window.GestorFC||{};
- const v18197BaseRenderPage=renderPage;
- const v18197RankingHub=inner=>`<div class="v677-ranking-hub">${typeof v677RankingTabs==='function'?v677RankingTabs():''}<div class="v677-ranking-content">${inner}</div></div>`;
+
+ function v18198Esc(v){try{return typeof esc==='function'?esc(String(v??'')):String(v??'');}catch(e){return String(v??'');}}
+ function v18198Norm(v){try{return E.normName(String(v||''));}catch(e){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}}
+ function v18198Merge(map,r,national=false){
+  if(!r?.id)return;
+  let x=map.get(r.id);
+  if(!x){x={id:r.id,name:r.name||state?.players?.[r.id]?.name||r.id,natCode:r.natCode||state?.players?.[r.id]?.natCode||'UNK',goals:0,assists:0,apps:0,minutes:0,clubs:{},nationalTeams:{}};map.set(r.id,x);}
+  x.name=r.name||x.name;x.natCode=r.natCode||x.natCode;
+  x.goals+=Number(r.goals)||0;x.assists+=Number(r.assists)||0;x.apps+=Number(r.apps)||0;x.minutes+=Number(r.minutes)||0;
+  if(national){if(r.teamCode)x.nationalTeams[r.teamCode]=r.teamName||r.teamCode;}
+  else Object.assign(x.clubs,r.clubs||{});
+ }
+ function v18198ClubRows(s,f){
+  const map=new Map(),year=f.year==='all'?'all':Number(f.year||s.year);
+  if(year==='all'){
+   for(const r of Object.values(s.allTimeStats||{}))v18198Merge(map,r,false);
+   return map;
+  }
+  const db=year!==Number(s.year)?((s.scorerArchive||[]).find(x=>Number(x?.year)===year)?.competitions||{}):(s.competitionStats||{});
+  for(const [key,rows] of Object.entries(db||{})){
+   const parts=String(key).split(':'),kind=parts[0]||'',country=parts[1]||'',division=parts[2]||'';
+   const wanted=String(f.kind||'all');
+   if(wanted==='national'||wanted.startsWith('nat|'))continue;
+   if(wanted!=='all'&&wanted!==kind&&wanted!==key)continue;
+   if(f.country&&f.country!=='all'&&['league','cup'].includes(kind)&&country!==f.country)continue;
+   if(f.division&&f.division!=='all'&&kind==='league'&&Number(division)!==Number(f.division))continue;
+   for(const r of Object.values(rows||{}))v18198Merge(map,r,false);
+  }
+  return map;
+ }
+ function v18198AddNationalRows(s,f,map){
+  const root=s?.v640National;if(!root?.playerStats)return;
+  const wanted=String(f.kind||'all'),global=f.year==='all';
+  if(!global&&wanted!=='all'&&wanted!=='national'&&!wanted.startsWith('nat|'))return;
+  const years=global?Object.keys(root.playerStats||{}):[String(Number(f.year||s.year))];
+  for(const y of years){
+   const ydb=root.playerStats?.[y]||{};
+   for(const [comp,rows] of Object.entries(ydb)){
+    if(!global&&wanted.startsWith('nat|')&&wanted!=='nat|'+comp)continue;
+    for(const r of Object.values(rows||{}))v18198Merge(map,r,true);
+   }
+  }
+ }
+ function v18198ScorerRows(s,f){
+  const map=v18198ClubRows(s,f);v18198AddNationalRows(s,f,map);
+  return [...map.values()].filter(r=>(Number(r.goals)||0)>0).sort((a,b)=>(Number(b.goals)||0)-(Number(a.goals)||0)||(Number(b.assists)||0)-(Number(a.assists)||0)||(Number(a.minutes)||0)-(Number(b.minutes)||0)||String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
+ }
+ function v18198Option(value,label,current){return '<option value="'+v18198Esc(value)+'" '+(String(current)===String(value)?'selected':'')+'>'+v18198Esc(label)+'</option>';}
+ function v18198Nation(code){try{return typeof nation==='function'?nation(code):v18198Esc(code||'UNK');}catch(e){return v18198Esc(code||'UNK');}}
+ function v18198Star(p){try{return typeof starBadge==='function'?starBadge(p):'';}catch(e){return '';}}
+ function v18198Source(p,kind){
+  const nationalOnly=kind==='national'||String(kind||'').startsWith('nat|'),nat=Object.entries(p.nationalTeams||{});
+  if(nationalOnly)return nat.length?nat.map(([code,name])=>'<span class="pill">'+(typeof v640Flag==='function'?v640Flag(code):'')+' '+v18198Esc(name)+'</span>').join(' '):'<span class="muted">Selecao</span>';
+  const live=state?.players?.[p.id],tid=live?.clubId;let team=null;try{team=tid?E.team(state,tid):null;}catch(e){}
+  if(team){try{return '<div class="v538-scorer-club">'+badge(team,'small')+teamButton(team)+'</div>';}catch(e){return '<strong>'+v18198Esc(team.name)+'</strong>';}}
+  const clubs=Object.values(p.clubs||{}).filter(Boolean);
+  let club=clubs.length?v18198Esc(clubs.at(-1)):'Livre';
+  if(String(kind||'')==='all'&&nat.length)club+=' '+nat.map(([code,name])=>'<span class="pill">'+(typeof v640Flag==='function'?v640Flag(code):'')+' '+v18198Esc(name)+'</span>').join(' ');
+  return club;
+ }
+ function v18198ScorersPage(){
+  const s=state;if(!s)return '<div class="empty">Nenhuma carreira carregada.</div>';
+  const f=scorerFilter||(scorerFilter={});f.kind=f.kind||'all';f.country=f.country||'all';f.division=f.division||'all';f.year=f.year??'';f.query=f.query||'';f.nationality=f.nationality||'all';f.page=Math.max(0,Number(f.page)||0);
+  let ranked=[];try{ranked=v18198ScorerRows(s,f);}catch(e){console.error('[FutBR] artilharia final:',e);ranked=[];}
+  const wantNat=String(f.nationality||'all').toUpperCase(),q=v18198Norm(f.query||'');
+  const rows=ranked.filter(p=>(wantNat==='ALL'||String(p.natCode||'UNK').toUpperCase()===wantNat)&&(!q||v18198Norm(p.name||'').includes(q)));
+  const rank=new Map(ranked.map((p,i)=>[p.id,i+1]));
+  const years=[...new Set([Number(s.year),...(s.scorerArchive||[]).map(x=>Number(x?.year)),...Object.keys(s.v640National?.playerStats||{}).map(Number)])].filter(Number.isFinite).sort((a,b)=>b-a);
+  const natCodes=[...new Set(ranked.map(x=>String(x.natCode||'UNK').toUpperCase()))].sort((a,b)=>(NAT?.[a]?.[0]||a).localeCompare(NAT?.[b]?.[0]||b,'pt-BR'));
+  const compOpts={all:'Todas / global',league:'Ligas nacionais',cup:'Copas nacionais',national:'Selecoes - todas'};
+  for(const c of Object.values(s.competitions||{}))if(c?.id)compOpts[c.id]=c.name||c.id;
+  for(const y of Object.values(s.v640National?.playerStats||{}))for(const k of Object.keys(y||{})){let label=k;try{if(typeof v641NationalCompetitionName==='function')label=v641NationalCompetitionName(s,k);}catch(e){}compOpts['nat|'+k]=label;}
+  const pageSize=50,pages=Math.max(1,Math.ceil(rows.length/pageSize));f.page=Math.min(f.page,pages-1);const start=f.page*pageSize,end=Math.min(start+pageSize,rows.length),visible=rows.slice(start,end);
+  const nationalOnly=f.kind==='national'||String(f.kind||'').startsWith('nat|'),disableClub=f.year==='all'||nationalOnly;
+  const compHTML=Object.entries(compOpts).map(([v,l])=>v18198Option(v,l,f.kind)).join('');
+  const countryHTML='<option value="all">Todos</option>'+((Array.isArray(C)?C:[]).map(c=>v18198Option(c.id,c.name,f.country)).join(''));
+  const divHTML=[['all','Todas'],['1','1a divisao'],['2','2a divisao'],['3','3a divisao'],['4','4a divisao']].map(([v,l])=>v18198Option(v,l,f.division)).join('');
+  const natHTML='<option value="all">Todas</option>'+natCodes.map(code=>v18198Option(code,NAT?.[code]?.[0]||code,wantNat)).join('');
+  const yearHTML=years.map(y=>v18198Option(y,y,Number(f.year||s.year))).join('')+v18198Option('all','Carreira global',f.year);
+  const body=visible.map(p=>{
+   const clickable=!!s.players?.[p.id],player=clickable?'<button class="table-button player-name" data-action="player" data-player="'+v18198Esc(p.id)+'">'+v18198Esc(p.name)+'</button>':'<span class="player-name">'+v18198Esc(p.name)+'</span>';
+   return '<tr><td>'+(rank.get(p.id)||'—')+'</td><td>'+player+' '+v18198Star(p)+'</td><td>'+v18198Nation(p.natCode)+'</td><td class="club-history">'+v18198Source(p,f.year==='all'?'all':f.kind)+'</td><td class="number green strong">'+(Number(p.goals)||0)+'</td><td class="number">'+(Number(p.assists)||0)+'</td><td class="number">'+(Number(p.apps)||0)+'</td><td class="number">'+((Number(p.goals)||0)/Math.max(1,Number(p.apps)||0)).toFixed(2)+'</td></tr>';
+  }).join('');
+  const prev=start?'':'disabled',next=end<rows.length?'':'disabled';
+  return '<section class="panel"><div class="panel-body"><div class="filters">'+
+   '<div class="field grow"><label for="score-query">Buscar atleta</label><input id="score-query" data-v641-score-query value="'+v18198Esc(f.query)+'" placeholder="Nome do jogador"></div>'+
+   '<div class="field compact"><label for="score-kind">Competicao</label><select id="score-kind" data-v3="score-kind">'+compHTML+'</select></div>'+
+   '<div class="field compact"><label for="score-country">Pais</label><select id="score-country" data-v3="score-country" '+(disableClub?'disabled':'')+'>'+countryHTML+'</select></div>'+
+   '<div class="field compact"><label for="score-div">Divisao</label><select id="score-div" data-v3="score-division" '+(disableClub||f.kind==='cup'?'disabled':'')+'>'+divHTML+'</select></div>'+
+   '<div class="field compact"><label for="score-nationality">Nacionalidade</label><select id="score-nationality" data-v3="score-nationality">'+natHTML+'</select></div>'+
+   '<div class="field compact"><label for="score-year">Temporada</label><select id="score-year" data-v3="score-year">'+yearHTML+'</select></div></div></div>'+
+   '<div class="table-scroll v615-ranking-scroll"><table><thead><tr><th>#</th><th>Atleta</th><th>Nacionalidade</th><th>Clube / selecao</th><th class="number">Gols</th><th class="number">Assist.</th><th class="number">J</th><th class="number">Gols/jogo</th></tr></thead><tbody>'+body+'</tbody></table></div>'+
+   (!rows.length?'<div class="empty">Nenhum artilheiro encontrado neste recorte.</div>':'<div class="pagination v615-ranking-pagination"><span class="tiny muted">Pagina '+(f.page+1)+' de '+pages+' · '+(start+1)+'-'+end+' de '+rows.length+' artilheiros</span><div class="flex"><button class="btn small" data-action="score-prev" '+prev+'>Anterior</button><button class="btn small" data-action="score-next" '+next+'>Proxima</button></div></div>')+
+   '</section>';
+ }
+
+ // Ultima barreira do elenco inicial. Normalmente e no-op porque o Worker ja
+ // devolve 32 + academia; existe para impedir qualquer futura camada de UI de
+ // recolocar jovens no profissional.
+ function v18198EnforceInitialSquads(s){
+  if(!s?.teams||Number(s.year)!==2026)return {moved:0,max:0};let moved=0,max=0;
+  for(const t of s.teams){
+   t.roster=[...new Set(t.roster||[])];t.academy=[...new Set(t.academy||[])].filter(id=>!t.roster.includes(id));t.proReserve=[...new Set(t.proReserve||[])].filter(id=>!t.roster.includes(id)&&!t.academy.includes(id));
+   if(t.roster.length>32){
+    const extra=t.roster.splice(32);
+    for(const id of extra){const p=s.players?.[id];if(!p)continue;if(Number(p.age)<=20||p.squad==='youth'){if(!t.academy.includes(id))t.academy.push(id);p.squad='youth';p.proReserve=false;}else{if(!t.proReserve.includes(id))t.proReserve.push(id);p.squad='senior';p.proReserve=true;}p.clubId=t.id;moved++;}
+   }
+   for(const id of t.roster){const p=s.players?.[id];if(p){p.clubId=t.id;p.squad='senior';p.proReserve=false;}}
+   for(const id of t.academy){const p=s.players?.[id];if(p){p.clubId=t.id;p.squad='youth';p.proReserve=false;}}
+   if(Array.isArray(t.lineup))t.lineup=t.lineup.map(id=>id&&t.roster.includes(id)?id:null);
+   try{E.repairLineup?.(s,t);}catch(e){}
+   max=Math.max(max,t.roster.length);
+  }
+  s.v18198InitialSquads={version:'18.198',maxRoster:max,moved};return {moved,max};
+ }
+
+ // O helper fica global para o pipeline RPC e para os testes.
+ window.v18198EnforceInitialSquads=v18198EnforceInitialSquads;
+ const v18198BaseRenderPage=renderPage;
+ const v18198RankingHub=inner=>'<div class="v677-ranking-hub">'+(typeof v677RankingTabs==='function'?v677RankingTabs():'')+'<div class="v677-ranking-content">'+inner+'</div></div>';
  renderPage=function(){
-  if(view==='rankings')return v18197RankingHub(`<div class="v615-rankings-shell">${scorersPage()}</div>`);
-  if(view==='coaches')return v18197RankingHub(coachesPage());
-  return v18197BaseRenderPage();
+  if(view==='rankings'){
+   try{return v18198RankingHub('<div class="v615-rankings-shell">'+v18198ScorersPage()+'</div>');}
+   catch(e){console.error('[FutBR] falha final em Artilheiros:',e);return v18198RankingHub('<div class="notice error">Nao foi possivel montar a artilharia desta carreira.</div>');}
+  }
+  if(view==='coaches')return v18198RankingHub(coachesPage());
+  return v18198BaseRenderPage();
  };
- G.rankingRoute18197={version:'18.197',explicitScorersRoute:true,explicitCoachesRoute:true};
+ G.finalIntegrity18198={version:'18.198',explicitScorersRoute:true,directScorerRenderer:true,legacyProtectedRosterRepairDisabled:true,initialSeniorCap:32};
 })();
 </script>
 '''
-    if 'futbr-ranking-route-18197' not in html:
-        html = replace_once(html, '</body>', ranking_guard + '\n</body>', 'guard final das rotas de ranking')
+    if 'futbr-final-integrity-18198' not in html:
+        html = replace_once(html, '</body>', ranking_guard + '\n</body>', 'integridade final de artilheiros e elenco')
+
+    # Chama a barreira de elenco imediatamente no retorno real do Worker, depois
+    # dos complementos nacionais e antes de o estado chegar a interface.
+    html = replace_once(
+        html,
+        " if(out&&op==='create')v18170EnsureAllNationalPools(out);",
+        " if(out&&op==='create'){v18170EnsureAllNationalPools(out);try{window.v18198EnforceInitialSquads?.(out);}catch(e){console.error('[FutBR] teto inicial:',e);}}",
+        "barreira final de 32 no RPC",
+    )
 
     index_path.write_text(html, encoding="utf-8")
-    print("prebuilt boot finalized: login-first, roster-after-auth, senior-cap-32, rankings-route-fixed")
+    print("prebuilt boot finalized: login-first, authoritative-32-plus-academy, direct-scorers-route")
 
 
 if __name__ == "__main__":
