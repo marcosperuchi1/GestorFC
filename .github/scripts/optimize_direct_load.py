@@ -104,16 +104,31 @@ def main():
     )
 
     runtime = r"""
+<style id="futbr-obsolete-dashboard-removal">
+body:not(.v128-national-career) [data-action="nav"][data-view="dashboard"]{display:none!important}
+</style>
 <script id="futbr-direct-sharded-load">
 window.GestorFC=window.GestorFC||{};
 window.GestorFC.directLoadOptimization={
  version:'18.194-direct-sharded-load',
  clubLoadLanding:'squad',
  dashboardSkippedOnLoad:true,
+ dashboardRemovedForClub:true,
  workerWorldCloneOnLoad:false,
  incrementalManifestHydration:true,
  batchReadTransactions:true
 };
+(()=>{
+ const normalize=()=>{try{if(state&&!state?.v640National?.userTeam&&view==='dashboard')view='squad';}catch(e){}};
+ document.addEventListener('click',e=>{
+  const b=e.target?.closest?.('[data-action="nav"][data-view="dashboard"]');
+  if(!b||state?.v640National?.userTeam)return;
+  e.preventDefault();e.stopImmediatePropagation();view='squad';closeModal?.();render?.();window.scrollTo({top:0}); 
+ },true);
+ const baseRender=render;
+ render=function(...args){normalize();return baseRender(...args);};
+ normalize();
+})();
 </script>
 """
     html = html.replace("</body>", runtime + "\n</body>", 1)
@@ -126,6 +141,8 @@ window.GestorFC.directLoadOptimization={
         fail("carreira de clube ainda nao abre no elenco")
     if "18.194-direct-sharded-load" not in html:
         fail("runtime marker ausente")
+    if "dashboardRemovedForClub:true" not in html or "view==='dashboard')view='squad'" not in html:
+        fail("dashboard obsoleto ainda pode abrir em carreira de clube")
 
     index.write_text(html, encoding="utf-8")
     print("direct sharded load optimization applied")
