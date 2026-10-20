@@ -99,6 +99,22 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
 }"""
     html = replace_once(html, old_meta, new_meta, "metadados sem varredura pre-login")
 
+    # Restaura o teto historico de 32 atletas no elenco principal. A ordem da
+    # base consolidada e preservada: os 32 primeiros seniors continuam no
+    # profissional e todo senior excedente vai para Categorias de base.
+    html = replace_once(
+        html,
+        "if(t.prebuiltInitial){\n      const seeded=[...t.roster];t.roster=[];t.proReserve=[];t.seniorTarget=seniorTarget(s,t);",
+        "if(t.prebuiltInitial){\n      const seeded=[...t.roster];t.roster=[];t.proReserve=[];t.seniorTarget=seniorTarget(s,t);let v18197PrebuiltSeniorCount=0;",
+        "contador do teto senior precompilado",
+    )
+    html = replace_once(
+        html,
+        "p.clubId=t.id;p.squad='senior';p.proReserve=false;t.roster.push(id);",
+        "if(v18197PrebuiltSeniorCount<32){p.clubId=t.id;p.squad='senior';p.proReserve=false;t.roster.push(id);v18197PrebuiltSeniorCount++;}else{p.clubId=t.id;p.squad='youth';p.proReserve=false;p.ageEstimated=false;p.youthOrigin??=t.id;p.academyApps??=0;p.academyGoals??=0;p.development??=0;p.youthStart??=overall(p);p.youthYear??=s.year;p.v576YouthInitialOVR??=p.youthStart;p.v577YouthInitialOVR??=p.youthStart;p.v576YouthModel??=1;p.v577YouthModel??=1;p.v576PotentialFixed??=1;p.v577PotentialFixed??=1;p.academyStarPath=p.potential>=90;t.academy.push(id);}",
+        "teto de 32 seniors e excedente na base",
+    )
+
     # Monte o formulario imediatamente. A base de jogadores so pode ser aberta
     # depois que uma sessao valida existir. Isso vale tanto para sessao restaurada
     # quanto para login manual (v548EnterGame ja aguarda a base).
@@ -161,8 +177,29 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
     if "await localPreload;\n v548RenderAuth" in boot:
         fail("login ainda espera leitura local")
 
+    # O hub de Rankings possui muitas camadas historicas de renderizacao.
+    # Fixa a rota final de Artilheiros para que nunca reutilize a pagina de
+    # Tecnicos enquanto a aba ativa ja aponta para 'rankings'.
+    ranking_guard = r'''
+<script id="futbr-ranking-route-18197">
+(()=>{
+ const G=window.GestorFC=window.GestorFC||{};
+ const v18197BaseRenderPage=renderPage;
+ const v18197RankingHub=inner=>`<div class="v677-ranking-hub">${typeof v677RankingTabs==='function'?v677RankingTabs():''}<div class="v677-ranking-content">${inner}</div></div>`;
+ renderPage=function(){
+  if(view==='rankings')return v18197RankingHub(`<div class="v615-rankings-shell">${scorersPage()}</div>`);
+  if(view==='coaches')return v18197RankingHub(coachesPage());
+  return v18197BaseRenderPage();
+ };
+ G.rankingRoute18197={version:'18.197',explicitScorersRoute:true,explicitCoachesRoute:true};
+})();
+</script>
+'''
+    if 'futbr-ranking-route-18197' not in html:
+        html = replace_once(html, '</body>', ranking_guard + '\n</body>', 'guard final das rotas de ranking')
+
     index_path.write_text(html, encoding="utf-8")
-    print("prebuilt boot finalized: login-first, roster-after-auth")
+    print("prebuilt boot finalized: login-first, roster-after-auth, senior-cap-32, rankings-route-fixed")
 
 
 if __name__ == "__main__":
