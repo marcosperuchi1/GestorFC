@@ -83,7 +83,14 @@ def main():
         die('Sessao restaurada nao aguarda a base somente depois da autenticacao')
     if "if(!v310RosterText&&!V310_BOOTSTRAP_ROSTERS[id])return undefined;" not in html:
         die('Leitura sincrona da base ainda pode abortar o script antes do login')
-    if re.search(r'^v526PrioritizeJoaquinRoster\(\);
+    if re.search(r'^v526PrioritizeJoaquinRoster\(\);$',html,re.M):
+        die('Correcao antiga de Joaquin ainda le roster no topo do script')
+    if "(function v530PatchRosterFacts()" in html or "const v183FluBase=v310RosterRecord('t6')" in html:
+        die('Correcao legacy ainda le roster durante avaliacao inicial')
+    if "(WorldCatalog.clubs||[]).slice(-256)" in html:
+        die('Sweep legacy dos 256 elencos ainda roda antes do login')
+    if "baseRosterStats310?.players" not in html:
+        die('Metadados do boot ainda podem enumerar todos os elencos')
     if "const v18196BaseWelcome=renderWelcome;" not in html or "welcomeRosterGate:true" not in html:
         die('Gate final da tela inicial para a base instalada ausente')
     if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
