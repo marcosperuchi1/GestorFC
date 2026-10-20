@@ -216,6 +216,10 @@ def main():
         die('Hidratacao direta dos shards nao esta ativa')
     if "initialRosterDeferredOnResume:true" not in html:
         die('Base inicial nao esta adiada no caminho de continuar save')
+    if "loginIndependentFromRoster:true" not in html or "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();" not in html:
+        die('Login ainda pode executar a cadeia pesada de loadLocal e bloquear na base inicial')
+    if "bootIndependentFromRoster:true" not in html or "Promise.resolve().then(()=>v260FastLoadLocal(false))" not in html:
+        die('Boot ainda pode executar a cadeia pesada de loadLocal e bloquear na base inicial')
     if "legacySaveFallback:true" not in html or "if(!loaded)loaded=await v53Call('load',{key:STORE});" not in html:
         die('Fallback para saves antigos foi removido do carregamento direto')
     if "view=loaded?.v640National?.userTeam?'national':'squad';" not in html:
