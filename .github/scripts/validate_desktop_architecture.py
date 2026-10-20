@@ -73,8 +73,8 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
-    if "async function v548EnterGame(){renderWelcome();await loadLocal();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:'" not in html:
-        die('Boot nao esta adiando a base inicial para apenas novas carreiras')
+    if "async function v548EnterGame(){await v260FastLoadLocal(false);renderWelcome();try{if(!v260SavedMeta&&!saved&&!state)v310StartRosterLoad?.().catch(e=>console.warn('[FutBR] base local para nova carreira:'" not in html:
+        die('Login nao esta adiando a base inicial para apenas novas carreiras')
     if "const authenticated=await Promise.race([authPromise,timeout]);" not in html or "setTimeout(()=>resolve(null),6000)" not in html:
         die('Validacao remota ainda pode deixar o boot em tela vazia indefinidamente')
     if "Promise.resolve().then(()=>v580RestoreRemoteSession())" not in html or "bootPromiseSafe:true" not in html:
