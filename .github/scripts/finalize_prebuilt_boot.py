@@ -342,6 +342,13 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
     if 'futbr-final-integrity-18198' not in html:
         html = replace_once(html, '</body>', ranking_guard + '\n</body>', 'integridade final de artilheiros e elenco')
 
+    html = replace_once(
+        html,
+        "window.v18198EnforceInitialSquads=v18198EnforceInitialSquads;\n const v18198BaseRenderPage=renderPage;",
+        "window.v18198EnforceInitialSquads=v18198EnforceInitialSquads;\n window.v18198ScorersPage=v18198ScorersPage;\n const v18198BaseRenderPage=renderPage;",
+        "expor renderer de artilheiros para camada terminal",
+    )
+
     # Chama a barreira de elenco imediatamente no retorno real do Worker, depois
     # dos complementos nacionais e antes de o estado chegar a interface.
     html = replace_once(
@@ -351,8 +358,76 @@ try{const v183FluBase=v310RosterRecord('t6');if(v183FluBase){v310RosterOverrides
         "barreira final de 32 no RPC",
     )
 
+    # Alguns patches historicos do pacote fonte ficam fisicamente depois de
+    # </html>. Portanto a correcao de Artilheiros precisa ser a ultima camada do
+    # arquivo, nao apenas a ultima antes de </body>.
+    terminal_scorers = r'''
+<script id="futbr-terminal-scorers-18199">
+(()=>{
+ const G=window.GestorFC=window.GestorFC||{};
+ function v18199Hub(){
+  const tabs=typeof v677RankingTabs==='function'?v677RankingTabs():'';
+  const inner=typeof window.v18198ScorersPage==='function'?window.v18198ScorersPage():'<div class="notice error">Artilharia indisponivel.</div>';
+  return '<div class="v677-ranking-hub">'+tabs+'<div class="v677-ranking-content"><div class="v615-rankings-shell">'+inner+'</div></div></div>';
+ }
+ function v18199Decorate(page){
+  try{v551CleanScreen?.(page);}catch(e){}
+  try{v554CleanLegacyCopy?.();}catch(e){}
+  try{v548ApplyFeatureLocks?.(page);}catch(e){}
+  try{v1882EnhanceCountrySelects?.(page);}catch(e){}
+  try{v54ApplyPositionOrder?.();v5MarkSelection?.();v510ApplyTrophyPhotos?.();}catch(e){}
+  try{v555ScheduleDecor?.(page);}catch(e){}
+ }
+ function v18199Paint(){
+  if(!state)return false;
+  view='rankings';
+  try{v260BodyClasses?.();}catch(e){}
+  const root=document.querySelector('#app'),page=document.querySelector('#v555-page');
+  if(!page)return false;
+  let html='';
+  try{html=v18199Hub();}catch(e){
+   console.error('[FutBR] terminal Artilheiros:',e);
+   html='<div class="v677-ranking-hub">'+(typeof v677RankingTabs==='function'?v677RankingTabs():'')+'<div class="v677-ranking-content"><div class="notice error">Nao foi possivel montar a artilharia desta carreira.</div></div></div>';
+  }
+  page.innerHTML=html;
+  v18199Decorate(page);
+  try{if(root)v555UpdateChrome?.(root);}catch(e){}
+  try{if(root)v677SyncRankingNavigation?.(root);}catch(e){}
+  try{v260BodyClasses?.();}catch(e){}
+  return true;
+ }
+ window.v18199PaintScorers=v18199Paint;
+
+ // Esta e propositalmente a ultima definicao de renderPage do arquivo.
+ const v18199BaseRenderPage=renderPage;
+ renderPage=function(){
+  if(view==='rankings'){
+   try{return v18199Hub();}
+   catch(e){console.error('[FutBR] render terminal Artilheiros:',e);return '<div class="notice error">Nao foi possivel montar a artilharia desta carreira.</div>';}
+  }
+  return v18199BaseRenderPage();
+ };
+
+ // Intercepta a aba antes do delegador historico data-action=nav.
+ document.addEventListener('click',e=>{
+  const btn=e.target?.closest?.('.v677-ranking-tab[data-view="rankings"]');
+  if(!btn)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  try{closeModal?.();}catch(err){}
+  view='rankings';
+  if(!v18199Paint())try{render();}catch(err){console.error('[FutBR] navegacao Artilheiros:',err);}
+  try{window.scrollTo({top:0});}catch(err){}
+ },true);
+
+ G.terminalScorers18199={version:'18.199',physicalLastLayer:true,captureNavigation:true,directPagePaint:true};
+})();
+</script>
+'''
+    if 'futbr-terminal-scorers-18199' not in html:
+        html = html.rstrip() + "\\n\\n" + terminal_scorers + "\\n"
+
     index_path.write_text(html, encoding="utf-8")
-    print("prebuilt boot finalized: login-first, authoritative-32-plus-academy, direct-scorers-route")
+    print("prebuilt boot finalized: login-first, authoritative-32-plus-academy, terminal-scorers-18199")
 
 
 if __name__ == "__main__":
