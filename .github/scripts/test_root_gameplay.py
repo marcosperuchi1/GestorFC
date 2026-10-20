@@ -41,6 +41,18 @@ def main():
         if x not in html: die('Marcador raiz ausente: '+x)
     if 'v18167NationalDrag' in html: die('Listener duplicado de drag nacional')
 
+    # Hub de Rankings: Artilheiros e Tecnicos precisam de rotas finais explicitas
+    # para impedir que o conteudo de uma aba seja reaproveitado pela outra.
+    for marker in [
+        "futbr-ranking-route-18197",
+        "if(view==='rankings')return v18197RankingHub(`<div class=\"v615-rankings-shell\">${scorersPage()}</div>`);",
+        "if(view==='coaches')return v18197RankingHub(coachesPage());",
+        "explicitScorersRoute:true",
+        "explicitCoachesRoute:true"
+    ]:
+        if marker not in html:
+            die('Rota final de Rankings incompleta: '+marker)
+
     # Simulacao nacional: qualidade real do XI domina, Elo e apenas ajuste secundario.
     for marker in [
         "function v18179NationalSimPower(s,code)",
