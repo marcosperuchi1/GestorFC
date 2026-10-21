@@ -65,7 +65,7 @@ def main():
     # Esta etapa e executada imediatamente depois do finalizador do HTML. Assim,
     # a correcao da MLS fica sobre o arquivo definitivo e e testada antes do Rust.
     applied={}
-    for name in ["fix_mls_vacation.py","fix_mls_vacation_ui.py"]:
+    for name in ["fix_mls_vacation.py","fix_mls_vacation_idempotency.py","fix_mls_vacation_ui.py"]:
         applied[name]=run_script(scripts/name,root)
     mls_test_output=run_script(scripts/"test_mls_vacation.py",root)
     mls_report=json.loads((root/"mls-vacation-tests.json").read_text(encoding="utf-8"))
@@ -97,7 +97,7 @@ def main():
       "window.onload","op==='create'","op===\"create\"","v53Creating",
       "saveSharded(state","saveSharded(s","doSave(","v52FlushSave()",
       "writeMany(","raw-write-many","indexeddb-hot-sqlite-manual-sync",
-      "futbr-mls-vacation-18200-meta","futbr-mls-vacation-18201-ui","v18201-vac-nextmatch"
+      "futbr-mls-vacation-18200-meta","futbr-mls-idempotency-18202","futbr-mls-vacation-18201-ui","v18201-vac-nextmatch"
     ]:
       report["contexts"][term]=contexts(html,term,1200,16)
     out=root/"boot-performance-diagnostic.json"
