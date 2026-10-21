@@ -1,0 +1,36 @@
+name: Migrar build para Release temporariamente
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/migrate-build-to-release-temp.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  migrate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+
+      - name: Configurar publicacao por Release
+        run: python .github/scripts/configure_release_distribution.py
+
+      - name: Gravar workflow principal
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/build-desktop-rc1-clean.yml
+          git commit -m 'Publicar builds pelo Release mais recente'
+          git push origin main
+
+      - name: Disparar build principal
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build-desktop-rc1-clean.yml --ref main
