@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: futbr-desktop-rc1
@@ -49,7 +49,7 @@ jobs:
       - name: Validar sintaxe dos scripts Python
         shell: pwsh
         run: |
-          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/test_runtime_boot.py .github/scripts/test_final_ui_integrity.py .github/scripts/finalize_prebuilt_boot.py .github/scripts/consolidate_initial_database.py .github/scripts/test_initial_database.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
+          python -m py_compile .github/scripts/prepare_desktop_project.py .github/scripts/fix_root_gameplay.py .github/scripts/fix_gameplay_parity.py .github/scripts/fix_national_match_parity.py .github/scripts/externalize_crests.py .github/scripts/externalize_player_base.py .github/scripts/harden_save_storage.py .github/scripts/optimize_save_load.py .github/scripts/optimize_long_career_memory.py .github/scripts/optimize_player_storage.py .github/scripts/optimize_direct_load.py .github/scripts/add_relational_history_storage.py .github/scripts/diagnose_boot_performance.py .github/scripts/fix_mls_vacation.py .github/scripts/fix_mls_vacation_idempotency.py .github/scripts/fix_mls_vacation_ui.py .github/scripts/test_mls_vacation.py .github/scripts/test_player_storage.py .github/scripts/test_create_stream_integrity.py .github/scripts/test_direct_load.py .github/scripts/test_login_boot.py .github/scripts/test_runtime_boot.py .github/scripts/test_final_ui_integrity.py .github/scripts/finalize_prebuilt_boot.py .github/scripts/consolidate_initial_database.py .github/scripts/test_initial_database.py .github/scripts/test_create_performance.py .github/scripts/test_relational_history.py .github/scripts/test_root_gameplay.py .github/scripts/hide_how_to_play_ui.py .github/scripts/validate_desktop_architecture.py
 
       - name: Remontar pacote fonte
         shell: pwsh
@@ -88,8 +88,6 @@ jobs:
         shell: pwsh
         run: python .github/scripts/fix_root_gameplay.py "$env:FUTBR_PROJECT"
 
-
-
       - name: Corrigir paridade e base inicial
         shell: pwsh
         run: python .github/scripts/fix_gameplay_parity.py "$env:FUTBR_PROJECT"
@@ -109,7 +107,6 @@ jobs:
       - name: Externalizar base inicial de jogadores
         shell: pwsh
         run: python .github/scripts/externalize_player_base.py "$env:FUTBR_PROJECT"
-
 
       - name: Preparar Node
         uses: actions/setup-node@v4
@@ -148,21 +145,14 @@ jobs:
         shell: pwsh
         run: python .github/scripts/finalize_prebuilt_boot.py "$env:FUTBR_PROJECT"
 
-      - name: Diagnosticar boot e desempenho final
+      - name: Diagnosticar boot, MLS e desempenho final
         shell: pwsh
         run: python .github/scripts/diagnose_boot_performance.py "$env:FUTBR_PROJECT"
 
-      - name: Publicar diagnostico antecipado
-        uses: actions/upload-artifact@v4
-        with:
-          name: FutBR-Boot-Performance-Diagnostic
-          path: |
-            ${{ env.FUTBR_PROJECT }}/boot-performance-diagnostic.json
-            ${{ env.FUTBR_PROJECT }}/src/index.html
-            ${{ env.FUTBR_PROJECT }}/src-tauri/src/lib.rs
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
+      - name: Preservar diagnostico no pacote final
+        shell: pwsh
+        run: |
+          Write-Host 'Diagnostico e testes serao incluidos no Release final; upload intermediario desativado para nao consumir Actions Storage.'
 
       - name: Testar round-trip do save compacto
         shell: pwsh
@@ -228,7 +218,7 @@ jobs:
         working-directory: ${{ env.FUTBR_PROJECT }}
         run: npm run tauri build -- --bundles nsis
 
-      - name: Montar artifacts
+      - name: Montar pacote de distribuicao
         shell: pwsh
         working-directory: ${{ env.FUTBR_PROJECT }}
         run: |
@@ -245,7 +235,7 @@ jobs:
             '',
             'Extraia a pasta inteira e execute FutBR Manager.exe.',
             'Nao apague portable.flag nem rosters.v310.bin.',
-            'Os saves ficam em FutBR Manager Data\\saves ao lado do EXE.',
+            'Os saves ficam em FutBR Manager Data\saves ao lado do EXE.',
             'F11 alterna tela cheia. Alt+F4 fecha o jogo.'
           ) -Encoding utf8
           Compress-Archive -Path 'portable/*' -DestinationPath 'artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip' -Force
@@ -264,16 +254,35 @@ jobs:
           Copy-Item 'initial-database-tests.json' 'artifacts/initial-database-tests.json'
           Copy-Item 'initial-database-consolidation.json' 'artifacts/initial-database-consolidation.json'
           Copy-Item 'create-performance-tests.json' 'artifacts/create-performance-tests.json'
+          Copy-Item 'mls-vacation-tests.json' 'artifacts/mls-vacation-tests.json'
           Copy-Item 'boot-performance-diagnostic.json' 'artifacts/boot-performance-diagnostic.json'
           Copy-Item 'src/assets/data/player-base-manifest.json' 'artifacts/player-base-manifest.json'
           Copy-Item 'src/assets/crests/manifest.json' 'artifacts/crest-assets-manifest.json'
           Get-ChildItem artifacts | Format-Table Name,Length
 
-      - name: Publicar artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: FutBR-Manager-Desktop-RC1-Windows
-          path: ${{ env.FUTBR_PROJECT }}/artifacts/*
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
+      - name: Publicar ultimo build em Release
+        shell: pwsh
+        working-directory: ${{ env.FUTBR_PROJECT }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $tag = 'futbr-desktop-latest'
+          $title = 'FutBR Manager - Build #${{ github.run_number }}'
+          $notes = 'Pacote mais recente gerado pelo pipeline de testes do FutBR Manager. Substitui automaticamente o build anterior.'
+
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete $tag --yes --cleanup-tag --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw 'Falha ao remover o release anterior.' }
+          }
+
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --title $title --notes $notes --target $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar o release mais recente.' }
+
+          Get-ChildItem artifacts -File | ForEach-Object {
+            Write-Host "Publicando $($_.Name)"
+            gh release upload $tag $_.FullName --clobber --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw "Falha ao publicar $($_.Name)" }
+          }
