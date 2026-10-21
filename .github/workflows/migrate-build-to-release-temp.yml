@@ -17,4 +17,4 @@ jobs:
       - name: Disparar workflow principal
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run build-desktop-rc1-clean.yml --ref main
+        run: gh workflow run build-desktop-rc1-clean.yml --ref main --repo "$GITHUB_REPOSITORY"
