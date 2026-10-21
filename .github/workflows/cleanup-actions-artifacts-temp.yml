@@ -1,0 +1,51 @@
+name: Limpar artefatos antigos do Actions
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Excluir todos os artefatos exceto o build 115
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP_ARTIFACT_ID: "12257702600"
+        run: |
+          set -euo pipefail
+          echo "Preservando artifact ID: $KEEP_ARTIFACT_ID"
+          gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100"             --jq '.artifacts[] | select(.expired == false) | [.id, .name, .size_in_bytes, .created_at] | @tsv'             > /tmp/artifacts.tsv
+
+          deleted=0
+          deleted_bytes=0
+          while IFS=$'\t' read -r id name size created; do
+            [ -z "${id:-}" ] && continue
+            if [ "$id" = "$KEEP_ARTIFACT_ID" ]; then
+              echo "MANTER  $id  $name  $size bytes"
+              continue
+            fi
+            echo "APAGAR  $id  $name  $size bytes"
+            gh api -X DELETE "/repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+            deleted=$((deleted + 1))
+            deleted_bytes=$((deleted_bytes + size))
+          done < /tmp/artifacts.tsv
+
+          echo "Artefatos apagados: $deleted"
+          echo "Bytes liberados: $deleted_bytes"
+
+          gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100"             --jq '.artifacts[] | select(.expired == false) | [.id, .name, .size_in_bytes] | @tsv'             > /tmp/remaining.tsv
+
+          echo "Artefatos restantes:"
+          cat /tmp/remaining.tsv || true
+
+          remaining_other=$(awk -F '\t' -v keep="$KEEP_ARTIFACT_ID" '$1 != keep {n++} END {print n+0}' /tmp/remaining.tsv)
+          if [ "$remaining_other" -ne 0 ]; then
+            echo "ERRO: ainda existem artefatos antigos."
+            exit 1
+          fi
