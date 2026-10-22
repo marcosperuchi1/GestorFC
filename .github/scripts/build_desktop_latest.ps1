@@ -33,8 +33,10 @@ $pythonScripts = @(
   '.github/scripts/fix_mls_vacation_idempotency.py',
   '.github/scripts/fix_mls_vacation_ui.py',
   '.github/scripts/fix_scorers_navigation.py',
+  '.github/scripts/fix_scorers_live_runtime.py',
   '.github/scripts/test_mls_vacation.py',
   '.github/scripts/test_scorers_navigation.py',
+  '.github/scripts/test_scorers_live.py',
   '.github/scripts/test_player_storage.py',
   '.github/scripts/test_create_stream_integrity.py',
   '.github/scripts/test_direct_load.py',
@@ -102,6 +104,7 @@ Run-Python '.github/scripts/optimize_direct_load.py'
 Run-Python '.github/scripts/add_relational_history_storage.py'
 Run-Python '.github/scripts/finalize_prebuilt_boot.py'
 Run-Python '.github/scripts/fix_scorers_navigation.py'
+Run-Python '.github/scripts/fix_scorers_live_runtime.py'
 Run-Python '.github/scripts/diagnose_boot_performance.py'
 Run-Python '.github/scripts/test_player_storage.py'
 Run-Python '.github/scripts/test_create_stream_integrity.py'
@@ -110,6 +113,7 @@ Run-Python '.github/scripts/test_login_boot.py'
 Run-Python '.github/scripts/test_runtime_boot.py'
 Run-Python '.github/scripts/test_final_ui_integrity.py'
 Run-Python '.github/scripts/test_scorers_navigation.py'
+Run-Python '.github/scripts/test_scorers_live.py'
 Run-Python '.github/scripts/test_initial_database.py'
 Run-Python '.github/scripts/test_create_performance.py'
 Run-Python '.github/scripts/test_relational_history.py'
@@ -145,6 +149,7 @@ try {
   Copy-Item $nsis.FullName 'artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
   Copy-Item 'mls-vacation-tests.json' 'artifacts/mls-vacation-tests.json'
   Copy-Item 'scorers-navigation-tests.json' 'artifacts/scorers-navigation-tests.json'
+  Copy-Item 'scorers-live-tests.json' 'artifacts/scorers-live-tests.json'
   Copy-Item 'create-performance-tests.json' 'artifacts/create-performance-tests.json'
   Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json'
   Get-ChildItem artifacts | Format-Table Name,Length
