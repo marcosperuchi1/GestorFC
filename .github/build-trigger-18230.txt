@@ -1,0 +1,1 @@
+Executar uma unica compilacao do Artilheiros compacto e do Ranking de Clubes com snapshots limitados por jornada.
