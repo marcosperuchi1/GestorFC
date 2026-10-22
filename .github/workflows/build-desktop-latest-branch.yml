@@ -1,10 +1,6 @@
 name: Build FutBR Manager para branch latest
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/build-desktop-latest-branch.yml'
   workflow_dispatch:
 
 permissions:
@@ -96,4 +92,4 @@ jobs:
 
           Write-Host 'Build publicado na branch build-latest sem usar Actions artifacts.'
 
-# artilheiros-raiz-18.211-trigger-unico
+# artilheiros-raiz-18.211; execucao somente manual
