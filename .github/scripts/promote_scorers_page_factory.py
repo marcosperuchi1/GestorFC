@@ -16,12 +16,13 @@ def main() -> None:
     path = Path(sys.argv[1]).resolve() / 'src' / 'index.html'
     html = path.read_text(encoding='utf-8')
 
-    html = replace_once(
-        html,
-        ' const v18210BaseRenderPage=renderPage;\n\n',
-        '',
-        'remover wrapper de renderPage',
-    )
+    if ' const v18210BaseRenderPage=renderPage;\n\n' in html:
+        html = html.replace(' const v18210BaseRenderPage=renderPage;\n\n', '', 1)
+    elif ' const v18210BaseRenderPage=renderPage;\n' in html:
+        html = html.replace(' const v18210BaseRenderPage=renderPage;\n', '', 1)
+    else:
+        raise RuntimeError('remover wrapper: base renderPage ausente')
+
     html = replace_once(
         html,
         " function v18210RankingsPage(){\n  const tabs=typeof v677RankingTabs==='function'?v677RankingTabs():'';\n  return '<div class=\"v677-ranking-hub\">'+tabs+'<div class=\"v677-ranking-content\"><div class=\"v615-rankings-shell\">'+v18210ScorersContent()+'</div></div></div>';\n }",
