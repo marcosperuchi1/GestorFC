@@ -1,0 +1,1 @@
+Executar uma única compilação da correção in-scope de Artilheiros e do cache limitado de Ranking de Clubes.
