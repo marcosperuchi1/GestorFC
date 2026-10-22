@@ -1,0 +1,94 @@
+name: Build unico Artilheiros 18.211
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - '.github/build-trigger-18211.txt'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: futbr-scorers-18211-once
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar e publicar Artilheiros 18.211
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Baixar branch principal
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preparar Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Preparar navegador de testes
+        shell: pwsh
+        run: python -m pip install playwright
+
+      - name: Compilar e testar pacote completo
+        shell: pwsh
+        run: .github/scripts/build_desktop_root.ps1
+
+      - name: Substituir branch build-latest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $dist = Join-Path $env:RUNNER_TEMP 'futbr-distribution-18211'
+          if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/mls-vacation-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-root-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-render-root-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/create-performance-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/architecture-validation.json" $dist
+
+          $readme = @(
+            '# FutBR Manager - ultimo build de teste',
+            '',
+            "Build unico Artilheiros 18.211 · workflow #${{ github.run_number }}.",
+            '',
+            '- `FutBR-Manager-Desktop-RC1-INSTALADOR.exe`: instalador Windows.',
+            '- `FutBR-Manager-Desktop-RC1-PORTATIL.zip`: versao portatil.',
+            '- `scorers-root-tests.json`: validacao dos dados de Artilheiros.',
+            '- `scorers-render-root-tests.json`: validacao da escrita real em #v555-page.',
+            '',
+            'Esta branch e substituida integralmente a cada novo build aprovado.'
+          )
+          Set-Content (Join-Path $dist 'README.md') $readme -Encoding utf8
+
+          Set-Location $env:GITHUB_WORKSPACE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan build-latest
+          git rm -rf . 2>$null
+          git clean -fdx
+          Copy-Item "$dist/*" . -Force
+          git add .
+          git commit -m "FutBR Manager Artilheiros 18.211 build #${{ github.run_number }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar commit do build-latest.' }
+          git push --force origin HEAD:build-latest
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar a branch build-latest.' }
