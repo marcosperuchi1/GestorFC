@@ -31,12 +31,19 @@ $source = [regex]::Replace(
   1
 )
 
+$source = [regex]::Replace(
+  $source,
+  "Run-Python '\.github/scripts/test_scorers_in_scope\.py'",
+  "Run-Python '.github/scripts/test_scorers_in_scope.py'`nRun-Python '.github/scripts/finalize_rankings_18230.py'`nRun-Python '.github/scripts/stabilize_rankings_18230.py'`nRun-Python '.github/scripts/test_runtime_boot.py'`nRun-Python '.github/scripts/test_rankings_18230.py'",
+  1
+)
+
 $source = [regex]::Replace($source, "(?m)^\s*Copy-Item 'scorers-navigation-tests\.json'.*\r?\n", '')
 $source = [regex]::Replace($source, "(?m)^\s*Copy-Item 'scorers-live-tests\.json'.*\r?\n", '')
 $source = [regex]::Replace(
   $source,
   "(?m)^(\s*)Copy-Item 'mls-vacation-tests\.json' 'artifacts/mls-vacation-tests\.json'\r?$",
-  "`$1Copy-Item 'mls-vacation-tests.json' 'artifacts/mls-vacation-tests.json'`n`$1Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'",
+  "`$1Copy-Item 'mls-vacation-tests.json' 'artifacts/mls-vacation-tests.json'`n`$1Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'`n`$1Copy-Item 'rankings-18230-install.json' 'artifacts/rankings-18230-install.json'`n`$1Copy-Item 'rankings-18230-stability.json' 'artifacts/rankings-18230-stability.json'`n`$1Copy-Item 'rankings-18230-tests.json' 'artifacts/rankings-18230-tests.json'",
   1
 )
 
@@ -44,7 +51,11 @@ $required = @(
   "Run-Python '.github/scripts/fix_scorers_in_scope.py'",
   "Run-Python '.github/scripts/optimize_rankings_in_scope.py'",
   "Run-Python '.github/scripts/test_scorers_in_scope.py'",
-  "Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'"
+  "Run-Python '.github/scripts/finalize_rankings_18230.py'",
+  "Run-Python '.github/scripts/stabilize_rankings_18230.py'",
+  "Run-Python '.github/scripts/test_rankings_18230.py'",
+  "Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'",
+  "Copy-Item 'rankings-18230-tests.json' 'artifacts/rankings-18230-tests.json'"
 )
 foreach ($marker in $required) {
   if (-not $source.Contains($marker)) { throw "Pipeline in-scope incompleto: $marker" }
@@ -68,11 +79,11 @@ foreach ($forbidden in @(
   if ($source.Contains($forbidden)) { throw "Pipeline ainda executa camada antiga: $forbidden" }
 }
 
-python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py'
+python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py' '.github/scripts/finalize_rankings_18230.py' '.github/scripts/stabilize_rankings_18230.py' '.github/scripts/test_rankings_18230.py'
 if ($LASTEXITCODE -ne 0) { throw 'Falha na sintaxe dos scripts in-scope de rankings.' }
 
 $tempScript = Join-Path $env:RUNNER_TEMP 'build_desktop_root_generated.ps1'
 Set-Content $tempScript $source -Encoding utf8
-Write-Host 'Executando pipeline original com Artilheiros no escopo do motor e snapshot limitado de clubes.'
+Write-Host 'Executando pipeline original com Artilheiros compacto e Ranking de Clubes em snapshots limitados por jornada.'
 & $tempScript
 if ($LASTEXITCODE -ne 0) { throw 'Falha no pipeline in-scope do desktop.' }
