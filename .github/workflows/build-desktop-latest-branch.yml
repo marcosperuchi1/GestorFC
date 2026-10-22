@@ -61,6 +61,7 @@ jobs:
           Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/mls-vacation-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-navigation-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/create-performance-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/architecture-validation.json" $dist
 
@@ -72,6 +73,7 @@ jobs:
             '- `FutBR-Manager-Desktop-RC1-INSTALADOR.exe`: instalador Windows.',
             '- `FutBR-Manager-Desktop-RC1-PORTATIL.zip`: versao portatil.',
             '- `mls-vacation-tests.json`: validacao dos playoffs da MLS e ferias.',
+            '- `scorers-navigation-tests.json`: validacao da tela Artilheiros, inclusive depois do fim da temporada.',
             '',
             'Esta branch e substituida integralmente a cada novo build aprovado.'
           )
