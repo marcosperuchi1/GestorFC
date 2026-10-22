@@ -36,21 +36,26 @@ def main() -> None:
         "data-v18202-scorers-root",
         "liveHasRows",
         "archived&&(!liveHasRows||!!s.seasonDone)",
+        "futbr-terminal-scorers-18203",
+        "liveSeason:true",
     ]
     for marker in required:
         if marker not in html:
             fail("marcador de Artilheiros ausente: " + marker)
 
     old_pos = html.rfind("futbr-terminal-scorers-18199")
-    new_pos = html.rfind("futbr-terminal-scorers-18202")
-    if old_pos < 0 or new_pos <= old_pos:
+    nav_pos = html.rfind("futbr-terminal-scorers-18202")
+    live_pos = html.rfind("futbr-terminal-scorers-18203")
+    if old_pos < 0 or nav_pos <= old_pos:
         fail("camada 18.202 nao ficou depois da camada antiga")
-    terminal_base = html.rfind("const v18202BaseRenderPage=renderPage")
+    if live_pos <= nav_pos:
+        fail("camada ao vivo 18.203 nao ficou depois da navegacao 18.202")
+    terminal_base = html.rfind("const v18203BaseRenderPage=renderPage")
     terminal_render = html.find("renderPage=function", terminal_base)
-    if terminal_base < new_pos or terminal_render < terminal_base:
-        fail("wrapper terminal de renderPage 18.202 ausente")
+    if terminal_base < live_pos or terminal_render < terminal_base:
+        fail("wrapper terminal de renderPage 18.203 ausente")
     if html.find("renderPage=function", terminal_render + 1) >= 0:
-        fail("outra definicao de renderPage ficou depois da camada 18.202")
+        fail("outra definicao de renderPage ficou depois da camada 18.203")
 
     js = r"""
 const assert=require('assert');
@@ -161,6 +166,7 @@ console.log(JSON.stringify({
  renderOverwriteRecovered:true,
  mutationOverwriteRecovered:true,
  explicitExitPreserved:true,
+ terminalLiveLayer:true,
  goals:13
 }));
 """
@@ -189,6 +195,7 @@ console.log(JSON.stringify({
         "renderOverwriteRecovered",
         "mutationOverwriteRecovered",
         "explicitExitPreserved",
+        "terminalLiveLayer",
     ]):
         fail("teste de Artilheiros retornou resultado incompleto")
 
