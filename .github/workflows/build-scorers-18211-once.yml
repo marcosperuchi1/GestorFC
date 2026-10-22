@@ -1,21 +1,21 @@
-name: Build unico Rankings 18.230
+name: Build unico Ranking incremental 18.301
 
 on:
   pull_request_target:
     branches: [main]
     paths:
-      - '.github/build-trigger-18230.txt'
+      - '.github/build-trigger-18300.txt'
 
 permissions:
   contents: write
 
 concurrency:
-  group: futbr-rankings-18230-once
+  group: futbr-ranking-incremental-18301-once
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Compilar e publicar Rankings 18.230
+    name: Compilar e publicar Ranking incremental 18.301
     runs-on: windows-latest
     timeout-minutes: 120
 
@@ -54,7 +54,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
-          $dist = Join-Path $env:RUNNER_TEMP 'futbr-distribution-18230'
+          $dist = Join-Path $env:RUNNER_TEMP 'futbr-distribution-18301'
           if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
@@ -65,20 +65,26 @@ jobs:
           Copy-Item "$env:FUTBR_PROJECT/artifacts/rankings-18230-install.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/rankings-18230-stability.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/rankings-18230-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/incremental-ranking-18300-install.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/incremental-ranking-18301-install.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/incremental-ranking-18300-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/create-performance-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/architecture-validation.json" $dist
 
           $readme = @(
             '# FutBR Manager - ultimo build de teste',
             '',
-            "Build Rankings 18.230 · workflow #${{ github.run_number }}.",
+            "Build Ranking incremental 18.301 · workflow #${{ github.run_number }}.",
             '',
             '- `FutBR-Manager-Desktop-RC1-INSTALADOR.exe`: instalador Windows.',
             '- `FutBR-Manager-Desktop-RC1-PORTATIL.zip`: versao portatil.',
-            '- Artilheiros mantem os filtros e a tabela, sem o cabecalho alto acima deles.',
-            '- Ranking de Clubes preserva a metodologia original e reutiliza snapshots limitados por jornada.',
-            '- A jornada anterior permanece visivel enquanto a atual e sincronizada em segundo plano.',
-            '- O cache e limitado a tres snapshots e nao armazena telas de progresso.',
+            '- O aviso incorreto de salvamento web foi removido do executavel desktop.',
+            '- Mensagens tecnicas com tempo da virada de temporada nao sao exibidas ao usuario.',
+            '- O Ranking de Clubes passa a manter uma base persistente dentro do save.',
+            '- A primeira migracao calcula a base uma vez; depois somente clubes de competicoes afetadas e novos campeoes sao atualizados.',
+            '- J/V/E/D sao mantidos incrementalmente a cada novo resultado.',
+            '- A virada de temporada reutiliza a classificacao existente e nao reconstrói os 5.628 clubes.',
+            '- A metodologia original de pontuacao 6.33 foi preservada.',
             '- As otimizacoes de base externa, saves fragmentados, SQLite e memoria de carreira longa permanecem ativas.',
             '',
             'Esta branch e substituida integralmente a cada novo build aprovado.'
@@ -93,9 +99,9 @@ jobs:
           git clean -fdx
           Copy-Item "$dist/*" . -Force
           git add .
-          git commit -m "FutBR Manager Rankings 18.230 build #${{ github.run_number }}"
+          git commit -m "FutBR Manager Ranking incremental 18.301 build #${{ github.run_number }}"
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar commit do build-latest.' }
           git push --force origin HEAD:build-latest
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar a branch build-latest.' }
 
-          Write-Host 'Build 18.230 publicado na branch build-latest sem usar Actions artifacts.'
+          Write-Host 'Build 18.301 publicado na branch build-latest sem usar Actions artifacts.'
