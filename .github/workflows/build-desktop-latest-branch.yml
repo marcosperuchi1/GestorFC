@@ -94,4 +94,4 @@ jobs:
 
           Write-Host 'Build publicado na branch build-latest sem usar Actions artifacts.'
 
-# artilheiros-18.202: reexecucao apos atualizar as invariantes do teste final
+# artilheiros-18.202: build definitivo com intencao persistente e saida explicita
