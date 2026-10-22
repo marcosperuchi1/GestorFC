@@ -45,13 +45,9 @@ jobs:
         shell: pwsh
         run: python -m pip install playwright
 
-      - name: Diagnosticar origem da tela Artilheiros
-        shell: pwsh
-        run: .github/scripts/run_scorers_root_diagnostics.ps1
-
       - name: Compilar e testar pacote completo
         shell: pwsh
-        run: .github/scripts/build_desktop_latest.ps1
+        run: .github/scripts/build_desktop_root.ps1
 
       - name: Substituir branch build-latest
         shell: pwsh
@@ -65,14 +61,9 @@ jobs:
           Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/FutBR-Manager-Desktop-RC1-PORTATIL.zip" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/mls-vacation-tests.json" $dist
-          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-navigation-tests.json" $dist
-          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-live-tests.json" $dist
+          Copy-Item "$env:FUTBR_PROJECT/artifacts/scorers-root-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/create-performance-tests.json" $dist
           Copy-Item "$env:FUTBR_PROJECT/artifacts/architecture-validation.json" $dist
-          if ($env:FUTBR_SCORERS_DIAGNOSTICS -and (Test-Path $env:FUTBR_SCORERS_DIAGNOSTICS)) {
-            New-Item -ItemType Directory -Force -Path (Join-Path $dist 'diagnostics-scorers') | Out-Null
-            Copy-Item "$env:FUTBR_SCORERS_DIAGNOSTICS/*" (Join-Path $dist 'diagnostics-scorers') -Force
-          }
 
           $readme = @(
             '# FutBR Manager - ultimo build de teste',
@@ -82,9 +73,7 @@ jobs:
             '- `FutBR-Manager-Desktop-RC1-INSTALADOR.exe`: instalador Windows.',
             '- `FutBR-Manager-Desktop-RC1-PORTATIL.zip`: versao portatil.',
             '- `mls-vacation-tests.json`: validacao dos playoffs da MLS e ferias.',
-            '- `scorers-navigation-tests.json`: validacao da navegacao da tela Artilheiros.',
-            '- `scorers-live-tests.json`: validacao de Artilheiros com gols durante a temporada.',
-            '- `diagnostics-scorers/`: comparacao da criacao da tela em tres estagios.',
+            '- `scorers-root-tests.json`: validacao da tela Artilheiros na rota raiz.',
             '',
             'Esta branch e substituida integralmente a cada novo build aprovado.'
           )
@@ -96,7 +85,7 @@ jobs:
           git checkout --orphan build-latest
           git rm -rf . 2>$null
           git clean -fdx
-          Copy-Item "$dist/*" . -Force -Recurse
+          Copy-Item "$dist/*" . -Force
           git add .
           git commit -m "FutBR Manager build #${{ github.run_number }}"
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar commit do build-latest.' }
@@ -105,4 +94,4 @@ jobs:
 
           Write-Host 'Build publicado na branch build-latest sem usar Actions artifacts.'
 
-# diagnostico-causa-raiz-artilheiros-1
+# artilheiros-raiz-18.210: uma rota, sem observers e sem sobreposicao
