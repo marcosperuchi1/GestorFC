@@ -5,13 +5,12 @@ $source = Get-Content $basePath -Raw
 
 # Mantem a cadeia de performance ja consolidada: base externa, academias prontas,
 # saves fragmentados, SQLite, memoria de carreira longa e carregamento direto.
-# Somente a UI de rankings e alterada, agora dentro do mesmo escopo do motor.
+# Somente a UI de rankings e alterada, dentro do mesmo escopo lexical do motor.
 $oldRuntime = "Run-Python '.github/scripts/finalize_prebuilt_boot.py'\r?\nRun-Python '.github/scripts/fix_scorers_navigation.py'\r?\nRun-Python '.github/scripts/fix_scorers_live_runtime.py'\r?\nRun-Python '.github/scripts/diagnose_boot_performance.py'"
 $newRuntime = @"
 Run-Python '.github/scripts/finalize_prebuilt_boot.py'
 Run-Python '.github/scripts/fix_scorers_in_scope.py'
 Run-Python '.github/scripts/optimize_rankings_in_scope.py'
-Run-Python '.github/scripts/bootstrap_rankings_api.py'
 Run-Python '.github/scripts/diagnose_boot_performance.py'
 "@.Trim()
 $source = [regex]::Replace($source, $oldRuntime, $newRuntime, 1)
@@ -44,7 +43,6 @@ $source = [regex]::Replace(
 $required = @(
   "Run-Python '.github/scripts/fix_scorers_in_scope.py'",
   "Run-Python '.github/scripts/optimize_rankings_in_scope.py'",
-  "Run-Python '.github/scripts/bootstrap_rankings_api.py'",
   "Run-Python '.github/scripts/test_scorers_in_scope.py'",
   "Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'"
 )
@@ -59,6 +57,7 @@ foreach ($forbidden in @(
   "Run-Python '.github/scripts/fix_scorers_render_root.py'",
   "Run-Python '.github/scripts/fix_scorers_safe_state.py'",
   "Run-Python '.github/scripts/relocate_scorers_scripts.py'",
+  "Run-Python '.github/scripts/bootstrap_rankings_api.py'",
   "Run-Python '.github/scripts/test_scorers_navigation.py'",
   "Run-Python '.github/scripts/test_scorers_live.py'",
   "Run-Python '.github/scripts/test_final_ui_integrity.py'",
@@ -69,7 +68,7 @@ foreach ($forbidden in @(
   if ($source.Contains($forbidden)) { throw "Pipeline ainda executa camada antiga: $forbidden" }
 }
 
-python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/bootstrap_rankings_api.py' '.github/scripts/test_scorers_in_scope.py'
+python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py'
 if ($LASTEXITCODE -ne 0) { throw 'Falha na sintaxe dos scripts in-scope de rankings.' }
 
 $tempScript = Join-Path $env:RUNNER_TEMP 'build_desktop_root_generated.ps1'
