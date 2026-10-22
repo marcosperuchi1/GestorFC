@@ -93,3 +93,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar a branch build-latest.' }
 
           Write-Host 'Build publicado na branch build-latest sem usar Actions artifacts.'
+
+# artilheiros-18.202: reexecucao apos atualizar as invariantes do teste final
