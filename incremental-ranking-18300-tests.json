@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "baseWorldCalculations": 1,
+  "sameJourneyRebuild": false,
+  "affectedCompetitionClubs": 20,
+  "titleOnlyUpdate": true,
+  "seasonRolloverWorldRebuild": false,
+  "persistedAcrossReload": true,
+  "recordColumnsIncremental": true,
+  "seasonTimingMessageHidden": true,
+  "webSaveWarningRemoved": true,
+  "explicitCompetitionScope": true,
+  "persistCalls": 1,
+  "storeRows": 120
+}

@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "mandatoryShootout": true,
+  "repairedDraws": true,
+  "requiredRound": 3,
+  "unresolvedSeries": 4,
+  "round3Stages": 1,
+  "round4Stages": 1,
+  "idempotent": true,
+  "vacationRemaining": 5,
+  "pausedVacationNextMatch": true
+}

@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "createMs": 8587,
+  "players": 202574,
+  "academy": 46544,
+  "maxRoster": 32,
+  "clubsOver32": 0,
+  "heapMiB": 1136,
+  "rssMiB": 1270,
+  "saveCodecMs": 4096,
+  "playerChunks": 226,
+  "playerBase64MiB": 15.13
+}

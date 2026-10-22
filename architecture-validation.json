@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "engine_sha256": "82b9dd0fe1cb937b6acf31df39a8b44b9de6e56efb8fabe6211ca2485dfc294a",
+  "player_base_records": 5630,
+  "player_base_players": 202693,
+  "player_base_bytes": 34645774,
+  "crest_assets": 6507,
+  "executable_js_blocks": 126,
+  "runtime_boot_login": true,
+  "no_roster_read_before_login": true,
+  "history_markers_preserved": true,
+  "career_state_authority": "unchanged",
+  "player_base_external_only": "initial-database",
+  "save_shards_preserved": [
+    "players",
+    "teams",
+    "coaches",
+    "schedule",
+    "competitions",
+    "competitionStats",
+    "allTimeStats",
+    "v538CareerArchive",
+    "v555CareerArchive"
+  ]
+}

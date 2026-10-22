@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "version": "18.300",
+  "desktopSaveWarningHiddenWhenNativeStorageAvailable": true,
+  "seasonTimingToastHidden": true,
+  "clubRankingPersistentStore": true,
+  "clubRankingCarriesAcrossSeason": true,
+  "clubRankingUpdatesAffectedClubsOnly": true,
+  "clubRankingTitleEvents": true,
+  "clubRankingMethodology": "rankProfile633-original",
+  "structuralPerformancePreserved": true
+}

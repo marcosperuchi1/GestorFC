@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "version": "18.301",
+  "desktopWebSaveWarningRemoved": true,
+  "seasonTimingToastHidden": true,
+  "competitionScopedUpdates": true,
+  "incrementalRecordColumns": true,
+  "optimizedOrderSort": true,
+  "rankWindowTracked": true,
+  "fullWorldRebuildAtSeasonStart": false
+}

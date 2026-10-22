@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "version": "18.230",
+  "scorersCompactHeader": true,
+  "livePlayers": true,
+  "liveGoals": 5,
+  "clubRankingSameJourneyCalls": 1,
+  "clubRankingBoundedSnapshots": 3,
+  "clubRankingCacheSize": 3,
+  "progressNotCached": true,
+  "staleWhileRevalidate": true,
+  "retryUntilReady": true,
+  "controlAwareInvalidation": true,
+  "methodologyPreserved": true,
+  "roster": 32,
+  "capMax": 32,
+  "sameMainScriptScope": true,
+  "externalOverlayLayers": 0,
+  "clubRankingMethodology": "unchanged-original-renderer"
+}

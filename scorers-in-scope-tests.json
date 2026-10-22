@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "sameMainScriptScope": true,
+  "tabsAndHeader": true,
+  "livePlayers": true,
+  "goalsLive": 5,
+  "goalsNextRound": 6,
+  "goalsArchive": 18,
+  "clubRankingCacheCalls": 2,
+  "clubRankingSameJourneyHit": true,
+  "clubRankingNewJourneyInvalidated": true,
+  "clubRankingBoundedSingleSnapshot": true,
+  "roster": 32,
+  "academy": 8,
+  "capMax": 32,
+  "structuralMainScriptScope": true,
+  "externalOverlayLayers": 0
+}

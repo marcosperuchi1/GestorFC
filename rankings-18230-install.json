@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "version": "18.230",
+  "scorersCompactHeader": true,
+  "clubRankingMethodology": "unchanged-original-renderer",
+  "clubRankingBoundedSnapshots": 3,
+  "clubRankingIdleRetry": true,
+  "clubRankingStaleWhileRevalidate": true,
+  "clubRankingControlAwareInvalidation": true,
+  "unboundedCache": false
+}
