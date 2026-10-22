@@ -60,6 +60,21 @@ def main() -> None:
         fail(f"funcao v18301CompetitionClubs inesperada: encontrado {count}")
     html = html.replace(old, new, 1)
 
+    old_seen = r'''function v18301MarkSeenFixtures(s,store,through){
+ store.seenFixtures??={};const end=Math.min(Math.max(-1,Number(through)||-1),(s.schedule||[]).length-1);
+ for(let day=0;day<=end;day++)for(const [index,fixture] of (s.schedule?.[day]?.fixtures||[]).entries())if(fixture?.result)store.seenFixtures[v18301FixtureKey(s,day,index,fixture)]=1;
+}'''
+    new_seen = r'''function v18301MarkSeenFixtures(s,store,through){
+ store.seenFixtures??={};const parsed=Number(through),end=Math.min(Math.max(-1,Number.isFinite(parsed)?parsed:-1),(s.schedule||[]).length-1);
+ // A jornada zero e valida. Nunca usar `valor || -1`, pois 0 seria tratado
+ // como ausencia e o primeiro resultado seria contabilizado novamente.
+ for(let day=0;day<=end;day++)for(const [index,fixture] of (s.schedule?.[day]?.fixtures||[]).entries())if(fixture?.result)store.seenFixtures[v18301FixtureKey(s,day,index,fixture)]=1;
+}'''
+    seen_count = html.count(old_seen)
+    if seen_count != 1:
+        fail(f"funcao v18301MarkSeenFixtures inesperada: encontrado {seen_count}")
+    html = html.replace(old_seen, new_seen, 1)
+
     marker = "/* FUTBR_INCREMENTAL_COMPETITION_SCOPE_18302 */"
     insert_at = html.find("/* FUTBR_INCREMENTAL_CLUB_RANKING_18301_END */")
     if insert_at < 0:
@@ -70,6 +85,8 @@ def main() -> None:
         marker,
         "if(!scoped&&country&&Number.isFinite(division))",
         "Quando a competicao ja delimita seus clubes",
+        "Number.isFinite(parsed)?parsed:-1",
+        "A jornada zero e valida",
     ):
         if required not in html:
             fail("marcador de escopo ausente: " + required)
@@ -80,6 +97,8 @@ def main() -> None:
         "explicitCompetitionScope": True,
         "countryDivisionFallbackOnlyWithoutParticipants": True,
         "worldWideRecalculationPrevented": True,
+        "dayZeroMarkedAsSeen": True,
+        "duplicateFirstFixturePrevented": True,
     }
     (project / "incremental-ranking-18302-install.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
