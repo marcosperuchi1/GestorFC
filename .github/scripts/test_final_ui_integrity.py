@@ -35,10 +35,15 @@ def main():
         "directScorerRenderer:true",
         "initialSeniorCap:32",
         "futbr-terminal-scorers-18199",
+        "futbr-terminal-scorers-18202",
+        "postSeasonArchiveFallback:true",
+        "allNavigationPaths:true",
+        "staleContentObserver:true",
         "physicalLastLayer:true",
         "captureNavigation:true",
         "directPagePaint:true",
         "window.v18199PaintScorers=v18199Paint",
+        "window.v18202PaintScorers=v18202Paint",
         ".v677-ranking-tab[data-view=\"rankings\"]",
         "e.stopImmediatePropagation()",
     ]
@@ -46,19 +51,22 @@ def main():
         if marker not in html:
             die('Marcador final ausente: '+marker)
 
-    # O fix precisa estar depois de TODOS os scripts historicos anexados apos </html>.
-    terminal_pos=html.rfind('futbr-terminal-scorers-18199')
+    # A camada 18.202 precisa ficar depois de TODOS os scripts historicos e da
+    # antiga barreira 18.199. Nenhuma definicao posterior pode reassumir a rota.
+    terminal_pos=html.rfind('futbr-terminal-scorers-18202')
     if terminal_pos < 0:
-        die('Camada terminal de Artilheiros ausente')
+        die('Camada terminal de Artilheiros 18.202 ausente')
+    if terminal_pos <= html.rfind('futbr-terminal-scorers-18199',0,terminal_pos):
+        pass
     trailing=html[terminal_pos:]
     if 'futbr-root-18170-fixes' in trailing or 'futbr-v18164-national-match-parity' in trailing:
         die('Existe patch historico depois da camada terminal de Artilheiros')
-    terminal_base=html.rfind("const v18199BaseRenderPage=renderPage")
+    terminal_base=html.rfind("const v18202BaseRenderPage=renderPage")
     terminal_render=html.find("renderPage=function",terminal_base)
     if terminal_base < 0 or terminal_render < 0:
-        die('Definicao terminal de renderPage ausente')
+        die('Definicao terminal 18.202 de renderPage ausente')
     if html.find("renderPage=function",terminal_render+1) >= 0:
-        die('Outra definicao de renderPage ficou depois da camada terminal')
+        die('Outra definicao de renderPage ficou depois da camada terminal 18.202')
 
     js=r"""
 const assert=require('assert');
@@ -113,6 +121,7 @@ console.log(JSON.stringify({
  scorersMounted:true,
  stalePageRemoved:true,
  terminalLayer:true,
+ terminalVersion:'18.202',
  captureNavigation:true,
  roster:t.roster.length,
  academy:t.academy.length,
