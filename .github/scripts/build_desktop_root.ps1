@@ -11,6 +11,7 @@ $newRuntime = @"
 Run-Python '.github/scripts/finalize_prebuilt_boot.py'
 Run-Python '.github/scripts/fix_scorers_in_scope.py'
 Run-Python '.github/scripts/optimize_rankings_in_scope.py'
+Run-Python '.github/scripts/bootstrap_rankings_api.py'
 Run-Python '.github/scripts/diagnose_boot_performance.py'
 "@.Trim()
 $source = [regex]::Replace($source, $oldRuntime, $newRuntime, 1)
@@ -43,6 +44,7 @@ $source = [regex]::Replace(
 $required = @(
   "Run-Python '.github/scripts/fix_scorers_in_scope.py'",
   "Run-Python '.github/scripts/optimize_rankings_in_scope.py'",
+  "Run-Python '.github/scripts/bootstrap_rankings_api.py'",
   "Run-Python '.github/scripts/test_scorers_in_scope.py'",
   "Copy-Item 'scorers-in-scope-tests.json' 'artifacts/scorers-in-scope-tests.json'"
 )
@@ -67,7 +69,7 @@ foreach ($forbidden in @(
   if ($source.Contains($forbidden)) { throw "Pipeline ainda executa camada antiga: $forbidden" }
 }
 
-python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py'
+python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/bootstrap_rankings_api.py' '.github/scripts/test_scorers_in_scope.py'
 if ($LASTEXITCODE -ne 0) { throw 'Falha na sintaxe dos scripts in-scope de rankings.' }
 
 $tempScript = Join-Path $env:RUNNER_TEMP 'build_desktop_root_generated.ps1'
