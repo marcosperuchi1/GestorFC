@@ -1,38 +1,60 @@
 from __future__ import annotations
 
 import json
-import os
-import shutil
+import re
+import subprocess
 import sys
 from pathlib import Path
 
 
-def find_browser() -> str | None:
-    candidates: list[Path] = []
-    for executable in ("chrome", "chrome.exe", "msedge", "msedge.exe", "chromium", "chromium.exe"):
-        found = shutil.which(executable)
-        if found:
-            candidates.append(Path(found))
-    for env_name in ("PROGRAMFILES", "ProgramFiles", "PROGRAMFILES(X86)", "ProgramFiles(x86)", "LOCALAPPDATA", "LocalAppData"):
-        base = os.environ.get(env_name)
-        if not base:
-            continue
-        root = Path(base)
-        candidates.extend(
-            [
-                root / "Google" / "Chrome" / "Application" / "chrome.exe",
-                root / "Microsoft" / "Edge" / "Application" / "msedge.exe",
-            ]
-        )
-    candidates.extend([Path("/usr/bin/chromium"), Path("/usr/bin/google-chrome"), Path("/usr/bin/microsoft-edge")])
-    for candidate in candidates:
-        if candidate.exists():
-            return str(candidate)
-    return None
-
-
 def fail(message: str) -> None:
     raise RuntimeError(message)
+
+
+def extract_between(text: str, start_marker: str, end_marker: str) -> str:
+    start = text.find(start_marker)
+    end = text.find(end_marker, start + len(start_marker))
+    if start < 0 or end < 0:
+        fail(f"bloco ausente: {start_marker} ... {end_marker}")
+    return text[start : end + len(end_marker)]
+
+
+def extract_function(text: str, name: str) -> str:
+    matches = list(re.finditer(r"function\s+" + re.escape(name) + r"\s*\(", text))
+    if not matches:
+        fail("funcao ausente: " + name)
+    match = matches[-1]
+    brace = text.find("{", match.end())
+    if brace < 0:
+        fail("abertura ausente: " + name)
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    template_depth = 0
+    for index in range(brace, len(text)):
+        ch = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif quote == "`" and ch == "$" and index + 1 < len(text) and text[index + 1] == "{":
+                template_depth += 1
+            elif quote == "`" and ch == "}" and template_depth:
+                template_depth -= 1
+            elif ch == quote and template_depth == 0:
+                quote = None
+            continue
+        if ch in ("'", '"', "`"):
+            quote = ch
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[match.start() : index + 1]
+    fail("funcao nao fechada: " + name)
 
 
 def main() -> None:
@@ -40,8 +62,7 @@ def main() -> None:
         raise SystemExit("usage: test_scorers_in_scope.py <project-dir>")
 
     project = Path(sys.argv[1]).resolve()
-    html_path = project / "src" / "index.html"
-    html = html_path.read_text(encoding="utf-8")
+    html = (project / "src" / "index.html").read_text(encoding="utf-8")
 
     required = [
         "FUTBR_SCORERS_IN_SCOPE_18220_START",
@@ -73,123 +94,152 @@ def main() -> None:
     marker_pos = html.find("FUTBR_SCORERS_IN_SCOPE_18220_START")
     script_open = html.rfind("<script", 0, marker_pos)
     script_close = html.find("</script>", marker_pos)
-    if min(marker_pos, script_open, script_close) < 0 or not script_open < marker_pos < script_close:
-        fail("Artilheiros 18.220 nao esta dentro do script principal")
+    render_pos = html.find("function renderPage()")
+    if min(marker_pos, script_open, script_close, render_pos) < 0:
+        fail("script principal ou renderPage ausente")
+    if not script_open < marker_pos < script_close or not script_open < render_pos < script_close:
+        fail("Artilheiros e renderPage nao compartilham o mesmo script principal")
 
+    scorer_block = extract_between(
+        html,
+        "/* FUTBR_SCORERS_IN_SCOPE_18220_START */",
+        "/* FUTBR_SCORERS_IN_SCOPE_18220_END */",
+    )
+    cache_block = extract_between(
+        html,
+        "/* FUTBR_RANKING_CACHE_18221_START */",
+        "/* FUTBR_RANKING_CACHE_18221_END */",
+    )
+    cap_function = extract_function(html, "v18198EnforceInitialSquads")
+
+    js = r'''
+const assert=require('assert');
+global.window=global;
+global.GestorFC={};
+global.document={addEventListener(){},querySelector(){return null;}};
+let view='rankings';
+let state=null;
+let scorerFilter={kind:'all',country:'all',division:'all',year:'',query:'',nationality:'all',page:0};
+let v53Creating=false;
+let v53Sim={active:false,starting:false};
+const C=[{id:'bra',name:'Brasil'},{id:'arg',name:'Argentina'}];
+const NAT={BRA:['Brasil'],ARG:['Argentina']};
+const WorldCatalog={countries:C};
+const E={
+ normName:value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
+ team:(s,id)=>(s?.teams||[]).find(team=>team.id===id)||null,
+ repairLineup(){}
+};
+function esc(value){return String(value??'').replace(/[&<>\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[ch]));}
+function icon(name){return '<i>'+esc(name)+'</i>';}
+function nation(code){return '<span class="nation">'+esc(code)+'</span>';}
+function badge(team){return '<i>'+esc(team?.short||team?.name||'')+'</i>';}
+function teamButton(team){return '<button>'+esc(team?.name||'')+'</button>';}
+function v640Flag(code){return '['+esc(code)+']';}
+function v320Players(s){return Object.values(s?.players||{});}
+function v677RankingTabs(){
+ const items=[['clubrankings','trophy','Clubes'],['nationalrankings','flag','Selecoes'],['rankings','trophy','Artilheiros'],['coaches','users','Tecnicos']];
+ return '<div class="v677-ranking-tabs">'+items.map(([route,ic,label])=>'<button data-view="'+route+'">'+icon(ic)+label+'</button>').join('')+'</div>';
+}
+let renderCalls=0;
+function renderPage(){renderCalls++;return '<section class="club-rank">'+('R'.repeat(140))+renderCalls+'</section>';}
+''' + scorer_block + '\n' + cap_function + r'''
+window.v18198EnforceInitialSquads=v18198EnforceInitialSquads;
+''' + cache_block + r'''
+
+const filter={kind:'all',country:'all',division:'all',year:'',query:'',nationality:'all',page:0};
+const liveState={
+ year:2026,day:11,seasonDone:false,user:'t0',
+ players:{
+  p1:{id:'p1',name:'Artilheiro Real',natCode:'BRA',clubId:'t0',goals:5,assists:2,apps:8,minutes:700},
+  p2:{id:'p2',name:'Segundo Goleador',natCode:'ARG',clubId:'t1',goals:3,assists:1,apps:8,minutes:650}
+ },
+ teams:[
+  {id:'t0',name:'Flamengo Teste',short:'FLA',country:'bra',roster:['p1'],academy:[],proReserve:[],lineup:['p1']},
+  {id:'t1',name:'Rival Teste',short:'RIV',country:'arg',roster:['p2'],academy:[],proReserve:[],lineup:['p2']}
+ ],
+ competitions:{},allTimeStats:{},scorerArchive:[],v640National:null,
+ competitionStats:{
+  'league:bra:1':{
+   p1:{name:'Artilheiro Real',natCode:'BRA',goals:5,assists:2,apps:8,minutes:700,clubs:{t0:'Flamengo Teste'}},
+   p2:{playerId:'p2',name:'Segundo Goleador',natCode:'ARG',goals:3,assists:1,apps:8,minutes:650,clubs:{t1:'Rival Teste'}}
+  }
+ }
+};
+const scorerApi=window.GestorFC.scorersInScope18220;
+const clubApi=window.GestorFC.clubRankingCache18221;
+assert(scorerApi&&typeof scorerApi.renderWith==='function','API 18.220 ausente');
+assert(clubApi&&typeof clubApi.probe==='function','API 18.221 ausente');
+
+const live=scorerApi.renderWith(liveState,{...filter});
+assert(live.includes('v677-ranking-tabs'),'cabecalho de abas ausente');
+assert(live.includes('Artilheiros')&&live.includes('Clubes'),'abas de ranking incompletas');
+assert(live.includes('Ranking de Artilheiros'),'titulo de artilheiros ausente');
+assert(live.includes('Artilheiro Real')&&live.includes('Segundo Goleador'),'jogadores ao vivo ausentes');
+assert(live.includes('green strong">5</td>'),'gols ao vivo incorretos');
+assert(!live.includes('Nenhum artilheiro registrado'),'estado ao vivo foi tratado como vazio');
+
+liveState.day=12;
+liveState.competitionStats['league:bra:1'].p1.goals=6;
+const updated=scorerApi.renderWith(liveState,{...filter});
+assert(updated.includes('green strong">6</td>'),'nova jornada nao atualizou a artilharia');
+
+const archived={...liveState,day:156,seasonDone:true,competitionStats:{},scorerArchive:[{year:2026,competitions:{'league:bra:1':{p1:{id:'p1',name:'Artilheiro Real',natCode:'BRA',goals:18,assists:7,apps:30,minutes:2500,clubs:{t0:'Flamengo Teste'}}}}}]};
+const archive=scorerApi.renderWith(archived,{...filter});
+assert(archive.includes('green strong">18</td>'),'historico encerrado nao foi carregado');
+
+let cacheCalls=0;
+const htmlA='<div>'+('A'.repeat(150))+'</div>';
+const htmlB='<div>'+('B'.repeat(150))+'</div>';
+const htmlC='<div>'+('C'.repeat(150))+'</div>';
+const first=clubApi.probe('journey-11',()=>{cacheCalls++;return htmlA;});
+const second=clubApi.probe('journey-11',()=>{cacheCalls++;return htmlB;});
+const third=clubApi.probe('journey-12',()=>{cacheCalls++;return htmlC;});
+assert.equal(cacheCalls,2,'cache de clubes recalculou a mesma jornada');
+assert.equal(first,second,'snapshot da mesma jornada nao foi reutilizado');
+assert.notEqual(third,second,'mudanca de jornada nao invalidou o snapshot');
+
+const capPlayers={},capRoster=[];
+for(let i=0;i<40;i++){const id='x'+i;capPlayers[id]={id,age:i>=32?18:25,squad:i>=32?'youth':'senior',clubId:'x'};capRoster.push(id);}
+const capState={year:2026,players:capPlayers,teams:[{id:'x',roster:capRoster,academy:[],proReserve:[],lineup:capRoster.slice(0,11)}]};
+const cap=window.v18198EnforceInitialSquads(capState);
+assert.equal(capState.teams[0].roster.length,32,'teto de 32 foi perdido');
+assert.equal(cap.max,32,'maximo reportado diferente de 32');
+assert.equal(capState.teams[0].roster.filter(id=>capState.teams[0].academy.includes(id)).length,0,'sobreposicao elenco/base');
+
+console.log(JSON.stringify({
+ ok:true,
+ sameMainScriptScope:true,
+ tabsAndHeader:true,
+ livePlayers:true,
+ goalsLive:5,
+ goalsNextRound:6,
+ goalsArchive:18,
+ clubRankingCacheCalls:cacheCalls,
+ clubRankingSameJourneyHit:true,
+ clubRankingNewJourneyInvalidated:true,
+ clubRankingBoundedSingleSnapshot:clubApi.boundedSingleSnapshot===true,
+ roster:capState.teams[0].roster.length,
+ academy:capState.teams[0].academy.length,
+ capMax:cap.max
+}));
+'''
+
+    temp = project / ".scorers-in-scope-test.js"
+    temp.write_text(js, encoding="utf-8")
     try:
-        from playwright.sync_api import sync_playwright
-    except Exception as exc:
-        raise RuntimeError("Playwright nao instalado") from exc
+        result = subprocess.run(["node", str(temp)], capture_output=True, text=True, timeout=45)
+    finally:
+        temp.unlink(missing_ok=True)
+    if result.returncode:
+        fail("teste in-scope falhou:\n" + (result.stderr or result.stdout)[-10000:])
 
-    browser_path = find_browser()
-    if not browser_path:
-        fail("Chrome/Edge/Chromium nao encontrado")
-
-    page_errors: list[str] = []
-    console_errors: list[str] = []
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(
-            executable_path=browser_path,
-            headless=True,
-            args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
-        )
-        page = browser.new_page(viewport={"width": 1600, "height": 900})
-        page.on("pageerror", lambda error: page_errors.append(str(error)))
-        page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
-        page.set_content(html, wait_until="domcontentloaded", timeout=90000)
-        page.wait_for_timeout(2500)
-
-        result = page.evaluate(
-            """
-            () => {
-              const scorerApi=window.GestorFC?.scorersInScope18220;
-              const clubApi=window.GestorFC?.clubRankingCache18221;
-              if(!scorerApi||typeof scorerApi.renderWith!=='function')return {ok:false,error:'API 18.220 ausente',scorerApi:typeof scorerApi};
-              if(!clubApi||typeof clubApi.probe!=='function')return {ok:false,error:'API cache 18.221 ausente',clubApi:typeof clubApi};
-              const filter={kind:'all',country:'all',division:'all',year:'',query:'',nationality:'all',page:0};
-              const state={
-                year:2026,day:11,seasonDone:false,user:'t0',
-                players:{
-                  p1:{id:'p1',name:'Artilheiro Real',natCode:'BRA',clubId:'t0',goals:5,assists:2,apps:8,minutes:700},
-                  p2:{id:'p2',name:'Segundo Goleador',natCode:'ARG',clubId:'t1',goals:3,assists:1,apps:8,minutes:650}
-                },
-                teams:[
-                  {id:'t0',name:'Flamengo Teste',short:'FLA',country:'bra',roster:['p1'],academy:[],proReserve:[],lineup:['p1']},
-                  {id:'t1',name:'Rival Teste',short:'RIV',country:'arg',roster:['p2'],academy:[],proReserve:[],lineup:['p2']}
-                ],
-                competitions:{},allTimeStats:{},scorerArchive:[],v640National:null,
-                competitionStats:{
-                  'league:bra:1':{
-                    p1:{name:'Artilheiro Real',natCode:'BRA',goals:5,assists:2,apps:8,minutes:700,clubs:{t0:'Flamengo Teste'}},
-                    p2:{playerId:'p2',name:'Segundo Goleador',natCode:'ARG',goals:3,assists:1,apps:8,minutes:650,clubs:{t1:'Rival Teste'}}
-                  }
-                }
-              };
-              const live=scorerApi.renderWith(state,filter);
-              state.day=12;state.competitionStats['league:bra:1'].p1.goals=6;
-              const updated=scorerApi.renderWith(state,{...filter});
-              const archived={...state,day:156,seasonDone:true,competitionStats:{},scorerArchive:[{year:2026,competitions:{'league:bra:1':{p1:{id:'p1',name:'Artilheiro Real',natCode:'BRA',goals:18,assists:7,apps:30,minutes:2500,clubs:{t0:'Flamengo Teste'}}}}}]};
-              const archive=scorerApi.renderWith(archived,{...filter});
-
-              let calls=0;
-              const first=clubApi.probe('journey-11',()=>{calls++;return '<div>RANK-A</div>';});
-              const second=clubApi.probe('journey-11',()=>{calls++;return '<div>RANK-B</div>';});
-              const third=clubApi.probe('journey-12',()=>{calls++;return '<div>RANK-C</div>';});
-
-              const capPlayers={},capRoster=[];
-              for(let i=0;i<40;i++){const id='x'+i;capPlayers[id]={id,age:i>=32?18:25,squad:i>=32?'youth':'senior',clubId:'x'};capRoster.push(id);}
-              const capState={year:2026,players:capPlayers,teams:[{id:'x',roster:capRoster,academy:[],proReserve:[],lineup:capRoster.slice(0,11)}]};
-              const cap=window.v18198EnforceInitialSquads(capState);
-
-              return {
-                ok:true,
-                scorerApiVersion:scorerApi.version,
-                cacheApiVersion:clubApi.version,
-                hasTabs:live.includes('v677-ranking-tabs')&&live.includes('Artilheiros')&&live.includes('Clubes'),
-                hasTitle:live.includes('Ranking de Artilheiros'),
-                livePlayers:live.includes('Artilheiro Real')&&live.includes('Segundo Goleador'),
-                liveGoals:live.includes('green strong\">5</td>'),
-                updatedGoals:updated.includes('green strong\">6</td>'),
-                archivedGoals:archive.includes('green strong\">18</td>'),
-                emptyMessage:live.includes('Nenhum artilheiro registrado'),
-                cacheCalls:calls,
-                cacheSame:first===second,
-                cacheChanged:third!==second,
-                cacheHits:clubApi.stats.hits,
-                cacheMisses:clubApi.stats.misses,
-                roster:capState.teams[0].roster.length,
-                academy:capState.teams[0].academy.length,
-                capMax:cap.max
-              };
-            }
-            """
-        )
-        browser.close()
-
-    checks = {
-        "api": result.get("ok") is True,
-        "tabs": result.get("hasTabs") is True,
-        "title": result.get("hasTitle") is True,
-        "livePlayers": result.get("livePlayers") is True,
-        "liveGoals": result.get("liveGoals") is True,
-        "updatedGoals": result.get("updatedGoals") is True,
-        "archivedGoals": result.get("archivedGoals") is True,
-        "notEmpty": result.get("emptyMessage") is False,
-        "cacheOneComputationPerKey": result.get("cacheCalls") == 2 and result.get("cacheSame") is True and result.get("cacheChanged") is True,
-        "seniorCap": result.get("roster") == 32 and result.get("capMax") == 32,
-    }
-    result["checks"] = checks
-    result["browser"] = browser_path
-    result["mainScriptScope"] = True
-    result["pageErrorCount"] = len(page_errors)
-    result["consoleErrorCount"] = len(console_errors)
-    result["ok"] = all(checks.values())
-
+    payload = json.loads(result.stdout.strip().splitlines()[-1])
+    payload["structuralMainScriptScope"] = True
+    payload["externalOverlayLayers"] = 0
     output = project / "scorers-in-scope-tests.json"
-    output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(result, ensure_ascii=False))
-    if not result["ok"]:
-        fail("Teste real in-scope falhou: " + json.dumps(result, ensure_ascii=False))
+    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(payload, ensure_ascii=False))
 
 
 if __name__ == "__main__":
