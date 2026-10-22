@@ -1,3 +1,4 @@
 Executar uma unica compilacao da correcao de salvamento e do Ranking de Clubes persistente incremental 18.301.
 Reexecucao apos remover todas as definicoes historicas do aviso de salvamento web.
 Limpeza literal completa preservando apenas a clausula final ate sua retirada.
+Escopo explicito: usar participantes da competicao e recorrer a pais/divisao somente em formatos legados.
