@@ -121,3 +121,5 @@ jobs:
           git add .
           git commit -m 'Diagnostico da causa raiz de Artilheiros'
           git push --force origin HEAD:diagnostics-scorers
+
+# diagnostico-1: executar reconstrucao completa
