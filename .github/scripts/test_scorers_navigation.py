@@ -30,6 +30,7 @@ def main() -> None:
         "postSeasonArchiveFallback:true",
         "allNavigationPaths:true",
         "staleContentObserver:true",
+        "persistentIntent:true",
         "window.v18202PaintScorers=v18202Paint",
         "window.v18202EnsureScorers=v18202Ensure",
         "data-v18202-scorers-root",
@@ -60,7 +61,7 @@ global.nation=code=>'<span>'+String(code||'UNK')+'</span>';
 global.badge=t=>'<i>'+String(t?.short||t?.name||'')+'</i>';
 global.teamButton=t=>'<button>'+String(t?.name||'')+'</button>';
 global.v640Flag=code=>'['+code+']';
-global.v677RankingTabs=()=>'<nav><button class="v677-ranking-tab" data-view="rankings">Artilheiros</button><button data-view="clubrankings">Clubes</button></nav>';
+global.v677RankingTabs=()=>'<nav><button class="v677-ranking-tab" data-view="rankings">Artilheiros</button><button class="v677-ranking-tab" data-view="clubrankings">Clubes</button></nav>';
 global.coachesPage=()=>'<div>TECNICOS</div>';
 global.E={
  normName:v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),
@@ -102,8 +103,8 @@ const archived=window.v18198ScorersPage();
 assert(archived.includes('Goleador Arquivado'),'Artilheiro arquivado nao foi montado');
 assert(archived.includes('13'),'Gols arquivados nao foram exibidos');
 
-function target(attrs,text){return {
- textContent:text,
+function target(attrs,text,classes=''){return {
+ textContent:text,className:classes,
  getAttribute(name){return attrs[name]??null;},
  closest(){return this;}
 };}
@@ -114,7 +115,7 @@ function click(node){
 }
 
 // Caminho normal por data-view.
-let event=click(target({'data-view':'rankings'},'Artilheiros'));
+let event=click(target({'data-view':'rankings'},'Artilheiros','v677-ranking-tab'));
 assert(event.prevented&&event.stopped,'Clique de Artilheiros nao foi capturado');
 assert(page.innerHTML.includes('data-v18202-scorers-root'),'Quadro fisico de Artilheiros nao foi montado');
 assert(page.innerHTML.includes('Goleador Arquivado'),'Conteudo arquivado sumiu apos clique');
@@ -122,12 +123,17 @@ assert(!page.innerHTML.includes('Ranking de Clubes anterior'),'Quadro anterior c
 
 // Caminho legado identificado apenas pelo texto.
 page.innerHTML='<div>SELECOES</div>';view='nationalrankings';
-event=click(target({},'Artilheiros'));
+event=click(target({},'Artilheiros','ranking-tab'));
 assert(event.prevented&&event.stopped,'Botao legado por texto nao foi capturado');
 assert(page.innerHTML.includes('Goleador Arquivado'),'Botao legado nao montou Artilheiros');
 
+// Mesmo que uma rotina antiga altere tambem o view, a intencao persiste.
+page.innerHTML='<div>TECNICOS</div>';view='coaches';
+global.__scorerObserver();
+assert(page.innerHTML.includes('data-v18202-scorers-root'),'Intencao persistente nao recuperou Artilheiros');
+assert.equal(view,'rankings','Recuperacao nao restaurou a rota de Artilheiros');
+
 // Uma renderizacao tardia nao pode recolocar clubes, selecoes ou tecnicos.
-view='rankings';
 render();
 assert(page.innerHTML.includes('data-v18202-scorers-root'),'Wrapper de render nao restaurou Artilheiros');
 page.innerHTML='<div>TECNICOS</div>';
@@ -135,13 +141,22 @@ global.__scorerObserver();
 assert(page.innerHTML.includes('data-v18202-scorers-root'),'Observer nao removeu conteudo tardio incorreto');
 assert(!page.innerHTML.includes('TECNICOS'),'Quadro de tecnicos permaneceu sobre Artilheiros');
 
+// A blindagem termina quando o usuario escolhe explicitamente outra aba.
+event=click(target({'data-view':'clubrankings'},'Clubes','v677-ranking-tab'));
+assert(!event.prevented&&!event.stopped,'Navegacao para Clubes foi bloqueada');
+view='clubrankings';page.innerHTML='<div>CLUBES ESCOLHIDOS</div>';
+global.__scorerObserver();
+assert(page.innerHTML.includes('CLUBES ESCOLHIDOS'),'Artilheiros impediu saida explicita para outra aba');
+
 console.log(JSON.stringify({
  ok:true,
  postSeasonArchive:true,
  clickFromClubRanking:true,
  legacyTextButton:true,
+ persistentIntent:true,
  renderOverwriteRecovered:true,
  mutationOverwriteRecovered:true,
+ explicitExitPreserved:true,
  goals:13
 }));
 """
@@ -166,8 +181,10 @@ console.log(JSON.stringify({
         "postSeasonArchive",
         "clickFromClubRanking",
         "legacyTextButton",
+        "persistentIntent",
         "renderOverwriteRecovered",
         "mutationOverwriteRecovered",
+        "explicitExitPreserved",
     ]):
         fail("teste de Artilheiros retornou resultado incompleto")
 
