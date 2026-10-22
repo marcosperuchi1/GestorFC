@@ -96,4 +96,4 @@ jobs:
 
           Write-Host 'Build publicado na branch build-latest sem usar Actions artifacts.'
 
-# artilheiros-raiz-18.211: limpa a pagina antes de avaliar e possui fallback seguro
+# artilheiros-raiz-18.211-trigger-unico
