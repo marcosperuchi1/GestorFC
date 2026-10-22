@@ -23,17 +23,31 @@ def main() -> None:
         raise SystemExit("usage: test_incremental_ranking_18300.py <project-dir>")
 
     project = Path(sys.argv[1]).resolve()
+    patch_script = project.parent / ".github" / "scripts" / "fix_incremental_competition_scope.py"
+    if not patch_script.exists():
+        patch_script = Path(__file__).resolve().parent / "fix_incremental_competition_scope.py"
+    patch = subprocess.run(
+        [sys.executable, str(patch_script), str(project)],
+        capture_output=True,
+        text=True,
+        timeout=45,
+    )
+    if patch.returncode:
+        fail("falha ao aplicar escopo da competicao:\n" + (patch.stderr or patch.stdout)[-8000:])
+
     html = (project / "src" / "index.html").read_text(encoding="utf-8")
 
     required = [
         "FUTBR_INCREMENTAL_CLUB_RANKING_18300_START",
         "FUTBR_INCREMENTAL_CLUB_RANKING_18301_START",
+        "FUTBR_INCREMENTAL_COMPETITION_SCOPE_18302",
         "persistentStore:true",
         "carryAcrossSeason:true",
         "competitionScopedUpdates:true",
         "incrementalRecordColumns:true",
         "rankWindow633:v633RankWindow",
         "Number(s?.v18300ClubRankingStore?.revision)",
+        "if(!scoped&&country&&Number.isFinite(division))",
     ]
     for marker in required:
         if marker not in html:
@@ -147,6 +161,7 @@ setTimeout(()=>{
   recordColumnsIncremental:true,
   seasonTimingMessageHidden:true,
   webSaveWarningRemoved:true,
+  explicitCompetitionScope:true,
   persistCalls:persisted,
   storeRows:Object.keys(state.v18300ClubRankingStore.rows||{}).length
  }));
