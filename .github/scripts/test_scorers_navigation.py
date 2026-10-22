@@ -45,7 +45,11 @@ def main() -> None:
     new_pos = html.rfind("futbr-terminal-scorers-18202")
     if old_pos < 0 or new_pos <= old_pos:
         fail("camada 18.202 nao ficou depois da camada antiga")
-    if html.find("renderPage=function", new_pos + 1) >= 0:
+    terminal_base = html.rfind("const v18202BaseRenderPage=renderPage")
+    terminal_render = html.find("renderPage=function", terminal_base)
+    if terminal_base < new_pos or terminal_render < terminal_base:
+        fail("wrapper terminal de renderPage 18.202 ausente")
+    if html.find("renderPage=function", terminal_render + 1) >= 0:
         fail("outra definicao de renderPage ficou depois da camada 18.202")
 
     js = r"""
