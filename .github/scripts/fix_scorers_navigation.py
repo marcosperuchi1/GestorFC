@@ -40,15 +40,17 @@ def main() -> None:
 (()=>{
  const G=window.GestorFC=window.GestorFC||{};
  const V18202_SCORER_VIEWS=new Set(['rankings','scorers','topscorers','artilheiros']);
- let v18202Painting=false,v18202Scheduled=false,v18202ForceScheduled=false;
+ let v18202Painting=false,v18202Scheduled=false,v18202ForceScheduled=false,v18202Intent=false;
 
  function v18202Norm(value){
   return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
  }
  function v18202ViewIsScorers(){return V18202_SCORER_VIEWS.has(v18202Norm(typeof view==='undefined'?'':view));}
+ function v18202Candidate(node){
+  return node?.closest?.('.v677-ranking-tab,.ranking-tab,[data-ranking-tab],[role="tab"],button,a,[data-view],[data-route],[data-action],[data-page],[data-ranking-view]')||null;
+ }
  function v18202Trigger(node){
-  const el=node?.closest?.('button,a,[role="tab"],[data-view],[data-route],[data-action],[data-page],[data-ranking-view]');
-  if(!el)return false;
+  const el=v18202Candidate(node);if(!el)return false;
   const attrs=['data-view','data-route','data-action','data-page','data-ranking-view','href'];
   for(const name of attrs){
    const raw=el.getAttribute?.(name);if(!raw)continue;
@@ -58,14 +60,24 @@ def main() -> None:
   const text=v18202Norm(el.textContent);
   return text==='artilheiro'||text==='artilheiros'||text.startsWith('artilheiros ');
  }
+ function v18202OtherNavigation(node){
+  const el=node?.closest?.('.v677-ranking-tab,.ranking-tab,[data-ranking-tab],[role="tab"],[data-view],[data-route],[data-page],[data-ranking-view],a[href^="#"]');
+  if(!el||v18202Trigger(el))return false;
+  const action=v18202Norm(el.getAttribute?.('data-action'));
+  if(action.startsWith('score-'))return false;
+  return true;
+ }
  function v18202ActiveTabIsScorers(){
   const selectors=[
    '.v677-ranking-tab.active','.v677-ranking-tab[aria-selected="true"]',
+   '.ranking-tab.active','.ranking-tab[aria-selected="true"]',
+   '[data-ranking-tab].active','[data-ranking-tab][aria-selected="true"]',
    '[role="tab"].active','[role="tab"][aria-selected="true"]',
    '[data-view="rankings"].active','[data-view="rankings"][aria-current="page"]'
   ];
   try{return [...document.querySelectorAll(selectors.join(','))].some(v18202Trigger);}catch(e){return false;}
  }
+ function v18202Wanted(){return v18202Intent||v18202ViewIsScorers()||v18202ActiveTabIsScorers();}
  function v18202Page(){return document.querySelector('#v555-page');}
  function v18202Mounted(page){
   try{return !!page?.querySelector?.('[data-v18202-scorers-root="1"]');}catch(e){return false;}
@@ -85,9 +97,9 @@ def main() -> None:
  }
  function v18202Paint(force=false){
   if(!state||v18202Painting)return false;
-  if(!force&&!v18202ViewIsScorers()&&!v18202ActiveTabIsScorers())return false;
+  if(!force&&!v18202Wanted())return false;
   const page=v18202Page();if(!page)return false;
-  v18202Painting=true;
+  v18202Painting=true;v18202Intent=true;
   try{
    view='rankings';
    let content='';
@@ -103,8 +115,7 @@ def main() -> None:
   }finally{v18202Painting=false;}
  }
  function v18202Ensure(){
-  const wanted=v18202ViewIsScorers()||v18202ActiveTabIsScorers();
-  if(!wanted)return false;
+  if(!v18202Wanted())return false;
   const page=v18202Page();if(!page)return false;
   if(v18202Mounted(page))return true;
   return v18202Paint(true);
@@ -115,7 +126,7 @@ def main() -> None:
   v18202Scheduled=true;
   const run=()=>{
    const must=v18202ForceScheduled;v18202ForceScheduled=false;v18202Scheduled=false;
-   if(must||v18202ViewIsScorers()||v18202ActiveTabIsScorers())v18202Paint(true);
+   if(must||v18202Wanted())v18202Paint(true);
   };
   const next=()=>{if(typeof requestAnimationFrame==='function')requestAnimationFrame(run);else run();};
   if(typeof queueMicrotask==='function')queueMicrotask(next);else setTimeout(next,0);
@@ -127,8 +138,8 @@ def main() -> None:
  // listener das abas do ranking.
  const v18202BaseRenderPage=renderPage;
  renderPage=function(){
-  if(v18202ViewIsScorers()){
-   view='rankings';
+  if(v18202Wanted()){
+   view='rankings';v18202Intent=true;
    try{return v18202Hub();}
    catch(e){console.error('[FutBR] render Artilheiros 18.202:',e);return '<div class="notice error">Nao foi possivel montar a artilharia desta carreira.</div>';}
   }
@@ -147,11 +158,14 @@ def main() -> None:
  }
 
  // Captura tanto a aba atual quanto botoes antigos cujo unico identificador e o
- // texto Artilheiros. Isso cobre menu principal, ranking de clubes, selecoes e
- // tecnicos, inclusive depois da virada de temporada.
+ // texto Artilheiros. A intencao permanece ativa ate outra navegacao explicita.
  document.addEventListener('click',event=>{
-  if(!v18202Trigger(event.target))return;
+  if(!v18202Trigger(event.target)){
+   if(v18202OtherNavigation(event.target))v18202Intent=false;
+   return;
+  }
   event.preventDefault();event.stopImmediatePropagation();
+  v18202Intent=true;
   try{closeModal?.();}catch(e){}
   view='rankings';
   const painted=v18202Paint(true);
@@ -161,18 +175,17 @@ def main() -> None:
  },true);
 
  // Se uma camada tardia recolocar clubes, selecoes ou tecnicos dentro da aba
- // ativa, o observer restaura Artilheiros imediatamente, sem exigir novo clique.
+ // solicitada, o observer restaura Artilheiros imediatamente, sem novo clique.
  const v18202Observer=new MutationObserver(()=>{
   if(v18202Painting)return;
-  const page=v18202Page();
-  if(!page)return;
-  if((v18202ViewIsScorers()||v18202ActiveTabIsScorers())&&!v18202Mounted(page))v18202Schedule(true);
+  const page=v18202Page();if(!page)return;
+  if(v18202Wanted()&&!v18202Mounted(page))v18202Schedule(true);
  });
  try{v18202Observer.observe(document.documentElement,{subtree:true,childList:true});}catch(e){}
  try{window.addEventListener('popstate',()=>v18202Schedule(false));window.addEventListener('hashchange',()=>v18202Schedule(false));window.addEventListener('pageshow',()=>v18202Schedule(false));}catch(e){}
  setTimeout(()=>v18202Ensure(),0);
 
- G.scorersNavigation18202={version:'18.202',allNavigationPaths:true,staleContentObserver:true,postSeasonArchiveFallback:true,physicalLastLayer:true};
+ G.scorersNavigation18202={version:'18.202',allNavigationPaths:true,staleContentObserver:true,postSeasonArchiveFallback:true,persistentIntent:true,physicalLastLayer:true};
 })();
 </script>
 '''
