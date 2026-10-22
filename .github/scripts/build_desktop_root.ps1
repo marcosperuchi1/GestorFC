@@ -35,7 +35,7 @@ $source = [regex]::Replace(
 $source = [regex]::Replace(
   $source,
   "Run-Python '\.github/scripts/test_scorers_in_scope\.py'",
-  "Run-Python '.github/scripts/test_scorers_in_scope.py'`nRun-Python '.github/scripts/finalize_rankings_18230.py'`nRun-Python '.github/scripts/stabilize_rankings_18230.py'`nRun-Python '.github/scripts/fix_incremental_club_ranking.py'`nRun-Python '.github/scripts/stabilize_incremental_ranking_18300.py'`nRun-Python '.github/scripts/test_runtime_boot.py'`nRun-Python '.github/scripts/test_rankings_18230.py'`nRun-Python '.github/scripts/test_incremental_ranking_18300.py'",
+  "Run-Python '.github/scripts/test_scorers_in_scope.py'`nRun-Python '.github/scripts/finalize_rankings_18230.py'`nRun-Python '.github/scripts/stabilize_rankings_18230.py'`nRun-Python '.github/scripts/fix_incremental_club_ranking.py'`nRun-Python '.github/scripts/strip_legacy_save_warning.py'`nRun-Python '.github/scripts/stabilize_incremental_ranking_18300.py'`nRun-Python '.github/scripts/test_runtime_boot.py'`nRun-Python '.github/scripts/test_rankings_18230.py'`nRun-Python '.github/scripts/test_incremental_ranking_18300.py'",
   1
 )
 
@@ -55,6 +55,7 @@ $required = @(
   "Run-Python '.github/scripts/finalize_rankings_18230.py'",
   "Run-Python '.github/scripts/stabilize_rankings_18230.py'",
   "Run-Python '.github/scripts/fix_incremental_club_ranking.py'",
+  "Run-Python '.github/scripts/strip_legacy_save_warning.py'",
   "Run-Python '.github/scripts/stabilize_incremental_ranking_18300.py'",
   "Run-Python '.github/scripts/test_rankings_18230.py'",
   "Run-Python '.github/scripts/test_incremental_ranking_18300.py'",
@@ -84,7 +85,7 @@ foreach ($forbidden in @(
   if ($source.Contains($forbidden)) { throw "Pipeline ainda executa camada antiga: $forbidden" }
 }
 
-python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py' '.github/scripts/finalize_rankings_18230.py' '.github/scripts/stabilize_rankings_18230.py' '.github/scripts/test_rankings_18230.py' '.github/scripts/fix_incremental_club_ranking.py' '.github/scripts/stabilize_incremental_ranking_18300.py' '.github/scripts/test_incremental_ranking_18300.py'
+python -m py_compile '.github/scripts/fix_scorers_in_scope.py' '.github/scripts/optimize_rankings_in_scope.py' '.github/scripts/test_scorers_in_scope.py' '.github/scripts/finalize_rankings_18230.py' '.github/scripts/stabilize_rankings_18230.py' '.github/scripts/test_rankings_18230.py' '.github/scripts/fix_incremental_club_ranking.py' '.github/scripts/strip_legacy_save_warning.py' '.github/scripts/stabilize_incremental_ranking_18300.py' '.github/scripts/test_incremental_ranking_18300.py'
 if ($LASTEXITCODE -ne 0) { throw 'Falha na sintaxe dos scripts incrementais de rankings.' }
 
 $tempScript = Join-Path $env:RUNNER_TEMP 'build_desktop_root_generated.ps1'
