@@ -18,12 +18,13 @@ def main() -> None:
     script = match.group(1)
 
     required = [
-        'singleCanonicalRoute:true',
+        'singleCanonicalPageFactory:true',
+        'noRenderPageOverride:true',
         'noDomOverlay:true',
         'liveAndArchiveStats:true',
         'preservesPerformanceArchitecture:true',
         'data-v18210-scorers-root',
-        "if(view==='rankings')return v18210RankingsPage()",
+        'rankingsPage=v18210RankingsPage',
         'window.v18198EnforceInitialSquads',
     ]
     for marker in required:
@@ -45,8 +46,9 @@ global.window=global;
 global.GestorFC={};
 global.view='home';
 global.scorerFilter={kind:'all',country:'all',division:'all',year:'',query:'',page:0,nationality:'all'};
-global.renderPage=()=>'<div>BASE:'+view+'</div>';
+global.rankingsPage=()=>'<div>OLD RANKING</div>';
 global.scorersPage=()=>'<div>OLD</div>';
+global.renderPage=()=>view==='rankings'?rankingsPage():'<div>BASE:'+view+'</div>';
 global.v677RankingTabs=()=>'<nav><button data-view="rankings">Artilheiros</button><button data-view="clubrankings">Clubes</button></nav>';
 global.esc=v=>String(v??'').replace(/[&<>\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[ch]));
 global.nation=code=>'<span>'+String(code||'UNK')+'</span>';
