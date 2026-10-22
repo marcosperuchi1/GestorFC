@@ -5,11 +5,12 @@ $source = Get-Content $basePath -Raw
 
 # A compilacao continua usando exatamente a mesma cadeia de base externa,
 # saves compactos, memoria, SQLite e carregamento direto. Apenas substitui as
-# camadas de UI de Artilheiros por uma unica implementacao na rota renderPage.
+# camadas de UI de Artilheiros por uma unica implementacao em rankingsPage.
 $oldRuntime = "Run-Python '.github/scripts/finalize_prebuilt_boot.py'\r?\nRun-Python '.github/scripts/fix_scorers_navigation.py'\r?\nRun-Python '.github/scripts/fix_scorers_live_runtime.py'\r?\nRun-Python '.github/scripts/diagnose_boot_performance.py'"
 $newRuntime = @"
 Run-Python '.github/scripts/finalize_prebuilt_boot.py'
 Run-Python '.github/scripts/fix_scorers_root.py'
+Run-Python '.github/scripts/promote_scorers_page_factory.py'
 Run-Python '.github/scripts/annotate_scorers_root.py'
 Run-Python '.github/scripts/diagnose_boot_performance.py'
 "@.Trim()
@@ -36,6 +37,7 @@ $source = [regex]::Replace(
 
 $required = @(
   "Run-Python '.github/scripts/fix_scorers_root.py'",
+  "Run-Python '.github/scripts/promote_scorers_page_factory.py'",
   "Run-Python '.github/scripts/test_scorers_root.py'",
   "Copy-Item 'scorers-root-tests.json' 'artifacts/scorers-root-tests.json'"
 )
@@ -52,11 +54,11 @@ foreach ($forbidden in @(
   if ($source.Contains($forbidden)) { throw "Pipeline ainda executa camada antiga: $forbidden" }
 }
 
-python -m py_compile '.github/scripts/fix_scorers_root.py' '.github/scripts/annotate_scorers_root.py' '.github/scripts/test_scorers_root.py'
+python -m py_compile '.github/scripts/fix_scorers_root.py' '.github/scripts/promote_scorers_page_factory.py' '.github/scripts/annotate_scorers_root.py' '.github/scripts/test_scorers_root.py'
 if ($LASTEXITCODE -ne 0) { throw 'Falha na sintaxe dos scripts raiz de Artilheiros.' }
 
 $tempScript = Join-Path $env:RUNNER_TEMP 'build_desktop_root_generated.ps1'
 Set-Content $tempScript $source -Encoding utf8
-Write-Host 'Executando pipeline original com somente a rota raiz de Artilheiros substituida.'
+Write-Host 'Executando pipeline original com somente o page factory raiz de Artilheiros substituido.'
 & $tempScript
 if ($LASTEXITCODE -ne 0) { throw 'Falha no pipeline raiz do desktop.' }
