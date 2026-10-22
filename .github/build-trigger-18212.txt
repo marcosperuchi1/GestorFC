@@ -1,1 +1,2 @@
 Executar uma única compilação da correção Artilheiros 18.212.
+Revisão 2: scripts dentro do body e acesso seguro ao estado.
