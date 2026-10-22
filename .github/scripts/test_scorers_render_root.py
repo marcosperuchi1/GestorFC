@@ -113,17 +113,21 @@ function v555ScheduleDecor(){}
 let renderPage=()=>{throw new Error('falha proposital no renderer completo');};
 '''+render_function+r'''
 
+const originalRankingsHTML=window.v18211RankingsHTML;
+
 // A tela antiga precisa ser apagada antes mesmo de o renderer falhar.
 window.v18211RankingsHTML=()=>{throw new Error('falha proposital no factory raiz');};
 writes=[];current='<div id="old-clubs">RANKING DE CLUBES ANTIGO</div>';
 v555RenderPage(root);
-assert.equal(writes[0],'','a tela anterior nao foi limpa antes da avaliacao');
+const failedFactoryFirstWrite=writes[0];
+assert.equal(failedFactoryFirstWrite,'','a tela anterior nao foi limpa antes da avaliacao');
 assert(!current.includes('RANKING DE CLUBES ANTIGO'),'conteudo antigo permaneceu');
 assert(current.includes('data-v18211-safe-root="1"'),'fallback seguro nao foi montado');
 assert(current.includes('Atacante Real'),'fallback nao trouxe dados ao vivo');
 assert(current.includes('green strong">3</td>'),'fallback perdeu os gols ao vivo');
 
 // O proprio factory terminal tambem deve transformar excecao rica em pagina valida.
+window.v18211RankingsHTML=originalRankingsHTML;
 window.v18210RankingsPage=()=>{throw new Error('linha real inconsistente');};
 const recovered=window.v18211RankingsHTML();
 assert(recovered.includes('data-v18211-safe-root="1"'),'factory terminal nao recuperou excecao');
@@ -149,7 +153,7 @@ console.log(JSON.stringify({
  liveRowsInFallback:true,
  normalScorersPath:true,
  otherRankingRoutesPreserved:true,
- firstWrite:writes[0]||null,
+ failedFactoryFirstWrite,
  goals:3
 }));
 '''
