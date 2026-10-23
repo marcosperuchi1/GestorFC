@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   exportar:
-    name: Exportar instalador da build-latest
+    name: Publicar instalador da build-latest
     runs-on: ubuntu-latest
     steps:
       - name: Baixar branch build-latest
@@ -27,11 +27,23 @@ jobs:
           ls -lh FutBR-Manager-Desktop-RC1-INSTALADOR.exe
           sha256sum FutBR-Manager-Desktop-RC1-INSTALADOR.exe
 
-      - name: Publicar instalador como artefato
-        uses: actions/upload-artifact@v4
-        with:
-          name: FutBR-Manager-Desktop-RC1-INSTALADOR
-          path: FutBR-Manager-Desktop-RC1-INSTALADOR.exe
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
+      - name: Publicar instalador na versão de teste
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG='teste-ranking-18.301'
+          FILE='FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target build-latest \
+              --title 'FutBR Manager 18.301 - Teste' \
+              --notes 'Build de teste 18.301 com o ranking incremental e as correções mais recentes. Não publicar aos jogadores antes da validação.' \
+              --prerelease
+          fi
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url
