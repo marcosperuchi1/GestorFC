@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/inspect-season-performance.yml'
+      - '.github/scripts/optimize_season_sync_18310.py'
+      - '.github/scripts/test_season_sync_18310.py'
+      - '.github/scripts/test_history_incremental_18310.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,7 +43,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($script in @('optimize_season_sync_18310','test_season_sync_18310','test_history_incremental_18310','test_runtime_boot','test_rankings_18230','test_incremental_ranking_18300','test_root_gameplay')) {
+          foreach ($script in @('optimize_season_sync_18310','test_season_sync_18310','test_history_incremental_18310','test_runtime_boot','test_rankings_18230','test_incremental_ranking_18300','test_root_gameplay','test_relational_history')) {
             python ".github/scripts/$script.py" "$env:FUTBR_INSPECT_PROJECT"
             if ($LASTEXITCODE -ne 0) { throw "Falha em $script" }
           }
