@@ -1,0 +1,37 @@
+name: Exportar instalador mais recente
+
+on:
+  push:
+    paths:
+      - '.github/workflows/export-latest-installer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exportar:
+    name: Exportar instalador da build-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar branch build-latest
+        uses: actions/checkout@v4
+        with:
+          ref: build-latest
+          fetch-depth: 1
+
+      - name: Conferir instalador
+        shell: bash
+        run: |
+          test -f FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+          ls -lh FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+          sha256sum FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+
+      - name: Publicar instalador como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-Desktop-RC1-INSTALADOR
+          path: FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
