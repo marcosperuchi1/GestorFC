@@ -27,25 +27,26 @@ jobs:
       - name: Reconstruir fonte local para inspecao
         shell: pwsh
         run: python .github/scripts/inspect_season_performance.py
-      - name: Ler caminhos finais de transferencia e virada
+      - name: Ler etapas anuais e armazenamento nativo
         shell: python
         run: |
           import os, re, sys
           from pathlib import Path
           sys.stdout.reconfigure(encoding='utf-8')
-          html = (Path(os.environ['FUTBR_INSPECT_PROJECT']) / 'src/index.html').read_text(encoding='utf-8')
-          spans = [(14498500,14506500),(15709000,15749000),(13431000,13449000)]
-          for term in ['v171DropManifest', "kind:'vac-sync-start'", "kind:'vac-sync-part'", 'async function v125', 'async function v171', "m.op==='next'"]:
-              matches = list(re.finditer(re.escape(term), html))
-              print('INDEX', repr(term), 'positions', [m.start() for m in matches])
-              for m in matches[:8]:
-                  spans.append((max(0,m.start()-1400),min(len(html),m.start()+8000)))
-          merged = []
+          project=Path(os.environ['FUTBR_INSPECT_PROJECT'])
+          html=(project/'src/index.html').read_text(encoding='utf-8')
+          terms=['function v91FastNextSeasonCore(', 'function v91AgePlayers(', 'function v91ResetPlayers(', 'function v94PackCurrentCareerArchive(', 'async function v93ApplyVacationCheckpoint(', 'const shards=', 'async function v18117WaitSyncAck(', 'function v91Archive', 'function v91NextSeason']
+          spans=[]
+          for term in terms:
+              found=list(re.finditer(re.escape(term),html))
+              print('INDEX',repr(term),'positions',[m.start() for m in found])
+              for m in found[:2]:spans.append((max(0,m.start()-500),min(len(html),m.start()+11000)))
+          merged=[]
           for a,b in sorted(spans):
-              if merged and a<=merged[-1][1]:
-                  merged[-1]=(merged[-1][0],max(b,merged[-1][1]))
-              else:
-                  merged.append((a,b))
+              if merged and a<=merged[-1][1]:merged[-1]=(merged[-1][0],max(b,merged[-1][1]))
+              else:merged.append((a,b))
           for a,b in merged:
-              print('\nSOURCE',a,b)
+              print('SOURCE',a,b)
               print(html[a:b])
+          native=(project/'src-tauri/src/lib.rs').read_text(encoding='utf-8')
+          print('NATIVE',native)
