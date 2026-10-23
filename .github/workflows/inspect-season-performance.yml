@@ -1,0 +1,48 @@
+name: Inspecao de desempenho somente leitura
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-season-performance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reconstruir fonte local para inspecao
+        shell: pwsh
+        run: python .github/scripts/inspect_season_performance.py
+      - name: Ler pontos de sincronizacao sem modificar o repositorio
+        shell: python
+        run: |
+          import os, re
+          from pathlib import Path
+          html = (Path(os.environ['FUTBR_INSPECT_PROJECT']) / 'src/index.html').read_text(encoding='utf-8')
+          terms = ['Sincronizando a carreira', 'Carregando Nova Temporada', 'v169', 'async function v53', "v53Call('load'", 'async function saveSharded', 'async function save(s)', 'function nextSeason', 'v555Archive', 'v18121NewSeasonPreparation']
+          spans = []
+          for term in terms:
+              matches = list(re.finditer(re.escape(term), html))
+              print('INDEX', repr(term), 'count', len(matches), 'positions', [m.start() for m in matches])
+              for m in matches[:8]:
+                  spans.append((max(0, m.start()-800), min(len(html),m.start()+6500)))
+          merged = []
+          for a,b in sorted(spans):
+              if merged and a <= merged[-1][1]:
+                  merged[-1] = (merged[-1][0], max(b,merged[-1][1]))
+              else:
+                  merged.append((a,b))
+          for a,b in merged:
+              print('\nSOURCE', a,b)
+              print(html[a:b])
