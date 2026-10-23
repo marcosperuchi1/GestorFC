@@ -1,4 +1,4 @@
-name: Inspecao de desempenho somente leitura
+name: Validar sincronizacao e temporadas 18.310
 on:
   push:
     branches: [main]
@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  inspect:
+  validate:
     runs-on: windows-latest
     timeout-minutes: 20
     env:
@@ -24,29 +24,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Reconstruir fonte local para inspecao
+      - name: Preparar navegador de testes
         shell: pwsh
-        run: python .github/scripts/inspect_season_performance.py
-      - name: Ler etapas anuais e armazenamento nativo
-        shell: python
         run: |
-          import os, re, sys
-          from pathlib import Path
-          sys.stdout.reconfigure(encoding='utf-8')
-          project=Path(os.environ['FUTBR_INSPECT_PROJECT'])
-          html=(project/'src/index.html').read_text(encoding='utf-8')
-          terms=['function v91FastNextSeasonCore(', 'function v91AgePlayers(', 'function v91ResetPlayers(', 'function v94PackCurrentCareerArchive(', 'async function v93ApplyVacationCheckpoint(', 'const shards=', 'async function v18117WaitSyncAck(', 'function v91Archive', 'function v91NextSeason']
-          spans=[]
-          for term in terms:
-              found=list(re.finditer(re.escape(term),html))
-              print('INDEX',repr(term),'positions',[m.start() for m in found])
-              for m in found[:2]:spans.append((max(0,m.start()-500),min(len(html),m.start()+11000)))
-          merged=[]
-          for a,b in sorted(spans):
-              if merged and a<=merged[-1][1]:merged[-1]=(merged[-1][0],max(b,merged[-1][1]))
-              else:merged.append((a,b))
-          for a,b in merged:
-              print('SOURCE',a,b)
-              print(html[a:b])
-          native=(project/'src-tauri/src/lib.rs').read_text(encoding='utf-8')
-          print('NATIVE',native)
+          python -m pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar testes.' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar navegador.' }
+      - name: Reconstruir fonte 18.301 e aplicar 18.310
+        shell: pwsh
+        run: |
+          python .github/scripts/inspect_season_performance.py
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao reconstruir fonte.' }
+      - name: Aplicar e validar correcao de sincronizacao
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($script in @('optimize_season_sync_18310','test_season_sync_18310','test_history_incremental_18310','test_runtime_boot','test_rankings_18230','test_incremental_ranking_18300','test_root_gameplay')) {
+            python ".github/scripts/$script.py" "$env:FUTBR_INSPECT_PROJECT"
+            if ($LASTEXITCODE -ne 0) { throw "Falha em $script" }
+          }
+      - name: Relatorios de integridade
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem "$env:FUTBR_INSPECT_PROJECT" -Filter '*18310*.json' | ForEach-Object {
+            Write-Host "REPORT $($_.Name)"
+            Get-Content $_.FullName
+          }
