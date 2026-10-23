@@ -11,6 +11,9 @@ jobs:
   inspect:
     runs-on: windows-latest
     timeout-minutes: 20
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,25 +27,25 @@ jobs:
       - name: Reconstruir fonte local para inspecao
         shell: pwsh
         run: python .github/scripts/inspect_season_performance.py
-      - name: Ler pontos de sincronizacao sem modificar o repositorio
+      - name: Ler caminhos finais de transferencia e virada
         shell: python
         run: |
-          import os, re
+          import os, re, sys
           from pathlib import Path
+          sys.stdout.reconfigure(encoding='utf-8')
           html = (Path(os.environ['FUTBR_INSPECT_PROJECT']) / 'src/index.html').read_text(encoding='utf-8')
-          terms = ['Sincronizando a carreira', 'Carregando Nova Temporada', 'v169', 'async function v53', "v53Call('load'", 'async function saveSharded', 'async function save(s)', 'function nextSeason', 'v555Archive', 'v18121NewSeasonPreparation']
-          spans = []
-          for term in terms:
+          spans = [(14498500,14506500),(15709000,15749000),(13431000,13449000)]
+          for term in ['v171DropManifest', "kind:'vac-sync-start'", "kind:'vac-sync-part'", 'async function v125', 'async function v171', "m.op==='next'"]:
               matches = list(re.finditer(re.escape(term), html))
-              print('INDEX', repr(term), 'count', len(matches), 'positions', [m.start() for m in matches])
+              print('INDEX', repr(term), 'positions', [m.start() for m in matches])
               for m in matches[:8]:
-                  spans.append((max(0, m.start()-800), min(len(html),m.start()+6500)))
+                  spans.append((max(0,m.start()-1400),min(len(html),m.start()+8000)))
           merged = []
           for a,b in sorted(spans):
-              if merged and a <= merged[-1][1]:
-                  merged[-1] = (merged[-1][0], max(b,merged[-1][1]))
+              if merged and a<=merged[-1][1]:
+                  merged[-1]=(merged[-1][0],max(b,merged[-1][1]))
               else:
                   merged.append((a,b))
           for a,b in merged:
-              print('\nSOURCE', a,b)
+              print('\nSOURCE',a,b)
               print(html[a:b])
