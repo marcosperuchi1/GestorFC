@@ -1,7 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-# Reuse the entire validated 18.301 build pipeline. No binary/source is fetched
-# from untrusted pull requests and no existing distribution branch is replaced.
+# Reuse the validated 18.301 build pipeline without replacing any release branch.
 $rootPath = Join-Path $PSScriptRoot 'build_desktop_root.ps1'
 $text = Get-Content $rootPath -Raw
 $extra = @'
@@ -26,7 +25,7 @@ $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
-if (($text.Split($marker).Length - 1) -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
+if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
 $text = $text.Replace($marker, $extra + "`n" + $marker)
 $generated = Join-Path $PSScriptRoot 'build_desktop_season_18310_generated.ps1'
 Set-Content $generated $text -Encoding utf8
