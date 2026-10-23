@@ -16,10 +16,11 @@ def section(src,start,end,label):
     return a,b
 
 PACK_VACATION=r'''
-async function v18310PackVacationRows(rows){
+async function v18310PackVacationRows(rows,checkpointNeeded=true){
  const packed=rows.map(([id,p])=>v18191wPackPlayer(p,id));
  const text=JSON.stringify(packed),bytes=new TextEncoder().encode(text).buffer;
- let stored;
+ let stored=null;
+ if(!checkpointNeeded)return {bytes,stored};
  if(typeof CompressionStream==='function'){
   const gz=await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
   stored={format:v18191wPlayerFormat,encoding:'gzip-base64',data:v18191wArrayBufferToBase64(gz),count:packed.length};
@@ -88,7 +89,7 @@ async function streamVacationWorld125(destructive=true,skipCheckpoint=false){
    const syncSeq=++v18117SyncSeq;
    let stored=payload;
    if(key==='players'){
-    const packed=await v18310PackVacationRows(payload);stored=packed.stored;
+    const packed=await v18310PackVacationRows(payload,!!checkpointMeta);stored=packed.stored;
     playerBytes+=packed.bytes.byteLength;playerCount+=payload.length;
     self.postMessage({kind:'vac-sync-part',session,key,done,total,syncSeq,format:'player-packed-buffer-v1',bytes:packed.bytes},[packed.bytes]);
    }else self.postMessage({kind:'vac-sync-part',session,key,rows:payload,done,total,syncSeq});
@@ -162,8 +163,6 @@ def patch_html(html):
     html=once(html,browser,browser+"\n if(m.operation==='raw-delete-many')return new Promise((res,rej)=>{const tx=d.transaction('saves','readwrite'),os=tx.objectStore('saves');for(const key of m.keys||[])os.delete(key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error||Error('Falha na limpeza'));tx.onabort=()=>rej(tx.error||Error('Limpeza interrompida'));});",'browser cleanup bridge')
     return html
 
-# Executed inside the existing atomic season transaction: replace only that
-# season's contribution to career totals, instead of rebuilding all past years.
 HISTORY_BEFORE=r'''
         CREATE INDEX IF NOT EXISTS idx_pss_season_player ON player_season_stats(season,player_id);
         CREATE TEMP TABLE IF NOT EXISTS v18310_season_delta(
@@ -216,8 +215,8 @@ def patch_native(src):
     return src[:a]+fn+src[b:]
 
 def patch_compatibility(html):
-    old="const rows=await read(v93CheckpointKey(meta.token,key,i));for(const [id,row] of rows||[])"
-    new="let rows=await read(v93CheckpointKey(meta.token,key,i));if(key==='players'&&rows?.format===v18191wPlayerFormat)rows=await v18191wDecodePlayerChunk(rows);if(!Array.isArray(rows))throw Error('Bloco do checkpoint indisponivel: '+key);for(const [id,row] of rows)"
+    old="const rows=await read(v93CheckpointKey(meta.token,key,i));"
+    new="let rows=await read(v93CheckpointKey(meta.token,key,i));if(key==='players'&&rows?.format===v18191wPlayerFormat)rows=await v18191wDecodePlayerChunk(rows);if(!Array.isArray(rows))throw Error('Bloco do checkpoint indisponivel: '+key);"
     html=once(html,old,new,'resume packed and legacy vacation checkpoints')
     a,b=section(html,'function v94CompactScorerArchive(', 'function v94PackCurrentCareerArchive(', 'scorer archive allocation')
     part=html[a:b]
