@@ -57,7 +57,17 @@ const self={postMessage(msg,transfer=[]){
  if(m.kind==='vac-sync-end')last=m;
  if(m.syncSeq)queueMicrotask(()=>v18310ResolveSyncAck(m.syncSeq));
 }};
-const archive538={},archive555={'2025':{version:1,n:{A:'Player'},p:{p0:['2025;12;4']}}},scorers=[{year:2025,competitions:{league:{p0:{goals:12,assists:4}}}}];
+const archive538 = {};
+const archive555 = {};
+archive555['2025'] = {
+ version: 1,
+ n: {A: 'Player'},
+ p: {p0: ['2025;12;4']}
+};
+const scorers = [{
+ year: 2025,
+ competitions: {league: {p0: {goals: 12, assists: 4}}}
+}];
 function fixture(n,year){
  const players={};
  for(let i=0;i<n;i++){
@@ -113,7 +123,10 @@ def main():
     chunks+=[function(html,'v18191wDecodePlayerChunk'),function(html,'v18310PackVacationRows'),'const v18310SyncWaiters=new Map();',function(html,'v18310ResolveSyncAck'),function(html,'v18117WaitSyncAck'),function(html,'v18310VacationRows'),function(html,'streamVacationWorld125'),function(html,'v93ApplyVacationCheckpoint')]
     test=project/'test-season-sync-18310.cjs'
     test.write_text('\n'.join(chunks)+'\n'+HARNESS,encoding='utf-8')
-    subprocess.run(['node','--check',str(test)],check=True,timeout=30)
+    checked=subprocess.run(['node','--check',str(test)],capture_output=True,text=True,encoding='utf-8',timeout=30)
+    if checked.returncode:
+        print('GENERATED TEST SOURCE\n'+test.read_text(encoding='utf-8')[:45000])
+        raise RuntimeError(checked.stderr)
     run=subprocess.run(['node','--expose-gc','--max-old-space-size=2048',str(test)],capture_output=True,text=True,encoding='utf-8',timeout=180)
     print(run.stdout)
     if run.returncode:raise RuntimeError(run.stderr)
