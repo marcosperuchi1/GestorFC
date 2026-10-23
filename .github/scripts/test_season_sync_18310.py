@@ -28,8 +28,8 @@ def function(src, name):
 
 def codec(src,prefix):
     start=src.index('const '+prefix+'PlayerFields=')
-    end=src.index('\n',src.index('function '+prefix+'UnpackPlayer(',start))
-    return src[start:end]
+    end=src.index('function '+prefix+'PackPlayer(',start)
+    return src[start:end]+'\n'+'\n'.join(function(src,prefix+suffix) for suffix in ('PackPlayer','UnpackPlayer','ArrayBufferToBase64'))
 
 HARNESS=r'''
 const assert=require('node:assert/strict');
@@ -113,6 +113,7 @@ def main():
     chunks+=[function(html,'v18191wDecodePlayerChunk'),function(html,'v18310PackVacationRows'),'const v18310SyncWaiters=new Map();',function(html,'v18310ResolveSyncAck'),function(html,'v18117WaitSyncAck'),function(html,'v18310VacationRows'),function(html,'streamVacationWorld125'),function(html,'v93ApplyVacationCheckpoint')]
     test=project/'test-season-sync-18310.cjs'
     test.write_text('\n'.join(chunks)+'\n'+HARNESS,encoding='utf-8')
+    subprocess.run(['node','--check',str(test)],check=True,timeout=30)
     run=subprocess.run(['node','--expose-gc','--max-old-space-size=2048',str(test)],capture_output=True,text=True,encoding='utf-8',timeout=180)
     print(run.stdout)
     if run.returncode:raise RuntimeError(run.stderr)
