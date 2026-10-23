@@ -1,0 +1,61 @@
+name: Build desempenho de ferias 18.310
+on:
+  workflow_run:
+    workflows: ['Validar sincronizacao e temporadas 18.310']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: futbr-season-build-18310
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+    steps:
+      - name: Obter a revisao validada
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Preparar navegador de testes
+        shell: pwsh
+        run: |
+          python -m pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar testes.' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar navegador.' }
+      - name: Testar e compilar instalador Windows
+        shell: pwsh
+        run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Publicar somente como versao privada de teste
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          $installer = Join-Path $dir 'FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
+          if (-not (Test-Path $installer)) { throw 'Instalador nao encontrado.' }
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  FutBR-Manager-Desktop-RC1-INSTALADOR.exe" | Set-Content (Join-Path $dir 'SHA256SUMS.txt') -Encoding ascii
+          $revision = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Revisao nao identificada.' }
+          $files = @(Get-ChildItem $dir -File | ForEach-Object FullName)
+          gh release create 'teste-desempenho-18.310' @files --repo $env:GH_REPO --target $revision --prerelease --latest=false --title 'FutBR Manager 18.310 - Teste de desempenho' --notes 'Otimizacao da sincronizacao de ferias, checkpoints compactos e totais historicos incrementais. Preserva a versao anterior. Testes sinteticos nao substituem a validacao do save real de 2029. Nao distribuir como versao definitiva.'
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar prerelease; nenhuma versao anterior foi substituida.' }
+          Write-Host "Instalador SHA256: $hash"
