@@ -123,6 +123,11 @@ def main():
     project=Path(sys.argv[1]).resolve();html=(project/'src/index.html').read_text(encoding='utf-8')
     scripts=[m.group(2) for m in re.finditer(r'<script\\b([^>]*)>(.*?)</script>',html,re.S|re.I) if is_javascript_script(m.group(1))]
     assert 'scorerArchive:scorers||[]' in html
+    assert 'function v18310ReleaseOldVacationState()' in html
+    assert 'state.players={};' in html
+    assert 'state.competitionStats={};' in html
+    assert 'state.allTimeStats={};' in html
+    assert 'v18310ReleaseOldVacationState();' in html
     chunks=[]
     for prefix in ['v18191w','v18191u']:
         chunks.append(codec(html,prefix))

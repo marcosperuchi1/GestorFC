@@ -137,6 +137,14 @@ UI_ROWS=r'''function v18310VacationRows(m){
  }
  return m.rows||[];
 }
+function v18310ReleaseOldVacationState(){
+ try{window.GestorFC?.v168?.purge?.();window.GestorFC?.v170?.release?.();}catch(e){}
+ if(!state)return;
+ state.players={};
+ state.competitionStats={};
+ state.allTimeStats={};
+ try{if(typeof v53PlayerIndex!=='undefined')v53PlayerIndex=null;}catch(e){}
+}
 '''
 
 def patch_html(html):
@@ -151,7 +159,7 @@ def patch_html(html):
     n=html.count(old)
     if n!=2:raise RuntimeError(f'Expected both vacation decoders, got {n}')
     html=html.replace(old,'rows=v18310VacationRows(m)')
-    html=once(html,'const archive538=state?.v538CareerArchive,archive555=state?.v555CareerArchive,overrides=state?.crestOverrides;', 'const archive538=state?.v538CareerArchive,archive555=state?.v555CareerArchive,scorers=state?.scorerArchive,overrides=state?.crestOverrides;','retain scorer archive reference')
+    html=once(html,'const archive538=state?.v538CareerArchive,archive555=state?.v555CareerArchive,overrides=state?.crestOverrides;', 'const archive538=state?.v538CareerArchive,archive555=state?.v555CareerArchive,scorers=state?.scorerArchive,overrides=state?.crestOverrides;v18310ReleaseOldVacationState();','release old heavy UI state before vacation stream')
     html=once(html,'v125VacIncoming={...(m.root||{}),v538CareerArchive:archive538||{},v555CareerArchive:archive555||{},crestOverrides:overrides||{}};', 'v125VacIncoming={...(m.root||{}),v538CareerArchive:archive538||{},v555CareerArchive:archive555||{},scorerArchive:scorers||[],crestOverrides:overrides||{}};','reattach immutable scorer history')
     old="async function v171DropManifest(manifest,keep=new Set()){if(manifest?.format!==V171_FORMAT)return;for(const spec of Object.values(manifest.collections||{}))for(const key of spec?.keys||[])if(key&&!keep.has(key))try{await v93RawDelete(key);}catch(e){}}"
     new="async function v171DropManifest(manifest,keep=new Set()){if(manifest?.format!==V171_FORMAT)return;const stale=[];for(const spec of Object.values(manifest.collections||{}))for(const key of spec?.keys||[])if(key&&!keep.has(key))stale.push(key);try{await v18310WorkerDeleteMany(stale);}catch(e){console.warn('[18.310] cleanup deferred',e?.message||e);}}"
@@ -237,7 +245,7 @@ def main():
     (project/'baseline-native-18301.rs').write_text(native,encoding='utf-8')
     patched=patch_compatibility(patch_html(html));rust=patch_native(native)
     hp.write_text(patched,encoding='utf-8');rp.write_text(rust,encoding='utf-8')
-    report={'ok':True,'version':VERSION,'vacationPlayerCodec':'existing lossless packed codec','vacationCheckpointBatchLimit':8,'oneUnacknowledgedUIBatch':True,'legacyCheckpointRead':True,'immutableScorerArchivePreserved':True,'nativeStorageCommandsOffMainThread':14,'historyTotalsIncremental':True,'seasonTotalsTransactionPreserved':True,'historicalDataDeleted':False,'boundedArchiveIteration':True}
+    report={'ok':True,'version':VERSION,'vacationPlayerCodec':'existing lossless packed codec','vacationCheckpointBatchLimit':8,'oneUnacknowledgedUIBatch':True,'legacyCheckpointRead':True,'immutableScorerArchivePreserved':True,'nativeStorageCommandsOffMainThread':14,'historyTotalsIncremental':True,'seasonTotalsTransactionPreserved':True,'historicalDataDeleted':False,'boundedArchiveIteration':True,'uiPreStreamHeavyStateReleased':True,'uiReleasedCollections':['players','competitionStats','allTimeStats'],'webViewPeakMitigation':True}
     (project/'season-sync-18310-install.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report))
 

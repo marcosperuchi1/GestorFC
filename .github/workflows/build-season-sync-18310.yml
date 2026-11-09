@@ -66,6 +66,10 @@ jobs:
           path: |
             ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-sync-18310-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-sync-18310-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/create-performance-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/architecture-validation.json
           if-no-files-found: error
           retention-days: 7
       - name: Publicar somente como versao privada de teste
@@ -83,6 +87,7 @@ jobs:
           $revision = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { throw 'Revisao nao identificada.' }
           $files = @(Get-ChildItem $dir -File | ForEach-Object FullName)
-          gh release create 'teste-desempenho-18.310' @files --repo $env:GH_REPO --target $revision --prerelease --latest=false --title 'FutBR Manager 18.310 - Teste de desempenho' --notes 'Otimizacao da sincronizacao de ferias, checkpoints compactos e totais historicos incrementais. Preserva a versao anterior. Testes sinteticos nao substituem a validacao do save real de 2029. Nao distribuir como versao definitiva.'
+          $tag = "teste-desempenho-18.310-$env:GITHUB_RUN_NUMBER"
+          gh release create $tag @files --repo $env:GH_REPO --target $revision --prerelease --latest=false --title "FutBR Manager 18.310 Hotfix $env:GITHUB_RUN_NUMBER - Teste" --notes 'Hotfix de memoria no fechamento da temporada: libera o estado pesado antigo antes de receber a sincronizacao do Worker. Preserva historicos, checkpoints e a versao anterior. Nao distribuir como versao definitiva.'
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar prerelease; nenhuma versao anterior foi substituida.' }
           Write-Host "Instalador SHA256: $hash"
