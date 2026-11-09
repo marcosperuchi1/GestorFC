@@ -41,6 +41,15 @@ jobs:
       - name: Testar e compilar instalador Windows
         shell: pwsh
         run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Disponibilizar instalador para teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.310-Windows
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
       - name: Publicar somente como versao privada de teste
         shell: pwsh
         env:
