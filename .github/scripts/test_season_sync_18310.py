@@ -26,6 +26,12 @@ def function(src, name):
         i+=1
     raise RuntimeError('unbalanced function '+name)
 
+def is_javascript_script(attrs):
+    m=re.search(r'\\btype\\s*=\\s*["\\']([^"\\']+)["\\']',attrs,re.I)
+    if not m:return True
+    kind=m.group(1).strip().lower().split(';',1)[0].strip()
+    return kind in {'module','text/javascript','application/javascript','text/ecmascript','application/ecmascript','text/jscript'}
+
 def codec(src,prefix):
     start=src.index('const '+prefix+'PlayerFields=')
     end=src.index('function '+prefix+'PackPlayer(',start)
@@ -115,7 +121,7 @@ function digest(obj){return crypto.createHash('sha256').update(JSON.stringify(ob
 
 def main():
     project=Path(sys.argv[1]).resolve();html=(project/'src/index.html').read_text(encoding='utf-8')
-    scripts=[m.group(2) for m in re.finditer(r'<script\b([^>]*)>(.*?)</script>',html,re.S|re.I) if not re.search(r'type\s*=\s*[\"\'](?:application/ld\+json|application/json)',m.group(1),re.I)]
+    scripts=[m.group(2) for m in re.finditer(r'<script\\b([^>]*)>(.*?)</script>',html,re.S|re.I) if is_javascript_script(m.group(1))]
     assert 'scorerArchive:scorers||[]' in html
     chunks=[]
     for prefix in ['v18191w','v18191u']:
