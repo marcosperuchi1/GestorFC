@@ -3,7 +3,7 @@ import json, re, sys
 from pathlib import Path
 
 def balanced_function(src: str, pos: int) -> str:
-    starts=[m.start() for m in re.finditer(r'(?:async\\s+)?function\\s+[A-Za-z0-9_$]+\\s*\\(',src[:pos+1])]
+    starts=[m.start() for m in re.finditer(r'(?:async\s+)?function\s+[A-Za-z0-9_$]+\s*\(',src[:pos+1])]
     if not starts:return ''
     start=starts[-1]
     brace=src.find('{',start)
