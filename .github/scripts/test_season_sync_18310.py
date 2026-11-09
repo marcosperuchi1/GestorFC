@@ -27,10 +27,10 @@ def function(src, name):
     raise RuntimeError('unbalanced function '+name)
 
 def is_javascript_script(attrs):
-    m=re.search(r'\\btype\\s*=\\s*["\\']([^"\\']+)["\\']',attrs,re.I)
+    m=re.search("type\\s*=\\s*['\"]([^'\"]+)['\"]",attrs,re.I)
     if not m:return True
     kind=m.group(1).strip().lower().split(';',1)[0].strip()
-    return kind in {'module','text/javascript','application/javascript','text/ecmascript','application/ecmascript','text/jscript'}
+    return kind in {'module','text/javascript','application/javascript','text/ecmascript','application/ecmascript','application/x-javascript','text/jscript'}
 
 def codec(src,prefix):
     start=src.index('const '+prefix+'PlayerFields=')
