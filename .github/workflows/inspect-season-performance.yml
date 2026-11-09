@@ -45,6 +45,16 @@ jobs:
         run: |
           python .github/scripts/diagnose_new_season_vacation_18311.py "$env:FUTBR_INSPECT_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'Falha no diagnostico da nova temporada.' }
+      - name: Disponibilizar codigo montado apenas para diagnostico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Source-Debug-18311
+          path: |
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/new-season-vacation-18311-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 1
       - name: Aplicar e validar correcao de sincronizacao
         shell: pwsh
         run: |
