@@ -133,7 +133,7 @@ def main():
     result=json.loads(run.stdout)
     (project/'season-sync-18310-tests.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     syntax=project/'syntax-18310.cjs'
-    syntax.write_text("const vm=require('node:vm');const fs=require('node:fs');const scripts=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));for(let i=0;i<scripts.length;i++){try{new vm.Script(scripts[i],{filename:'inline-'+i});}catch(e){console.error(e);process.exit(1)}}console.log('syntax ok '+scripts.length);",encoding='utf-8')
+    syntax.write_text("const vm=require('node:vm');const fs=require('node:fs');const scripts=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));let checked=0,skippedJson=0;for(let i=0;i<scripts.length;i++){const src=String(scripts[i]??'').trim();if((src.startsWith('{')||src.startsWith('['))){try{JSON.parse(src);skippedJson++;continue;}catch{}}try{new vm.Script(scripts[i],{filename:'inline-'+i});checked++;}catch(e){console.error(e);process.exit(1)}}console.log('syntax ok '+checked+' js; skipped '+skippedJson+' json');",encoding='utf-8')
     data=project/'scripts-18310.json';data.write_text(json.dumps(scripts),encoding='utf-8')
     subprocess.run(['node',str(syntax),str(data)],check=True,timeout=40)
     data.unlink();test.unlink();syntax.unlink()
