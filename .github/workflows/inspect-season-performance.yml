@@ -7,6 +7,7 @@ on:
       - '.github/scripts/optimize_season_sync_18310.py'
       - '.github/scripts/test_season_sync_18310.py'
       - '.github/scripts/test_history_incremental_18310.py'
+      - '.github/scripts/diagnose_new_season_vacation_18311.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -39,6 +40,11 @@ jobs:
         run: |
           python .github/scripts/inspect_season_performance.py
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao reconstruir fonte.' }
+      - name: Diagnosticar bloqueio ao iniciar ferias na nova temporada
+        shell: pwsh
+        run: |
+          python .github/scripts/diagnose_new_season_vacation_18311.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha no diagnostico da nova temporada.' }
       - name: Aplicar e validar correcao de sincronizacao
         shell: pwsh
         run: |
