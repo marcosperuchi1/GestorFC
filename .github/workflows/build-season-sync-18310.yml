@@ -49,6 +49,16 @@ jobs:
           if (-not (Test-Path $installer)) { throw 'Instalador nao encontrado.' }
           $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  FutBR-Manager-Desktop-RC1-INSTALADOR.exe" | Set-Content (Join-Path $dir 'SHA256SUMS.txt') -Encoding ascii
+      - name: Preparar hash do instalador
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          $installer = Join-Path $dir 'FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
+          if (-not (Test-Path $installer)) { throw 'Instalador nao encontrado.' }
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  FutBR-Manager-Desktop-RC1-INSTALADOR.exe" | Set-Content (Join-Path $dir 'SHA256SUMS.txt') -Encoding ascii
+          Write-Host "Instalador SHA256: $hash"
       - name: Disponibilizar instalador para teste
         uses: actions/upload-artifact@v4
         with:
