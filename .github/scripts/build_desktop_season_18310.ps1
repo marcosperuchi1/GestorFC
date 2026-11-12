@@ -14,6 +14,8 @@ Run-Python '.github/scripts/optimize_rankings_finals_18312.py'
 Run-Python '.github/scripts/test_rankings_finals_18312.py'
 Run-Python '.github/scripts/optimize_career_runtime_18313.py'
 Run-Python '.github/scripts/test_runtime_18313.py'
+Run-Python '.github/scripts/fix_rank_details_18314.py'
+Run-Python '.github/scripts/test_rank_details_18314.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -31,6 +33,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'rankings-finals-18312-tests.json' 'artifacts/rankings-finals-18312-tests.json'
   Copy-Item 'runtime-18313-install.json' 'artifacts/runtime-18313-install.json'
   Copy-Item 'runtime-18313-tests.json' 'artifacts/runtime-18313-tests.json'
+  Copy-Item 'ranking-cache-18314-install.json' 'artifacts/ranking-cache-18314-install.json'
+  Copy-Item 'ranking-cache-18314-tests.json' 'artifacts/ranking-cache-18314-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
@@ -38,6 +42,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_1831
 if (-not $source.Contains("Run-Python '.github/scripts/fix_new_season_vacation_18311.py'")) { throw 'Hotfix 18.311 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_rankings_finals_18312.py'")) { throw 'Arquitetura 18.312 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_career_runtime_18313.py'")) { throw 'Runtime 18.313 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_details_18314.py'")) { throw 'Hotfix 18.314 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
