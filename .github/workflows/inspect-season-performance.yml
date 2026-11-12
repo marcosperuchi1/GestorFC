@@ -1,4 +1,5 @@
 name: Validar sincronizacao e temporadas 18.310
+# trigger 18.311
 on:
   push:
     branches: [main]
