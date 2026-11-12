@@ -8,7 +8,9 @@ on:
       - '.github/scripts/optimize_season_sync_18310.py'
       - '.github/scripts/test_season_sync_18310.py'
       - '.github/scripts/test_history_incremental_18310.py'
-      - '.github/scripts/diagnose_new_season_vacation_18311.py'\n      - '.github/scripts/fix_new_season_vacation_18311.py'\n      - '.github/scripts/test_new_season_vacation_18311.py'
+      - '.github/scripts/diagnose_new_season_vacation_18311.py'
+      - '.github/scripts/fix_new_season_vacation_18311.py'
+      - '.github/scripts/test_new_season_vacation_18311.py'
   workflow_dispatch:
 permissions:
   contents: read
