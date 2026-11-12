@@ -9,7 +9,9 @@ if (-not $source.Contains($syncAnchor)) { throw 'Ancora 18.301 ausente.' }
 $syncSteps = @"
 Run-Python '.github/scripts/stabilize_incremental_ranking_18300.py'
 Run-Python '.github/scripts/optimize_season_sync_18310.py'
+Run-Python '.github/scripts/fix_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
+Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
 "@.Trim()
 $source = $source.Replace($syncAnchor, $syncSteps)
@@ -19,10 +21,13 @@ $reportSteps = @"
 Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json'
   Copy-Item 'season-sync-18310-install.json' 'artifacts/season-sync-18310-install.json'
   Copy-Item 'season-sync-18310-tests.json' 'artifacts/season-sync-18310-tests.json'
+  Copy-Item 'new-season-vacation-18311-install.json' 'artifacts/new-season-vacation-18311-install.json'
+  Copy-Item 'new-season-vacation-18311-tests.json' 'artifacts/new-season-vacation-18311-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_new_season_vacation_18311.py'")) { throw 'Hotfix 18.311 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }

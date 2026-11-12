@@ -68,26 +68,9 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
             ${{ env.FUTBR_PROJECT }}/artifacts/season-sync-18310-install.json
             ${{ env.FUTBR_PROJECT }}/artifacts/season-sync-18310-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/new-season-vacation-18311-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/new-season-vacation-18311-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/create-performance-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/architecture-validation.json
           if-no-files-found: error
           retention-days: 7
-      - name: Publicar somente como versao privada de teste
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = Join-Path $env:FUTBR_PROJECT 'artifacts'
-          $installer = Join-Path $dir 'FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
-          if (-not (Test-Path $installer)) { throw 'Instalador nao encontrado.' }
-          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  FutBR-Manager-Desktop-RC1-INSTALADOR.exe" | Set-Content (Join-Path $dir 'SHA256SUMS.txt') -Encoding ascii
-          $revision = (git rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -ne 0) { throw 'Revisao nao identificada.' }
-          $files = @(Get-ChildItem $dir -File | ForEach-Object FullName)
-          $tag = "teste-desempenho-18.310-$env:GITHUB_RUN_NUMBER"
-          gh release create $tag @files --repo $env:GH_REPO --target $revision --prerelease --latest=false --title "FutBR Manager 18.310 Hotfix $env:GITHUB_RUN_NUMBER - Teste" --notes 'Hotfix de memoria no fechamento da temporada: libera o estado pesado antigo antes de receber a sincronizacao do Worker. Preserva historicos, checkpoints e a versao anterior. Nao distribuir como versao definitiva.'
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar prerelease; nenhuma versao anterior foi substituida.' }
-          Write-Host "Instalador SHA256: $hash"
