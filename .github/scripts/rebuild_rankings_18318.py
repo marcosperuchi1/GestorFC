@@ -125,6 +125,8 @@ document.addEventListener('click',e=>{
 },true);
 // Replace the legacy ranking page and its background warm-up; all other rankings are untouched.
 v18221ClubRankPage=function(){return page();};
+v86ClubRankingPage=function(){return page();};
+v632ClubRankingPage=function(){return page();};
 v18221ScheduleClubRankPrewarm=function(){};
 G.rankRebuild18318={version:'18.318',stats,rows:()=>getSnapshot(),refresh,reset:()=>{lastState=null;lastKey='';snapshot=null;},filters};
 })();
@@ -137,7 +139,7 @@ def main():
     required=('function v18221ClubRankPage(', 'function v18221ScheduleClubRankPrewarm(', 'FUTBR_RANK_ROLLOVER_18316')
     for marker in required:
         if marker not in html:raise RuntimeError('Missing ranking dependency: '+marker)
-    html=html.replace('</body>',PATCH+'\n</body>',1)
+    html += '\n' + PATCH
     path.write_text(html,encoding='utf-8')
     (root/'ranking-rebuild-18318-install.json').write_text(json.dumps({'ok':True,'version':'18.318','replacesLegacyView':True,'memorySnapshot':True,'titleColumns':['L','C','I','M','R','O']},indent=2),encoding='utf-8')
 if __name__=='__main__':main()
