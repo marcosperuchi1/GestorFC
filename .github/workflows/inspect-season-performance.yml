@@ -25,8 +25,8 @@ on:
       - '.github/scripts/test_rank_titles_18317.py'
       - '.github/scripts/rebuild_rankings_18318.py'
       - '.github/scripts/test_rankings_18318.py'
-      - '.github/scripts/clean_rankings_18319.py'
-      - '.github/scripts/test_rankings_clean_18319.py'
+      - '.github/scripts/clean_rankings_18320.py'
+      - '.github/scripts/test_rankings_clean_18320.py'
       - '.github/scripts/build_desktop_season_18310.ps1'
       - '.github/workflows/build-season-sync-18310.yml'
   workflow_dispatch:
@@ -106,23 +106,23 @@ jobs:
             python ".github/scripts/$script.py" "$env:FUTBR_INSPECT_PROJECT"
             if ($LASTEXITCODE -ne 0) { throw "Falha em $script" }
           }
-      - name: Instalar ranking limpo 18.319 e testar rota real da tela
+      - name: Instalar ranking limpo 18.320 e testar rota real da tela
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          python .github/scripts/clean_rankings_18319.py "$env:FUTBR_INSPECT_PROJECT"
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar motor limpo 18.319.' }
-          python .github/scripts/test_rankings_clean_18319.py "$env:FUTBR_INSPECT_PROJECT"
-          if ($LASTEXITCODE -ne 0) { throw 'Falha no teste da tela real 18.319.' }
-      - name: Disponibilizar codigo LIMPO 18.319 para verificacao
+          python .github/scripts/clean_rankings_18320.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar motor limpo 18.320.' }
+          python .github/scripts/test_rankings_clean_18320.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha no teste da tela real 18.320.' }
+      - name: Disponibilizar codigo LIMPO 18.320 para verificacao
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FutBR-Source-Debug-18319
+          name: FutBR-Source-Debug-18320
           path: |
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
-            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18319-install.json
-            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18319-tests.json
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18320-install.json
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18320-tests.json
           if-no-files-found: warn
           retention-days: 2
       - name: Relatorios de integridade
