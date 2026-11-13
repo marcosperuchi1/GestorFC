@@ -80,8 +80,10 @@ function v18322CollectSeason(s,year){
   for(const div of [...(divisions.get(c.id)||[])].sort((a,b)=>a-b)){
    const list=E.table(s,c.id,div)||[];
    const isMls=c.id==='usa'&&div===1,mls=s.competitions?.mls;
-   const champ=isMls?(mls?.champion||list[0]?.id):list[0]?.id;
-   const runner=isMls?(mls?.mls?.cupRunner||mls?.cupRunner||null):list[1]?.id;
+   const brazilLower=c.id==='bra'&&(div===3||div===4)?(div===3?s.braLower?.serieC:s.braLower?.serieD):null;
+   // Nas Séries C e D, o vencedor da final prevalece sobre o líder da classificação.
+   const champ=brazilLower?(brazilLower.champion||null):isMls?(mls?.champion||null):list[0]?.id;
+   const runner=brazilLower?(brazilLower.runnerUp||null):isMls?(mls?.runnerUp||mls?.cupRunner||null):list[1]?.id;
    add('league',c.id,div,'league:'+c.id+':'+div,champ,runner,v18322Scorers(s.competitionStats?.['league:'+c.id+':'+div]));
   }
   const champ=s.cupWinners?.[c.id];
