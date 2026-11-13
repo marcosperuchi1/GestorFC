@@ -7,7 +7,7 @@ def main():
  required=['FUTBR_CHAMPIONS_RETIREMENT_18322','v18322CaptureSeason(s,oldYear);',
   'v18322BaseCompetitionsPage=competitionsPage','v18322BaseNationalPage=v640NationalPage',
   'v18322BaseTransfersPage=transferActivityPage','auto=clubBefore===s.user?',
-  'root.history[0].scorer={id:p.id','function v18322RetirementPage()']
+  'root.history[0].scorer={id:p.id','function v18322RetirementPage()','data-v18322="c-year"','v18322-docked-toolbar','v18322-scorer-list','v18322VisibleLimit=120']
  for m in required:
   if m not in html:raise RuntimeError('Missing feature: '+m)
  if 'root.history=root.history.slice(0,80);' in html:raise RuntimeError('National title archive still capped at 80')
@@ -34,6 +34,8 @@ const document={listeners:{},head:{appendChild(){}},
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const WorldCatalog={countries:[{id:'bra',name:'Brasil',cup:'Copa do Brasil'},{id:'eng',name:'Inglaterra',cup:'FA Cup'}]};
 let state=null,view='competitions',renderCalls=0,persistCalls=0;
+let v54CompetitionMode='league',v4Competition='lib';
+const selectedCountry=()=>state?.teams?.[0]?.country||'bra',selectedDivision=()=>1;
 const badge=t=>'<i class="shield">ESCUDO '+esc(t.id)+'</i>';
 const render=()=>{renderCalls++;};
 const persist=()=>{persistCalls++;};
@@ -45,7 +47,7 @@ const E={
  player:(s,id)=>s?.players?.[id]||null,
  overall:p=>p?.overall||80
 };
-let competitionsPage=()=>'<p>Competições atuais</p>';
+let competitionsPage=()=>'<section><div class="v54-competition-toolbar"><div>Modalidade</div><div>País</div><div>Divisão</div></div><p>Competições atuais</p></section>';
 let v640NationalPage=()=>'<p>Seleção atual</p>';
 let transferActivityPage=()=>'<p>Mercado atual</p>';
 let act=el=>null;
@@ -88,7 +90,7 @@ function testState(){
 state=testState();
 """ + body.group(0) + r"""
 const api=window.GestorFC.championsRetire18322;
-assert.equal(api.version,'18.322');
+assert.equal(api.version,'18.323');
 const count=v18322CaptureSeason(state,2026);
 assert.equal(count,4,'2 divisions + cup + continental');
 const saved=state.v18322Champions;
@@ -116,10 +118,16 @@ const retire=v18322RetirementPage();
 assert(retire.includes('Veterano aposentado')&&retire.includes('Veterano'));
 assert(retire.includes('data-action="v18322-retire"'));
 assert(competitionsPage().includes('Histórico de campeões'));
+assert(competitionsPage().includes('v18322-docked-toolbar'),'Competition tabs should share the existing toolbar');
+assert(!competitionsPage().startsWith('<div class="v18322-switch">'),'Extra tabs row reduces standings height');
 assert(v640NationalPage().includes('Histórico de títulos'));
 assert(transferActivityPage().includes('Aposentadorias'));
 act({dataset:{action:'v18322-toggle-clubs',mode:'history'}});
 assert(competitionsPage().includes('Artilheiro da liga'));
+assert(competitionsPage().includes('data-v18322="c-year"'),'Year filter missing');
+assert(competitionsPage().includes('value="bra" selected'),'Default country not selected');
+assert(competitionsPage().includes('value="league" selected'),'Default league filter not selected');
+assert(competitionsPage().includes('value="1" selected'),'Default division 1 not selected');
 act({dataset:{action:'v18322-toggle-national',mode:'history'}});
 assert(v640NationalPage().includes('FLAG BRA'));
 act({dataset:{action:'v18322-transfer-tab',tab:'retirements'}});
@@ -136,8 +144,19 @@ state.v18322Champions=[];
 state.worldHistory=[{year:2025,countries:[{country:'bra',champion:'b2',secondChampion:'b4',cup:'b1'}]}];
 const legacy=v18322ChampionsRows(state).find(x=>x.year===2025&&x.competition==='cup:bra');
 assert(legacy&&legacy.runner===null&&legacy.scorers.length===0,'legacy must not invent vice/scorer');
-console.log(JSON.stringify({ok:true,version:'18.322',editions:count,topScorer:true,runnerUp:true,
+const tied=v18322Scorers({a:{id:'a',name:'Atleta 1',goals:8},b:{id:'b',name:'Atleta 2',goals:8},c:{id:'c',name:'Atleta 3',goals:8},d:{id:'d',name:'Atleta 4',goals:8},e:{id:'e',name:'Atleta 5',goals:8}});
+assert.equal(tied.length,5,'All tied scorers should be preserved');
+const tiedCell=v18322ScorerCell(tied);
+assert(tiedCell.includes('v18322-scorer-list')&&tiedCell.match(/class="v18322-scorer"/g).length===5,'Tied scorers must be vertical');
+const actualIntl=testState();actualIntl.competitionStats.lib={p1:{id:'p1',name:'Artilheiro real do torneio',goals:11,clubs:{b2:'Palmeiras'}}};
+actualIntl.schedule[1].fixtures[0].result.events=[];
+assert.equal(v18322CollectSeason(actualIntl,2026).find(x=>x.competition==='lib').scorers[0].name,'Artilheiro real do torneio','Partial fixtures must not erase recorded scorer stats');
+const defaultLeague=v18322ChampionsRows(actualIntl,{country:'bra',kind:'league',division:'1',year:'2026',competition:'all'});
+assert.equal(defaultLeague.length,1,'Default filtered view must show Brazil first division only');
+const years=v18322AvailableYears(actualIntl);assert(years.includes(2026));
+console.log(JSON.stringify({ok:true,version:'18.323',editions:count,topScorer:true,runnerUp:true,
  nationalHistory:true,teamCrests:true,retirementHistory:true,manualRetirement:true,
+ defaultFilters:true,yearFilter:true,standingsToolbarHeightPreserved:true,scorersFromCompetitionStats:true,tiedScorersVertical:true,
  preservesReload:true,noFabricatedLegacy:true,allFourRankTabsPreserved:true}));
 """
  path=root/'.test18322.js'
@@ -160,7 +179,7 @@ console.log(JSON.stringify({ok:true,version:'18.322',editions:count,topScorer:tr
   page.wait_for_timeout(1500)
   installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function'})")
   browser.close()
- if installed['version']!='18.322' or not installed['clubRows'] or not installed['nationalRows']:
+ if installed['version']!='18.323' or not installed['clubRows'] or not installed['nationalRows']:
   raise RuntimeError('18.322 missing in browser runtime: '+json.dumps({'api':installed,'errors':runtime_errors[:6]},ensure_ascii=False))
  data=json.loads(r.stdout.strip().splitlines()[-1])
  if not data.get('ok'):raise RuntimeError('18.322 invalid result')

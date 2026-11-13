@@ -2,12 +2,13 @@ from pathlib import Path
 import json
 import sys
 
-VERSION = '18.322'
+VERSION = '18.323'
 MARK = 'FUTBR_CHAMPIONS_RETIREMENT_18322'
 UI = r"""
 /* FUTBR_CHAMPIONS_RETIREMENT_18322 */
 let v18322ClubOpen=false,v18322NationalOpen=false,v18322TransferTab='transfers';
-const v18322ClubFilters={country:'all',kind:'all',division:'all',competition:'all'};
+const v18322ClubFilters={country:'all',kind:'all',division:'all',competition:'all',year:'all'};
+let v18322ClubFilterState=null,v18322VisibleLimit=120;
 const v18322NationalFilters={conf:'all',nation:'all',competition:'all'};
 let v18322RetireYear='all';
 const v18322Preview=new WeakMap();
@@ -22,7 +23,7 @@ function v18322Scorers(db){
  if(!scored.length)return [];
  scored.sort((a,b)=>v18322N(b.goals)-v18322N(a.goals)||v18322N(b.assists)-v18322N(a.assists)||String(a.name).localeCompare(String(b.name),'pt-BR'));
  const max=v18322N(scored[0].goals);
- return scored.filter(x=>v18322N(x.goals)===max).slice(0,4).map(r=>{
+ return scored.filter(x=>v18322N(x.goals)===max).map(r=>{
   const grouped=Object.entries(r.byClub||{}).sort((a,b)=>v18322N(b[1]?.goals)-v18322N(a[1]?.goals));
   const club=grouped[0]?.[0]||Object.keys(r.clubs||{})[0]||r.club||null;
   return {id:String(r.id||''),name:String(r.name||'Jogador'),goals:max,club,clubName:String(r.clubs?.[club]||'')};
@@ -38,65 +39,103 @@ function v18322CupRunners(s){
  }
  return map;
 }
+
 function v18322IntlScorers(s){
- const comps=new Map();
- for(const stage of s.schedule||[])for(const f of stage?.fixtures||[]){
-  if(!f?.competition||!f.result)continue;
-  const id=String(f.competition),a=comps.get(id)||{goals:new Map(),expected:0,counted:0};
-  const hg=v18322N(f.result.home),ag=v18322N(f.result.away);
-  a.expected+=Math.max(0,hg)+Math.max(0,ag);
-  for(const ev of f.result.events||[]){
-   if(ev?.type!=='goal'||!ev.pid)continue;
-   const club=Number(ev.side)===0?f.home:f.away,player=s.players?.[ev.pid];
-   const key=String(ev.pid),row=a.goals.get(key)||{id:key,name:player?.name||ev.name||'Jogador',club,clubName:v18322ClubName(s,club),goals:0};
-   row.goals++;a.counted++;a.goals.set(key,row);
-  }
-  comps.set(id,a);
+ const result=new Map(),raw=new Map();
+ // Use actual competitionStats recorded for the entire season. Fixture events
+ // can be pruned in simulation and cannot be the only official scorer source.
+ for(const [id,db] of Object.entries(s.competitionStats||{})){
+  if(id.startsWith('league:')||id.startsWith('cup:'))continue;
+  const leaders=v18322Scorers(db);
+  if(leaders.length)result.set(String(id),leaders);
  }
- const result=new Map();
- for(const [id,a] of comps){
-  if(a.counted<a.expected||!a.counted){result.set(id,[]);continue;}
-  result.set(id,v18322Scorers(Object.fromEntries(a.goals)));
+ for(const stage of s.schedule||[])for(const f of stage?.fixtures||[]){
+  if(!f?.competition||!f?.result)continue;
+  const id=String(f.competition);
+  if(result.has(id))continue;
+  const row=raw.get(id)||{goals:new Map(),expected:0,counted:0};
+  row.expected+=Math.max(0,v18322N(f.result.home))+Math.max(0,v18322N(f.result.away));
+  const events=(f.result.events||[]).some(e=>e?.type==='goal')
+   ?f.result.events:Array.isArray(f.result.scorers)?f.result.scorers:[];
+  for(const ev of events){
+   if(!ev?.pid||(ev.type&&ev.type!=='goal'))continue;
+   const club=Number(ev.side)===0?f.home:f.away,p=s.players?.[ev.pid],key=String(ev.pid);
+   const scorer=row.goals.get(key)||{id:key,name:p?.name||ev.name||'Jogador',club,
+    clubName:v18322ClubName(s,club),goals:0};
+   scorer.goals++;row.counted++;row.goals.set(key,scorer);
+  }
+  raw.set(id,row);
+ }
+ for(const [id,row] of raw)if(!result.has(id)){
+  // A partial event log cannot determine the official competition winner.
+  result.set(id,row.counted>0&&row.counted===row.expected
+   ?v18322Scorers(Object.fromEntries(row.goals)):[]);
  }
  return result;
 }
-function v18322CollectSeason(s,year){
+function v18322MatchRow(row,f){
+ if(!f)return true;
+ if(f.year!=='all'&&f.year!=null&&Number(row.year)!==Number(f.year))return false;
+ if(f.country!=='all'&&f.country!=null&&row.country!==f.country)return false;
+ if(f.kind!=='all'&&f.kind!=null&&row.kind!==f.kind)return false;
+ if(f.division!=='all'&&f.division!=null&&row.kind==='league'&&Number(row.division)!==Number(f.division))return false;
+ if(f.competition!=='all'&&f.competition!=null&&row.competition!==f.competition)return false;
+ return true;
+}
+
+function v18322CollectSeason(s,year,filter=null){
  if(!s?.teams?.length)return [];
- const rows=[],cupRunners=v18322CupRunners(s),intlGoals=v18322IntlScorers(s);
+ const rows=[],requiresCup=!filter||filter.kind==='all'||filter.kind==='cup',
+  requiresIntl=!filter||filter.kind==='all'||filter.kind==='international';
+ const cupRunners=requiresCup?v18322CupRunners(s):new Map();
+ const intlGoals=requiresIntl?v18322IntlScorers(s):new Map();
  const add=(kind,country,division,competition,champion,runner,scorers)=>{
   if(!champion)return;
-  rows.push({year,kind,country:country||'',division:Number(division)||0,competition:String(competition),
+  const row={year,kind,country:country||'',division:Number(division)||0,competition:String(competition),
    champion:String(champion),championName:v18322ClubName(s,champion),
    runner:runner?String(runner):null,runnerName:runner?v18322ClubName(s,runner):'',
-   scorers:Array.isArray(scorers)?scorers:[]});
+   scorers:Array.isArray(scorers)?scorers:[]};
+  if(v18322MatchRow(row,filter))rows.push(row);
  };
  const divisions=new Map();
- for(const t of s.teams||[]){
-  if(!t?.country)continue;
-  if(!divisions.has(t.country))divisions.set(t.country,new Set());
-  divisions.get(t.country).add(v18322N(t.division)||1);
- }
- for(const c of WorldCatalog.countries){
-  for(const div of [...(divisions.get(c.id)||[])].sort((a,b)=>a-b)){
-   const list=E.table(s,c.id,div)||[];
-   const isMls=c.id==='usa'&&div===1,mls=s.competitions?.mls;
-   const brazilLower=c.id==='bra'&&(div===3||div===4)?(div===3?s.braLower?.serieC:s.braLower?.serieD):null;
-   // Nas Séries C e D, o vencedor da final prevalece sobre o líder da classificação.
-   const champ=brazilLower?(brazilLower.champion||null):isMls?(mls?.champion||null):list[0]?.id;
-   const runner=brazilLower?(brazilLower.runnerUp||null):isMls?(mls?.runnerUp||mls?.cupRunner||null):list[1]?.id;
-   add('league',c.id,div,'league:'+c.id+':'+div,champ,runner,v18322Scorers(s.competitionStats?.['league:'+c.id+':'+div]));
+ if(!filter||filter.kind==='league'||filter.kind==='all')
+  for(const t of s.teams||[]){
+   if(!t?.country||(filter?.country!=='all'&&filter?.country&&filter.country!==t.country))continue;
+   if(!divisions.has(t.country))divisions.set(t.country,new Set());
+   divisions.get(t.country).add(v18322N(t.division)||1);
   }
-  const champ=s.cupWinners?.[c.id];
-  if(champ)add('cup',c.id,0,'cup:'+c.id,champ,cupRunners.get(c.id),v18322Scorers(s.competitionStats?.['cup:'+c.id]));
+ for(const c of WorldCatalog.countries){
+  if(filter?.country&&filter.country!=='all'&&filter.country!==c.id)continue;
+  if(!filter||filter.kind==='all'||filter.kind==='league'){
+   for(const div of [...(divisions.get(c.id)||[])].sort((a,b)=>a-b)){
+    const key='league:'+c.id+':'+div;
+    if(filter?.division!=='all'&&filter?.division!=null&&div!==Number(filter.division))continue;
+    if(filter?.competition!=='all'&&filter?.competition!=null&&filter.competition!==key)continue;
+    const list=E.table(s,c.id,div)||[],isMls=c.id==='usa'&&div===1,mls=s.competitions?.mls;
+    const brazilLower=c.id==='bra'&&(div===3||div===4)?(div===3?s.braLower?.serieC:s.braLower?.serieD):null;
+    const champ=brazilLower?(brazilLower.champion||null):isMls?(mls?.champion||null):list[0]?.id;
+    const runner=brazilLower?(brazilLower.runnerUp||null):isMls?(mls?.runnerUp||mls?.cupRunner||null):list[1]?.id;
+    add('league',c.id,div,key,champ,runner,v18322Scorers(s.competitionStats?.[key]));
+   }
+  }
+  if(requiresCup){
+   const key='cup:'+c.id,champ=s.cupWinners?.[c.id];
+   if(champ&&(!filter||filter.competition==='all'||filter.competition===key))
+    add('cup',c.id,0,key,champ,cupRunners.get(c.id),v18322Scorers(s.competitionStats?.[key]));
+  }
  }
- for(const c of Object.values(s.competitions||{})){
-  if(!c?.champion||c.id==='mls')continue;
-  let runner=null;
-  const finals=Object.entries(c.rounds||{}).filter(([key])=>/final|^f$/i.test(key)).flatMap(([,ties])=>Array.isArray(ties)?ties:[]);
-  for(const t of finals)if(t?.winner===c.champion&&t?.a&&t?.b){runner=t.a===c.champion?t.b:t.a;break;}
-  if(!runner)for(const stage of s.schedule||[])for(const f of stage?.fixtures||[])
-   if(f?.final&&f.competition===c.id&&(f.home===c.champion||f.away===c.champion)){runner=f.home===c.champion?f.away:f.home;}
-  add('international','international',0,c.id,c.champion,runner,intlGoals.get(String(c.id))||[]);
+ if(requiresIntl&&(!filter||filter.country==='all'||filter.country==='international')){
+  for(const [key,c] of Object.entries(s.competitions||{})){
+   const id=String(c?.id||key);
+   if(!c?.champion||id==='mls'||(filter?.competition!=='all'&&filter?.competition&&filter.competition!==id))continue;
+   let runner=null;
+   const finals=Object.entries(c.rounds||{}).filter(([phase])=>/final|^f$/i.test(phase)).flatMap(([,ties])=>Array.isArray(ties)?ties:[]);
+   for(const tie of finals)if(tie?.winner===c.champion&&tie?.a&&tie?.b){runner=tie.a===c.champion?tie.b:tie.a;break;}
+   if(!runner)for(const stage of s.schedule||[])for(const f of stage?.fixtures||[])
+    if(f?.final&&f.competition===id&&(f.home===c.champion||f.away===c.champion))
+     runner=f.home===c.champion?f.away:f.home;
+   add('international','international',0,id,c.champion,runner,intlGoals.get(id)||[]);
+  }
  }
  return rows;
 }
@@ -109,43 +148,81 @@ function v18322CaptureSeason(s,year){
  s.v18322Champions=[...rows,...merged].sort((a,b)=>b.year-a.year||String(a.competition).localeCompare(String(b.competition)));
  v18322Preview.delete(s);return rows.length;
 }
-function v18322LegacyRows(s){
- const result=[],teamId=(id)=>id?String(id):null;
- for(const h of s.worldHistory||[])for(const row of h?.countries||[]){
-  const country=String(row.country||''),year=v18322N(h.year);
-  if(!year||!country)continue;
-  for(const [key,id,div,kind] of [
-   ['league:'+country+':1',row.champion,1,'league'],
-   ['league:'+country+':2',row.secondChampion,2,'league'],
-   ['cup:'+country,row.cup,0,'cup']]){
-   if(!id)continue;
-   result.push({year,kind,country,division:div,competition:key,
-    champion:teamId(id),championName:v18322ClubName(s,id),
-    runner:null,runnerName:'',scorers:[],legacy:true});
+
+function v18322LegacyRows(s,filter=null){
+ const result=[],teamId=id=>id?String(id):null;
+ if(!filter||filter.kind==='all'||filter.kind==='league'||filter.kind==='cup'){
+  for(const h of s.worldHistory||[]){
+   const year=v18322N(h?.year);
+   if(filter?.year!=='all'&&filter?.year!=null&&year!==Number(filter.year))continue;
+   for(const row of h?.countries||[]){
+    const country=String(row.country||'');
+    if(!year||!country||(filter?.country!=='all'&&filter?.country&&filter.country!==country))continue;
+    for(const [key,id,div,kind] of [
+     ['league:'+country+':1',row.champion,1,'league'],
+     ['league:'+country+':2',row.secondChampion,2,'league'],
+     ['cup:'+country,row.cup,0,'cup']]){
+     if(!id)continue;
+     const item={year,kind,country,division:div,competition:key,
+      champion:teamId(id),championName:v18322ClubName(s,id),
+      runner:null,runnerName:'',scorers:[],legacy:true};
+     if(v18322MatchRow(item,filter))result.push(item);
+    }
+   }
   }
  }
- for(const h of s.internationalHistory||[])if(h?.champion){
-  result.push({year:v18322N(h.year),kind:'international',country:'international',division:0,
-   competition:String(h.id||''),champion:teamId(h.champion),
-   championName:v18322ClubName(s,h.champion),runner:null,runnerName:'',scorers:[],legacy:true});
+ if(!filter||filter.kind==='all'||filter.kind==='international'){
+  if(!filter||filter.country==='all'||filter.country==='international')
+   for(const h of s.internationalHistory||[])if(h?.champion){
+    const item={year:v18322N(h.year),kind:'international',country:'international',division:0,
+     competition:String(h.id||''),champion:teamId(h.champion),
+     championName:v18322ClubName(s,h.champion),runner:null,runnerName:'',scorers:[],legacy:true};
+    if(v18322MatchRow(item,filter))result.push(item);
+   }
  }
  return result;
 }
-function v18322ChampionsRows(s){
+function v18322ChampionsRows(s,filter=null){
  if(!s)return [];
- const old=Array.isArray(s.v18322Champions)?s.v18322Champions:[];
- const all=new Map();
- for(const x of v18322LegacyRows(s))all.set(x.year+'|'+x.competition,x);
- for(const x of old)all.set(x.year+'|'+x.competition,x);
- if(s.seasonDone){
+ const records=new Map();
+ for(const row of v18322LegacyRows(s,filter))records.set(row.year+'|'+row.competition,row);
+ for(const row of Array.isArray(s.v18322Champions)?s.v18322Champions:[])
+  if(v18322MatchRow(row,filter))records.set(row.year+'|'+row.competition,row);
+ if(s.seasonDone&&(!filter||filter.year==='all'||Number(filter.year)===Number(s.year))){
+  const signature=[s.year,s.day,filter?.country||'all',filter?.kind||'all',
+   filter?.division||'all',filter?.competition||'all'].join('|');
   let preview=v18322Preview.get(s);
-  if(!preview||preview.year!==s.year||preview.day!==s.day){
-   preview={year:s.year,day:s.day,rows:v18322CollectSeason(s,Number(s.year))};
+  if(!preview||preview.signature!==signature){
+   preview={signature,rows:v18322CollectSeason(s,Number(s.year),filter)};
    v18322Preview.set(s,preview);
   }
-  for(const x of preview.rows)if(!all.has(x.year+'|'+x.competition))all.set(x.year+'|'+x.competition,x);
+  for(const row of preview.rows)if(!records.has(row.year+'|'+row.competition))
+   records.set(row.year+'|'+row.competition,row);
  }
- return [...all.values()].filter(x=>x.year>0).sort((a,b)=>b.year-a.year||String(a.competition).localeCompare(String(b.competition),'pt-BR'));
+ return [...records.values()].filter(x=>Number(x.year)>0)
+  .sort((a,b)=>Number(b.year)-Number(a.year)||String(a.competition).localeCompare(String(b.competition),'pt-BR'));
+}
+function v18322InitClubFilters(){
+ if(v18322ClubFilterState===state)return;
+ const mode=String(v54CompetitionMode||'league');
+ const country=mode==='international'?'international':
+  (typeof selectedCountry==='function'?selectedCountry():E.human(state)?.country)||'all';
+ v18322ClubFilters.country=country;
+ v18322ClubFilters.kind=mode==='cup'?'cup':mode==='international'?'international':'league';
+ v18322ClubFilters.division=mode==='league'?
+  String(typeof selectedDivision==='function'?selectedDivision():E.human(state)?.division||1):'all';
+ v18322ClubFilters.competition=mode==='international'?String(v4Competition||'all'):'all';
+ v18322ClubFilters.year='all';
+ v18322VisibleLimit=120;
+ v18322ClubFilterState=state;
+}
+function v18322AvailableYears(s){
+ const years=new Set();
+ for(const row of s?.v18322Champions||[])if(v18322N(row?.year))years.add(v18322N(row.year));
+ for(const rows of [s?.worldHistory,s?.internationalHistory,s?.v640National?.history])
+  for(const row of rows||[])if(v18322N(row?.year))years.add(v18322N(row.year));
+ if(s?.seasonDone)years.add(v18322N(s.year));
+ return [...years].filter(y=>y>0).sort((a,b)=>b-a);
 }
 function v18322Option(value,label,current){
  return '<option value="'+v18322Esc(value)+'"'+(String(value)===String(current)?' selected':'')+'>'+v18322Esc(label)+'</option>';
@@ -155,12 +232,13 @@ function v18322ClubCrest(id,name=''){
  return t?'<span class="v18322-club">'+badge(t,'small')+'<button type="button" data-action="team" data-team="'+v18322Esc(id)+'" class="table-button">'+v18322Esc(t.name)+'</button></span>':
   '<span class="v18322-club">'+v18322Esc(name||'Sem registro')+'</span>';
 }
+
 function v18322ScorerCell(sc,national=false){
- if(!sc?.length)return '<span class="muted">Sem registro</span>';
- return sc.map(x=>'<span class="v18322-scorer">'+
- (national?(typeof v640Flag==='function'?v640Flag(x.teamCode||''):''):
-  (x.club&&E.team(state,x.club)?badge(E.team(state,x.club),'small'):''))+
- '<span>'+v18322Esc(x.name)+' <small>('+v18322N(x.goals)+' gols)</small></span></span>').join(' ');
+ if(!sc?.length)return '<span class="muted">Dados de artilharia indisponíveis neste save</span>';
+ return '<div class="v18322-scorer-list">'+sc.map(x=>'<div class="v18322-scorer">'+
+  (national?(typeof v640Flag==='function'?v640Flag(x.teamCode||''):''):
+   (x.club&&E.team(state,x.club)?badge(E.team(state,x.club),'small'):''))+
+  '<span>'+v18322Esc(x.name)+' <small>('+v18322N(x.goals)+' gols)</small></span></div>').join('')+'</div>';
 }
 function v18322HistoryPage(kind){
  if(kind==='national'){
@@ -183,25 +261,40 @@ function v18322HistoryPage(kind){
   '</select></label></div>'+v18322Table(rows.map(x=>({year:x.year,competition:x.name||root.competitions?.[x.id]?.name||x.id,champ:renderNation(x.champion),
     runner:renderNation(x.runnerUp),scorer:v18322ScorerCell(x.scorer?[x.scorer]:v18322NationalScorers(root,x.year,x.id),true)})))+'</section>';
  }
- const f=v18322ClubFilters,all=v18322ChampionsRows(state);
- const countries=[...new Set(all.map(x=>x.country).filter(x=>x!=='international'))].sort((a,b)=>v18322CountryLabel(a).localeCompare(v18322CountryLabel(b),'pt-BR'));
- const filtered=all.filter(x=>(f.country==='all'||x.country===f.country)&&
- (f.kind==='all'||x.kind===f.kind)&&
- (f.division==='all'||x.kind!=='league'||x.division===Number(f.division))&&
- (f.competition==='all'||x.competition===f.competition));
- const competitions=[...new Set(all.filter(x=>f.country==='all'||x.country===f.country).map(x=>x.competition))].sort();
- const divisions=[...new Set(all.filter(x=>x.kind==='league'&&(f.country==='all'||x.country===f.country)).map(x=>x.division))].sort((a,b)=>a-b);
+
+ v18322InitClubFilters();
+ const f=v18322ClubFilters,base=v18322ChampionsRows(state,{...f,competition:'all'});
+ const filtered=f.competition==='all'?base:base.filter(x=>x.competition===f.competition);
+ const competitions=[...new Set(base.map(x=>x.competition))].sort((a,b)=>v18322CompLabel(a).localeCompare(v18322CompLabel(b),'pt-BR'));
+ if(f.competition!=='all'&&!competitions.includes(f.competition))competitions.push(f.competition);
+ const years=v18322AvailableYears(state);
+ const countries=[...(WorldCatalog.countries||[])].sort((a,b)=>String(a.name).localeCompare(String(b.name),'pt-BR'));
+ const divisions=[...new Set([
+  ...(state?.teams||[]).filter(t=>f.country==='all'||t.country===f.country).map(t=>Number(t.division)||1),
+  ...(state?.v18322Champions||[]).filter(x=>x.kind==='league'&&(f.country==='all'||x.country===f.country)).map(x=>Number(x.division)||1)
+ ])].filter(x=>x>0).sort((a,b)=>a-b);
+ const visible=filtered.slice(0,v18322VisibleLimit);
  return '<section class="v18322-panel"><h2>Histórico de campeões</h2>'+
- '<p class="tiny muted">Do título mais recente ao mais antigo. Os dados anteriores à atualização aparecem quando disponíveis no save.</p>'+
- '<div class="v18322-filters"><label>País<select data-v18322="c-country">'+v18322Option('all','Todos os países',f.country)+countries.map(c=>v18322Option(c,v18322CountryLabel(c),f.country)).join('')+v18322Option('international','Internacionais / Mundial',f.country)+'</select></label>'+
+ '<p class="tiny muted">Títulos do mais recente ao mais antigo · apenas os resultados filtrados são exibidos. Dados antigos aparecem quando disponíveis.</p>'+
+ '<div class="v18322-filters"><label>Ano<select data-v18322="c-year">'+v18322Option('all','Todos os anos',f.year)+
+ years.map(y=>v18322Option(y,y,f.year)).join('')+'</select></label>'+
+ '<label>País<select data-v18322="c-country">'+v18322Option('all','Todos os países',f.country)+
+ countries.map(c=>v18322Option(c.id,c.name,f.country)).join('')+
+ v18322Option('international','Internacionais / Mundial',f.country)+'</select></label>'+
  '<label>Campeonato<select data-v18322="c-kind">'+
- [['all','Todos'],['league','Ligas'],['cup','Copas'],['international','Internacionais']].map(x=>v18322Option(x[0],x[1],f.kind)).join('')+
- '</select></label><label>Divisão<select data-v18322="c-division">'+v18322Option('all','Todas',f.division)+divisions.map(d=>v18322Option(d,d+'ª divisão',f.division)).join('')+'</select></label>'+
- '<label>Competição<select data-v18322="c-competition">'+v18322Option('all','Todas',f.competition)+competitions.map(id=>v18322Option(id,v18322CompLabel(id),f.competition)).join('')+
- '</select></label></div>'+v18322Table(filtered.map(x=>({year:x.year,competition:v18322CompLabel(x.competition),
-  champ:v18322ClubCrest(x.champion,x.championName),runner:v18322ClubCrest(x.runner,x.runnerName),
-  scorer:v18322ScorerCell(x.scorers)})))+'</section>';
+ [['all','Todos'],['league','Ligas'],['cup','Copas'],['international','Internacionais']]
+ .map(x=>v18322Option(x[0],x[1],f.kind)).join('')+'</select></label>'+
+ '<label>Divisão<select data-v18322="c-division">'+v18322Option('all','Todas',f.division)+
+ divisions.map(d=>v18322Option(d,d+'ª divisão',f.division)).join('')+'</select></label>'+
+ '<label>Competição<select data-v18322="c-competition">'+v18322Option('all','Todas',f.competition)+
+ competitions.map(id=>v18322Option(id,v18322CompLabel(id),f.competition)).join('')+
+ '</select></label></div>'+v18322Table(visible.map(x=>({year:x.year,competition:v18322CompLabel(x.competition),
+ champ:v18322ClubCrest(x.champion,x.championName),runner:v18322ClubCrest(x.runner,x.runnerName),
+ scorer:v18322ScorerCell(x.scorers)})),filtered.length)+
+ (filtered.length>v18322VisibleLimit?'<button class="btn small v18322-more" data-action="v18322-more">Exibir mais resultados</button>':'')+
+ '</section>';
 }
+
 function v18322NationalScorers(root,year,key){
  const scores=v18322Scorers(root.playerStats?.[String(year)]?.[key]||{});
  return scores.map(x=>({...x,teamCode:root.playerStats?.[String(year)]?.[key]?.[x.id]?.teamCode||''}));
@@ -212,11 +305,12 @@ function v18322CompLabel(key){
  if(pieces[0]==='cup')return WorldCatalog.countries.find(x=>x.id===pieces[1])?.cup||'Copa · '+v18322CountryLabel(pieces[1]);
  return state?.competitions?.[key]?.name||String(key||'Competição').toUpperCase();
 }
-function v18322Table(rows){
+
+function v18322Table(rows,total=rows.length){
  return '<div class="v18322-scroller"><table><thead><tr><th>Ano</th><th>Campeonato</th><th>Campeão</th><th>Vice-campeão</th><th>Artilheiro(s)</th></tr></thead><tbody>'+
  (rows.length?rows.map(x=>'<tr><td><b>'+v18322N(x.year)+'</b></td><td>'+v18322Esc(x.competition)+'</td><td>'+x.champ+'</td><td>'+x.runner+'</td><td>'+x.scorer+'</td></tr>').join(''):
- '<tr><td colspan="5" class="muted">Ainda não existem edições concluídas para estes filtros.</td></tr>')+
- '</tbody></table></div><div class="tiny muted v18322-foot">'+rows.length+' edição(ões) encontradas · “Sem registro” indica dado não preservado no histórico antigo.</div>';
+ '<tr><td colspan="5" class="muted">Nenhuma edição concluída corresponde aos filtros escolhidos.</td></tr>')+
+ '</tbody></table></div><div class="tiny muted v18322-foot">Exibindo '+rows.length+' de '+total+' edição(ões). Informações não preservadas nos saves antigos não são inventadas.</div>';
 }
 function v18322RetirementPage(){
  const s=state,rows=Array.isArray(s?.retirements)?s.retirements:[],
@@ -236,12 +330,24 @@ function v18322RetirementPage(){
  '<tr><td colspan="6" class="muted">Nenhuma aposentadoria registrada neste período.</td></tr>')+
  '</tbody></table></div></section>';
 }
+
 const v18322BaseCompetitionsPage=competitionsPage;
+function v18322ClubSwitch(){
+ return '<div class="v18322-switch"><button class="btn small '+(v18322ClubOpen?'':'primary')+
+ '" data-action="v18322-toggle-clubs" data-mode="current">Temporada atual</button>'+
+ '<button class="btn small '+(v18322ClubOpen?'primary':'')+
+ '" data-action="v18322-toggle-clubs" data-mode="history">Histórico de campeões</button></div>';
+}
 competitionsPage=function(){
- return '<div class="v18322-switch"><button class="btn small '+(v18322ClubOpen?'':'primary')+'" data-action="v18322-toggle-clubs" data-mode="current">Temporada atual</button>'+
- '<button class="btn small '+(v18322ClubOpen?'primary':'')+'" data-action="v18322-toggle-clubs" data-mode="history">Histórico de campeões</button></div>'+
- (v18322ClubOpen?v18322HistoryPage('club'):v18322BaseCompetitionsPage());
+ const tabs=v18322ClubSwitch();
+ if(v18322ClubOpen)return '<div class="v18322-history-screen">'+tabs+v18322HistoryPage('club')+'</div>';
+ const current=v18322BaseCompetitionsPage();
+ const toolbar='<div class="v54-competition-toolbar">';
+ // Avoid an extra row: the season standings should retain their full height.
+ return current.includes(toolbar)?current.replace(toolbar,
+  '<div class="v54-competition-toolbar v18322-docked-toolbar">'+tabs):tabs+current;
 };
+
 const v18322BaseNationalPage=v640NationalPage;
 v640NationalPage=function(){
  return '<div class="v18322-switch"><button class="btn small '+(v18322NationalOpen?'':'primary')+'" data-action="v18322-toggle-national" data-mode="current">Seleções</button>'+
@@ -257,7 +363,8 @@ transferActivityPage=function(){
 const v18322BaseAction=act;
 act=function(el){
  const action=el?.dataset?.action;
- if(action==='v18322-toggle-clubs'){v18322ClubOpen=el.dataset.mode==='history';render();return;}
+ if(action==='v18322-toggle-clubs'){if(el.dataset.mode==='history')v18322InitClubFilters();v18322ClubOpen=el.dataset.mode==='history';render();return;}
+ if(action==='v18322-more'){v18322VisibleLimit+=120;render();return;}
  if(action==='v18322-toggle-national'){v18322NationalOpen=el.dataset.mode==='history';render();return;}
  if(action==='v18322-transfer-tab'){v18322TransferTab=el.dataset.tab==='retirements'?'retirements':'transfers';render();return;}
  if(action==='v18322-retire'){
@@ -273,22 +380,26 @@ act=function(el){
 document.addEventListener('change',e=>{
  const key=e.target?.dataset?.v18322;if(!key||!state)return;
  const value=e.target.value;
- if(key==='c-country'){v18322ClubFilters.country=value;v18322ClubFilters.competition='all';v18322ClubFilters.division='all';}
+
+ if(key==='c-country'){v18322ClubFilters.country=value;v18322ClubFilters.competition='all';}
  else if(key==='c-kind'){v18322ClubFilters.kind=value;v18322ClubFilters.competition='all';}
  else if(key==='c-division')v18322ClubFilters.division=value;
+ else if(key==='c-year')v18322ClubFilters.year=value;
  else if(key==='c-competition')v18322ClubFilters.competition=value;
  else if(key==='n-conf')v18322NationalFilters.conf=value;
  else if(key==='n-nation')v18322NationalFilters.nation=value;
  else if(key==='n-competition')v18322NationalFilters.competition=value;
  else if(key==='retire-year')v18322RetireYear=value;
  else return;
+ if(key.startsWith('c-'))v18322VisibleLimit=120;
+
  render();
 },true);
 const v18322Style=document.createElement('style');v18322Style.id='v18322-history-style';
-v18322Style.textContent='.v18322-switch{display:flex;gap:8px;flex-wrap:wrap;padding:6px 0 12px}.v18322-panel{padding:16px;border:1px solid var(--line,#875251);background:var(--panel,#331716);border-radius:16px}.v18322-panel h2{font-size:20px;margin:0 0 8px}.v18322-panel h3{margin:18px 0 10px;font-size:16px}.v18322-filters{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:10px;margin:14px 0}.v18322-filters label,.v18322-year{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spacing:.025em}.v18322-filters select,.v18322-year select{width:100%;background:var(--panel2,#482221);border:1px solid var(--line,#82423c);color:inherit;border-radius:8px;padding:9px}.v18322-scroller{overflow:auto;max-height:65vh;border:1px solid var(--line,#82423c);border-radius:10px}.v18322-scroller table{width:100%;min-width:790px;border-collapse:collapse;font-size:12px}.v18322-scroller th{position:sticky;top:0;background:var(--panel2,#482221);z-index:2}.v18322-scroller th,.v18322-scroller td{padding:9px 10px;border-bottom:1px solid var(--line,#82423c);text-align:left;vertical-align:middle}.v18322-club,.v18322-scorer{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.v18322-scorer{margin:2px 6px 2px 0}.v18322-scorer small{opacity:.7}.v18322-foot{margin-top:8px}.v18322-year{margin:8px 0 14px;max-width:180px}@media(max-width:950px){.v18322-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}}';
+v18322Style.textContent="\n.v18322-switch{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:6px 0 10px}\n.v18322-switch .btn{white-space:nowrap}\n.v18322-docked-toolbar{grid-template-columns:minmax(245px,auto) minmax(150px,180px) minmax(170px,1fr) minmax(115px,.55fr)!important;gap:7px!important;align-items:end!important}\n.v18322-docked-toolbar>.v18322-switch{padding:0!important;min-width:0;align-self:end}\n.v18322-docked-toolbar>.v18322-switch .btn{font-size:10px!important;padding:7px 9px!important;min-height:31px;line-height:1.4}\n.v18322-panel{padding:14px;border:1px solid var(--line,#875251);background:var(--panel,#331716);border-radius:14px;min-width:0}\n.v18322-panel h2{font-size:19px;margin:0 0 5px}\n.v18322-panel h3{margin:18px 0 10px;font-size:16px}\n.v18322-filters{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;margin:12px 0}\n.v18322-filters label,.v18322-year{display:flex;flex-direction:column;gap:5px;font-size:11px;min-width:0}\n.v18322-filters select,.v18322-year select{width:100%;min-width:0;background:var(--panel2,#482221);border:1px solid var(--line,#82423c);color:inherit;border-radius:8px;padding:9px}\n.v18322-scroller{overflow:auto;max-height:calc(100dvh - 345px);min-height:190px;border:1px solid var(--line,#82423c);border-radius:10px}\n.v18322-scroller table{width:100%;min-width:820px;border-collapse:collapse;font-size:12px}\n.v18322-scroller th{position:sticky;top:0;background:var(--panel2,#482221);z-index:2}\n.v18322-scroller th,.v18322-scroller td{padding:8px 9px;border-bottom:1px solid var(--line,#82423c);text-align:left;vertical-align:middle;overflow-wrap:anywhere}\n.v18322-scroller th:first-child,.v18322-scroller td:first-child{width:6%}\n.v18322-scroller th:last-child,.v18322-scroller td:last-child{width:30%}\n.v18322-club{display:inline-flex;align-items:center;gap:6px;white-space:normal;max-width:100%}\n.v18322-scorer-list{display:flex;flex-direction:column;gap:5px;width:100%}\n.v18322-scorer{display:flex;align-items:center;gap:7px;min-width:0;white-space:normal}\n.v18322-scorer>span:last-child{min-width:0;overflow-wrap:anywhere}\n.v18322-scorer small{opacity:.75;white-space:nowrap}\n.v18322-foot{margin-top:8px}\n.v18322-more{margin-top:10px}\n.v18322-year{margin:8px 0 14px;max-width:180px}\n@media(max-width:1150px){.v18322-docked-toolbar{grid-template-columns:minmax(215px,auto) minmax(135px,160px) minmax(120px,1fr) minmax(100px,.6fr)!important}.v18322-docked-toolbar>.v18322-switch .btn{padding:6px!important;font-size:9px!important}}\n@media(max-width:850px){.v18322-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.v18322-docked-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}.v18322-docked-toolbar>.v18322-switch{grid-column:1/-1}}\n";
 document.head.appendChild(v18322Style);
 window.GestorFC.championsRetire18322={
- version:'18.322',clubRows:()=>v18322ChampionsRows(state),
+ version:'18.323',clubRows:()=>v18322ChampionsRows(state),
  nationalRows:()=>state?.v640National?.history||[],
  retirements:()=>state?.retirements||[],
  stats:()=>({saved:state?.v18322Champions?.length||0,national:state?.v640National?.history?.length||0,
@@ -348,7 +459,7 @@ def main():
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,
       'retirementAutomaticAge40':True,'manualAge35':True,
-      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True}
+      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True}
     (project/'champions-retirement-18322-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
