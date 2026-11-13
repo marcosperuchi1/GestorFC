@@ -22,6 +22,8 @@ Run-Python '.github/scripts/fix_rank_rollover_18316.py'
 Run-Python '.github/scripts/test_rank_rollover_18316.py'
 Run-Python '.github/scripts/fix_rank_titles_18317.py'
 Run-Python '.github/scripts/test_rank_titles_18317.py'
+Run-Python '.github/scripts/rebuild_rankings_18318.py'
+Run-Python '.github/scripts/test_rankings_18318.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -47,6 +49,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'rank-rollover-18316-tests.json' 'artifacts/rank-rollover-18316-tests.json'
   Copy-Item 'title-engine-18317-install.json' 'artifacts/title-engine-18317-install.json'
   Copy-Item 'title-engine-18317-tests.json' 'artifacts/title-engine-18317-tests.json'
+  Copy-Item 'ranking-rebuild-18318-install.json' 'artifacts/ranking-rebuild-18318-install.json'
+  Copy-Item 'ranking-rebuild-18318-tests.json' 'artifacts/ranking-rebuild-18318-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
