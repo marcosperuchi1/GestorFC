@@ -29,6 +29,8 @@ on:
       - '.github/scripts/test_rankings_clean_18320.py'
       - '.github/scripts/fix_rankings_ui_18321.py'
       - '.github/scripts/test_rankings_ui_18321.py'
+      - '.github/scripts/feature_champions_retirement_18322.py'
+      - '.github/scripts/test_champions_retirement_18322.py'
       - '.github/scripts/build_desktop_season_18310.ps1'
       - '.github/workflows/build-season-sync-18310.yml'
   workflow_dispatch:
@@ -144,6 +146,25 @@ jobs:
             \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
             \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-ui-18321-install.json
             \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-ui-18321-tests.json
+          if-no-files-found: warn
+          retention-days: 2
+      - name: Verificar historico completo de campeoes e aposentadoria 18.322
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/feature_champions_retirement_18322.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar historicos e aposentadorias 18.322.' }
+          python .github/scripts/test_champions_retirement_18322.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes de historico de campeoes e aposentadorias 18.322.' }
+      - name: Publicar codigo e relatorios 18.322
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Source-Debug-18322
+          path: |
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/champions-retirement-18322-install.json
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/champions-retirement-18322-tests.json
           if-no-files-found: warn
           retention-days: 2
       - name: Relatorios de integridade
