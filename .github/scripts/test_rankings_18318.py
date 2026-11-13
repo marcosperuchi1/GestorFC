@@ -8,6 +8,8 @@ def main():
 const assert=require('assert');
 let state=null,view='clubrankings';
 let v18221ClubRankPage=function(){return 'old';};
+let v86ClubRankingPage=function(){return 'old';};
+let v632ClubRankingPage=function(){return 'old';};
 let v18221ScheduleClubRankPrewarm=function(){};
 let invalidations=0;
 function v18221InvalidateClubRanking(){invalidations++}
