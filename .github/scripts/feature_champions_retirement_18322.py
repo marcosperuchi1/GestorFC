@@ -339,9 +339,11 @@ def main():
       "{id:p.id,name:p.name,teamCode:p.teamCode,goals:Number(p.goals)||0};}"
     )
     html=html.replace(national_legacy,national_archive)
-    anchor="\n})();\n</script>\n<script id=\"v202-meta\">"
-    html=replace_once(html,anchor,"\n"+UI+"\n})();\n</script>\n<script id=\"v202-meta\">",
-      'Funcoes no escopo original para competir e selecoes')
+    # Install into the same lexical scope as career functions: the v202-prewarm
+    # script is a separate IIFE and cannot see or override these functions.
+    anchor="window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';\n})();\n</script>"
+    html=replace_once(html,anchor,"\n"+UI+"\n"+anchor,
+      'Inserir historico e captura no escopo original da carreira')
     file.write_text(html,encoding='utf-8')
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,

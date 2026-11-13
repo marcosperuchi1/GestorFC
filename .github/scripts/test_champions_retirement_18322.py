@@ -11,6 +11,18 @@ def main():
  for m in required:
   if m not in html:raise RuntimeError('Missing feature: '+m)
  if 'root.history=root.history.slice(0,80);' in html:raise RuntimeError('National title archive still capped at 80')
+ # Prior versions mistakenly inserted this feature in the separate v202 IIFE.
+ # Verify that history UI and season rollover share the original lexical scope.
+ scope_end=html.index("window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';")
+ feature_start=html.index('/* FUTBR_CHAMPIONS_RETIREMENT_18322 */')
+ feature_end=html.index('/* FUTBR_CHAMPIONS_RETIREMENT_18322_END */')
+ native=['function competitionsPage(){','function v640NationalPage(){',
+  'function transferActivityPage(){','function act(el){',
+  'function v91FastNextSeasonCore(s){']
+ if not (all(html.index(name)<feature_start for name in native)
+  and feature_start<feature_end<scope_end
+  and html.index('<script id="v202-champion-mls-rank-prewarm">')>scope_end):
+  raise RuntimeError('18.322 inserted outside the main career IIFE')
  body=re.search(r'/\* FUTBR_CHAMPIONS_RETIREMENT_18322 \*/[\s\S]*?/\* FUTBR_CHAMPIONS_RETIREMENT_18322_END \*/',html)
  if not body:raise RuntimeError('UI core not in original lexical scope')
  code=r"""
@@ -133,6 +145,23 @@ console.log(JSON.stringify({ok:true,version:'18.322',editions:count,topScorer:tr
  try:r=subprocess.run(['node',str(path)],capture_output=True,text=True,timeout=45)
  finally:path.unlink(missing_ok=True)
  if r.returncode:raise RuntimeError('18.322 JS integration failed:\n'+(r.stderr or r.stdout)[-10000:])
+ # Browser runtime smoke test: a flat Node mock does not catch an IIFE mismatch.
+ from playwright.sync_api import sync_playwright
+ from test_runtime_boot import find_browser
+ browser_path=find_browser()
+ if not browser_path:raise RuntimeError('18.322 smoke test requires Chrome, Edge or Chromium')
+ with sync_playwright() as pw:
+  browser=pw.chromium.launch(executable_path=browser_path,headless=True,
+   args=['--disable-gpu','--disable-dev-shm-usage','--no-sandbox'])
+  page=browser.new_page(viewport={'width':1366,'height':768})
+  runtime_errors=[]
+  page.on('pageerror',lambda err:runtime_errors.append(str(err)))
+  page.set_content(html,wait_until='domcontentloaded',timeout=90000)
+  page.wait_for_timeout(1500)
+  installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function'})")
+  browser.close()
+ if installed['version']!='18.322' or not installed['clubRows'] or not installed['nationalRows']:
+  raise RuntimeError('18.322 missing in browser runtime: '+json.dumps({'api':installed,'errors':runtime_errors[:6]},ensure_ascii=False))
  data=json.loads(r.stdout.strip().splitlines()[-1])
  if not data.get('ok'):raise RuntimeError('18.322 invalid result')
  (root/'champions-retirement-18322-tests.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
