@@ -20,6 +20,8 @@ Run-Python '.github/scripts/fix_rank_titles_sparse_18315.py'
 Run-Python '.github/scripts/test_rank_titles_sparse_18315.py'
 Run-Python '.github/scripts/fix_rank_rollover_18316.py'
 Run-Python '.github/scripts/test_rank_rollover_18316.py'
+Run-Python '.github/scripts/fix_rank_titles_18317.py'
+Run-Python '.github/scripts/test_rank_titles_18317.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -43,6 +45,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'sparse-titles-18315-tests.json' 'artifacts/sparse-titles-18315-tests.json'
   Copy-Item 'rank-rollover-18316-install.json' 'artifacts/rank-rollover-18316-install.json'
   Copy-Item 'rank-rollover-18316-tests.json' 'artifacts/rank-rollover-18316-tests.json'
+  Copy-Item 'title-engine-18317-install.json' 'artifacts/title-engine-18317-install.json'
+  Copy-Item 'title-engine-18317-tests.json' 'artifacts/title-engine-18317-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
@@ -53,6 +57,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/optimize_career_runtime_1
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_details_18314.py'")) { throw 'Hotfix 18.314 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_sparse_18315.py'")) { throw 'Arquitetura 18.315 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_rollover_18316.py'")) { throw 'Handoff 18.316 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_18317.py'")) { throw 'Motor de titulos 18.317 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }

@@ -1,5 +1,5 @@
 name: Validar sincronizacao e temporadas 18.310
-# trigger 18.316
+# trigger 18.317
 on:
   push:
     branches: [main]
@@ -21,6 +21,8 @@ on:
       - '.github/scripts/test_rank_titles_sparse_18315.py'
       - '.github/scripts/fix_rank_rollover_18316.py'
       - '.github/scripts/test_rank_rollover_18316.py'
+      - '.github/scripts/fix_rank_titles_18317.py'
+      - '.github/scripts/test_rank_titles_18317.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -53,7 +55,7 @@ jobs:
         run: |
           python .github/scripts/inspect_season_performance.py
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao reconstruir fonte.' }
-      - name: Aplicar 18.310 a 18.316
+      - name: Aplicar 18.310 a 18.317
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -71,6 +73,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao aplicar 18.315.' }
           python .github/scripts/fix_rank_rollover_18316.py "$env:FUTBR_INSPECT_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao aplicar 18.316.' }
+          python .github/scripts/fix_rank_titles_18317.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao aplicar 18.317.' }
       - name: Diagnosticar bloqueio ao iniciar ferias na nova temporada
         shell: pwsh
         run: |
@@ -80,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FutBR-Source-Debug-18316
+          name: FutBR-Source-Debug-18317
           path: |
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/new-season-vacation-18311-diagnostic.json
@@ -90,7 +94,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($script in @('test_rank_rollover_18316','test_rank_titles_sparse_18315','test_rank_details_18314','test_runtime_18313','test_rankings_finals_18312','test_season_sync_18310','test_new_season_vacation_18311','test_history_incremental_18310','test_runtime_boot','test_rankings_18230','test_incremental_ranking_18300','test_root_gameplay','test_relational_history')) {
+          foreach ($script in @('test_rank_titles_18317','test_rank_rollover_18316','test_rank_titles_sparse_18315','test_rank_details_18314','test_runtime_18313','test_rankings_finals_18312','test_season_sync_18310','test_new_season_vacation_18311','test_history_incremental_18310','test_runtime_boot','test_rankings_18230','test_incremental_ranking_18300','test_root_gameplay','test_relational_history')) {
             python ".github/scripts/$script.py" "$env:FUTBR_INSPECT_PROJECT"
             if ($LASTEXITCODE -ne 0) { throw "Falha em $script" }
           }
