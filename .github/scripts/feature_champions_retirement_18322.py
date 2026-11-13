@@ -326,10 +326,17 @@ def main():
       "v91Stats.retired=retired.size;\n if(retired.size)try{E.news(s,'Aposentadorias',retired.size+' jogadores encerraram a carreira na virada para '+s.year+'. Consulte Movimentações > Aposentadorias.','info');}catch(e){}\n t=v91Now();",
       'Aviso de aposentadorias na nova temporada')
     # Preserve all national tournament editions and the scorer at the final.
-    html=replace_once(html,
-      "root.history=root.history.slice(0,80);",
-      "const nationalStats=Object.values(root.playerStats?.[String(s.year)]?.[c.id]||{}).filter(x=>Number(x?.goals)>0).sort((a,b)=>Number(b.goals)-Number(a.goals)||Number(b.assists||0)-Number(a.assists||0));\n  if(nationalStats.length){const p=nationalStats[0];root.history[0].scorer={id:p.id,name:p.name,teamCode:p.teamCode,goals:Number(p.goals)||0};}",
-      'Artilheiro preservado no momento da final de selecoes')
+    national_legacy="root.history=root.history.slice(0,80);"
+    if html.count(national_legacy)!=2:
+        raise RuntimeError('Esperadas duas rotinas de finais das selecoes, encontrado '+str(html.count(national_legacy)))
+    national_archive=(
+      "const nationalStats=Object.values(root.playerStats?.[String(s.year)]?.[c.id]||{})"
+      ".filter(x=>Number(x?.goals)>0)"
+      ".sort((a,b)=>Number(b.goals)-Number(a.goals)||Number(b.assists||0)-Number(a.assists||0));"
+      "if(nationalStats.length){const p=nationalStats[0];root.history[0].scorer="
+      "{id:p.id,name:p.name,teamCode:p.teamCode,goals:Number(p.goals)||0};}"
+    )
+    html=html.replace(national_legacy,national_archive)
     anchor="\n})();\n</script>\n<script id=\"v202-meta\">"
     html=replace_once(html,anchor,"\n"+UI+"\n})();\n</script>\n<script id=\"v202-meta\">",
       'Funcoes no escopo original para competir e selecoes')
