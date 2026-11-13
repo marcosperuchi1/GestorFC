@@ -26,6 +26,8 @@ Run-Python '.github/scripts/rebuild_rankings_18318.py'
 Run-Python '.github/scripts/test_rankings_18318.py'
 Run-Python '.github/scripts/clean_rankings_18320.py'
 Run-Python '.github/scripts/test_rankings_clean_18320.py'
+Run-Python '.github/scripts/fix_rankings_ui_18321.py'
+Run-Python '.github/scripts/test_rankings_ui_18321.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -55,6 +57,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'ranking-rebuild-18318-tests.json' 'artifacts/ranking-rebuild-18318-tests.json'
   Copy-Item 'ranking-clean-18320-install.json' 'artifacts/ranking-clean-18320-install.json'
   Copy-Item 'ranking-clean-18320-tests.json' 'artifacts/ranking-clean-18320-tests.json'
+  Copy-Item 'ranking-ui-18321-install.json' 'artifacts/ranking-ui-18321-install.json'
+  Copy-Item 'ranking-ui-18321-tests.json' 'artifacts/ranking-ui-18321-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)

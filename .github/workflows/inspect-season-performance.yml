@@ -27,6 +27,8 @@ on:
       - '.github/scripts/test_rankings_18318.py'
       - '.github/scripts/clean_rankings_18320.py'
       - '.github/scripts/test_rankings_clean_18320.py'
+      - '.github/scripts/fix_rankings_ui_18321.py'
+      - '.github/scripts/test_rankings_ui_18321.py'
       - '.github/scripts/build_desktop_season_18310.ps1'
       - '.github/workflows/build-season-sync-18310.yml'
   workflow_dispatch:
@@ -123,6 +125,25 @@ jobs:
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18320-install.json
             ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-clean-18320-tests.json
+          if-no-files-found: warn
+          retention-days: 2
+      - name: Validar abas e desligar ranking duplicado 18.321
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/fix_rankings_ui_18321.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao corrigir abas 18.321.' }
+          python .github/scripts/test_rankings_ui_18321.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes de navegacao 18.321.' }
+      - name: Publicar HTML validado 18.321 para diagnostico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Source-Debug-18321
+          path: |
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-ui-18321-install.json
+            \${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/ranking-ui-18321-tests.json
           if-no-files-found: warn
           retention-days: 2
       - name: Relatorios de integridade
