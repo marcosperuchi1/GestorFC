@@ -62,7 +62,7 @@ jobs:
       - name: Disponibilizar instalador para teste
         uses: actions/upload-artifact@v4
         with:
-          name: FutBR-Manager-18.315-Windows
+          name: FutBR-Manager-18.316-Windows
           path: |
             ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
@@ -78,6 +78,8 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/ranking-cache-18314-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/sparse-titles-18315-install.json
             ${{ env.FUTBR_PROJECT }}/artifacts/sparse-titles-18315-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/rank-rollover-18316-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/rank-rollover-18316-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/create-performance-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/architecture-validation.json
           if-no-files-found: error
