@@ -24,7 +24,7 @@ function v18322Scorers(db){
  const max=v18322N(scored[0].goals);
  return scored.filter(x=>v18322N(x.goals)===max).slice(0,4).map(r=>{
   const grouped=Object.entries(r.byClub||{}).sort((a,b)=>v18322N(b[1]?.goals)-v18322N(a[1]?.goals));
-  const club=grouped[0]?.[0]||Object.keys(r.clubs||{})[0]||null;
+  const club=grouped[0]?.[0]||Object.keys(r.clubs||{})[0]||r.club||null;
   return {id:String(r.id||''),name:String(r.name||'Jogador'),goals:max,club,clubName:String(r.clubs?.[club]||'')};
  });
 }
@@ -90,11 +90,10 @@ function v18322CollectSeason(s,year){
  for(const c of Object.values(s.competitions||{})){
   if(!c?.champion||c.id==='mls')continue;
   let runner=null;
-  for(const ties of Object.values(c.rounds||{})){
-   if(!Array.isArray(ties))continue;
-   for(const t of ties)if(t?.winner===c.champion&&t?.a&&t?.b)
-    runner=t.a===c.champion?t.b:t.a;
-  }
+  const finals=Object.entries(c.rounds||{}).filter(([key])=>/final|^f$/i.test(key)).flatMap(([,ties])=>Array.isArray(ties)?ties:[]);
+  for(const t of finals)if(t?.winner===c.champion&&t?.a&&t?.b){runner=t.a===c.champion?t.b:t.a;break;}
+  if(!runner)for(const stage of s.schedule||[])for(const f of stage?.fixtures||[])
+   if(f?.final&&f.competition===c.id&&(f.home===c.champion||f.away===c.champion)){runner=f.home===c.champion?f.away:f.home;}
   add('international','international',0,c.id,c.champion,runner,intlGoals.get(String(c.id))||[]);
  }
  return rows;
@@ -310,7 +309,7 @@ def main():
         if required not in html:raise RuntimeError('Expected base missing: '+required)
     html=replace_once(html,
       "const rankFresh=false; // final titles/movements",
-      "v18322CaptureSeason(s,oldYear);\\n const rankFresh=false; // final titles/movements",
+      "v18322CaptureSeason(s,oldYear);\n const rankFresh=false; // final titles/movements",
       'Arquivar todas as divisoes antes da virada')
     # Players of the human club may choose retirement from 35, and can retire
     # automatically at 40+. The former condition prevented all user-club retirements.
@@ -323,13 +322,13 @@ def main():
       "auto=clubBefore===s.user?(Number(p.age)>=40&&E.rng(s)<chance):!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));",
       'Aposentadoria automatica de veteranos de 40 anos')
     html=replace_once(html,
-      "v91Stats.retired=retired.size;\\n t=v91Now();",
-      "v91Stats.retired=retired.size;\\n if(retired.size)try{E.news(s,'Aposentadorias',retired.size+' jogadores encerraram a carreira na virada para '+s.year+'. Consulte Movimentações > Aposentadorias.','info');}catch(e){}\\n t=v91Now();",
+      "v91Stats.retired=retired.size;\n t=v91Now();",
+      "v91Stats.retired=retired.size;\n if(retired.size)try{E.news(s,'Aposentadorias',retired.size+' jogadores encerraram a carreira na virada para '+s.year+'. Consulte Movimentações > Aposentadorias.','info');}catch(e){}\n t=v91Now();",
       'Aviso de aposentadorias na nova temporada')
     # Preserve all national tournament editions and the scorer at the final.
     html=replace_once(html,
       "root.history=root.history.slice(0,80);",
-      "const nationalStats=Object.values(root.playerStats?.[String(s.year)]?.[c.id]||{}).filter(x=>Number(x?.goals)>0).sort((a,b)=>Number(b.goals)-Number(a.goals)||Number(b.assists||0)-Number(a.assists||0));\\n  if(nationalStats.length){const p=nationalStats[0];root.history[0].scorer={id:p.id,name:p.name,teamCode:p.teamCode,goals:Number(p.goals)||0};}",
+      "const nationalStats=Object.values(root.playerStats?.[String(s.year)]?.[c.id]||{}).filter(x=>Number(x?.goals)>0).sort((a,b)=>Number(b.goals)-Number(a.goals)||Number(b.assists||0)-Number(a.assists||0));\n  if(nationalStats.length){const p=nationalStats[0];root.history[0].scorer={id:p.id,name:p.name,teamCode:p.teamCode,goals:Number(p.goals)||0};}",
       'Artilheiro preservado no momento da final de selecoes')
     anchor="\n})();\n</script>\n<script id=\"v202-meta\">"
     html=replace_once(html,anchor,"\n"+UI+"\n})();\n</script>\n<script id=\"v202-meta\">",
