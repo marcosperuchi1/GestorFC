@@ -44,7 +44,7 @@ let v579ToggleRetirement=(s,id)=>{
 };
 function testState(){
  const teams=[
-  {id:'b1',name:'Flamengo',country:'bra',division:1,stats:{pts:80}},
+  {id:'b1',name:'Flamengo',country:'bra',division:1,roster:['p3'],stats:{pts:80}},
   {id:'b2',name:'Palmeiras',country:'bra',division:1,stats:{pts:76}},
   {id:'b3',name:'Santos',country:'bra',division:2,stats:{pts:66}},
   {id:'b4',name:'Goiás',country:'bra',division:2,stats:{pts:62}}
