@@ -97,7 +97,7 @@ async function v18329SignOut(){
  v18329LogoutRunning=true;
  const screen=v18329SignOutScreen();
  const saved=v580GetRemoteSession();
- const token=saved?.access_token;
+ let token=saved?.access_token;
  const userId=saved?.user?.id;
  const isAuthor=v548Session?.plan==='author'||saved?.license?.plan==='author';
  let released=true,authLoggedOut=true;
@@ -109,6 +109,16 @@ async function v18329SignOut(){
    if(v53Sim?.active||v53Sim?.starting){v53Sim.pause=true;v53Worker?.postMessage({op:'pause'});}
    if(state){const result=persist();if(result?.catch)result.catch(err=>console.warn('[FutBR] save ao sair:',err));}
   }catch(err){console.warn('[FutBR] preparando logout:',err?.message||err);}
+  // Access tokens expire during long careers. Refresh before revoking the
+  // device/session so a normal sign-out does not leave old sessions behind.
+  if(saved?.refresh_token&&(!token||Number(saved.expiresAt||0)<=Date.now()+30000)){
+   try{
+    const fresh=await v580Fetch('/auth/v1/token?grant_type=refresh_token',{
+     body:{refresh_token:saved.refresh_token}
+    });
+    if(fresh?.access_token)token=fresh.access_token;
+   }catch(err){console.warn('[FutBR] renovacao para logout:',err?.message||err);}
+  }
   if(token&&userId){
    const id=await v18329StableDeviceId();
    const pending={userId,deviceId:id};

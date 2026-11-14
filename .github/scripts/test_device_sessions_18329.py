@@ -33,7 +33,7 @@ function v580GetRemoteSession(){try{return JSON.parse(v548SafeGet(V580_REMOTE_SE
 function v580SaveRemoteSession(x){if(!x)v548SafeRemove(V580_REMOTE_SESSION);else v548SafeSet(V580_REMOTE_SESSION,JSON.stringify(x))}
 async function v580Fetch(path,args){calls.push({path,token:args?.token,body:args?.body});if(path.includes('/functions/v1/release-device')){
  if(failRelease)throw Error('network unavailable');return {ok:true,released:true}
-}if(path.includes('/auth/v1/logout')){if(authFailure)throw Error('auth unavailable');return {}}
+}if(path.includes('/auth/v1/token?grant_type=refresh_token')){return {access_token:'refreshed-token'}}else if(path.includes('/auth/v1/logout')){if(authFailure)throw Error('auth unavailable');return {}}
 throw Error('unexpected endpoint '+path)}
 let v580ValidateLicense=async function(auth){calls.push({path:'/functions/v1/validate-license',deviceId:v580DeviceId()});return {plan:'author',allowed:true}};
 let v548Session={plan:'author',username:'author'};
@@ -75,6 +75,14 @@ window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,valu
  v580SaveRemoteSession({access_token:'token-premium',user:{id:USER},license:{plan:'premium'}});
  await v18329SignOut();
  assert.equal(calls.at(-1).path,'/auth/v1/logout?scope=local');
+ // Long careers may leave an expired JWT: refresh it before remote logout.
+ v548Session={plan:'author'};
+ v580SaveRemoteSession({access_token:'expired',refresh_token:'refresh-valid',expiresAt:0,user:{id:USER},license:{plan:'author'}});
+ await v18329SignOut();
+ assert.equal(calls.at(-3).path,'/auth/v1/token?grant_type=refresh_token');
+ assert.equal(calls.at(-2).token,'refreshed-token');
+ assert.equal(calls.at(-1).token,'refreshed-token');
+ assert.equal(calls.at(-1).path,'/auth/v1/logout?scope=global');
  // If offline, the device release is queued without storing credentials.
  failRelease=true;v548Session={plan:'author'};
  v580SaveRemoteSession({access_token:'token-author',user:{id:USER},license:{plan:'author'}});
@@ -99,7 +107,7 @@ window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,valu
  assert.equal(disk.has(V18329_RELEASE_NATIVE),true);
  await v18329ClearPending();
  const output={ok:true,version:'18.329',migration:true,persistentNativeIdAcrossReinstall:true,
-  authorGlobalSignOut:true,customerLocalSignOut:true,releaseBeforeSignOut:true,
+  authorGlobalSignOut:true,customerLocalSignOut:true,expiredTokenRefresh:true,releaseBeforeSignOut:true,
   offlineReleaseRetry:true,onlyAuthenticatedOwner:true,noPersistedAccessToken:true,savePreserved:true};
  console.log(JSON.stringify(output));
 })().catch(e=>{console.error(e);process.exitCode=1});
