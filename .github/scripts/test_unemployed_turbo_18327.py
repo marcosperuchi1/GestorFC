@@ -67,13 +67,15 @@ let state={year:2027,day:0,user:'former',userEmployed:false,seasonDone:false,
 const window={__gfcV172JobWait:false,GestorFC:{v172:{_finishJobWait(){window.__gfcV172JobWait=false}}}};
 let view='career',calls=0,offerChecks=0,modalOpens=0,saveScheduled=0,renders=0;
 const v53Sim={active:false,starting:false,syncing:false,patching:false},v18112Dismissal={pending:false};
+let v86RankCache=null;
 const v89JobWait={active:false,stop:false,startDay:0,days:0};
 let v93CoachSaveTimer=0;
 function v89HasNationalJob(){return !!state.v640National?.userTeam}
 function v89PaintJobWait(){}
 function v555UpdateChrome(){}
 function render(){renders++}
-function toast(){}
+const recordedErrors=[];
+function toast(msg,level){if(level==='error')recordedErrors.push(String(msg))}
 function v636CoachOfferModal(){modalOpens++}
 function v93ScheduleCoachDecisionSave(){saveScheduled++}
 function persist(){return Promise.resolve()}
@@ -90,6 +92,7 @@ let v53StartSimulation=async(mode)=>{
 """ + offer_hook + wait + r"""
 (async()=>{
  await v89RunJobWait();
+ assert.deepEqual(recordedErrors,[],'Job search must not swallow Worker errors');
  assert.equal(calls,4,'Job search must stop at first proposal');
  assert.equal(offerChecks,4,'Job offer evaluation must run after every Turbo jornada');
  assert.equal(v89JobWait.days,4);
