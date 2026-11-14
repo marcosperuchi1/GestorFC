@@ -7,7 +7,7 @@ def main():
  required=['FUTBR_CHAMPIONS_RETIREMENT_18322','v18322CaptureSeason(s,oldYear);',
   'v18322BaseCompetitionsPage=competitionsPage','v18322BaseNationalPage=v640NationalPage',
   'v18322BaseTransfersPage=transferActivityPage','auto=clubBefore===s.user?',
-  'root.history[0].scorer={id:p.id','function v18322RetirementPage()','data-v18322="c-year"','v18322-docked-toolbar','v18322-scorer-list','v18322VisibleLimit=120','v18324-docked-toolbar','v18324-retirement-access','v18324-open-retirements','FUTBR_MANUAL_ADVANCE_18326_START','dayfast-single-day','stopsBeforeOwnFixture:true']
+  'root.history[0].scorer={id:p.id','function v18322RetirementPage()','data-v18322="c-year"','v18322-docked-toolbar','v18322-scorer-list','v18322VisibleLimit=120','v18324-docked-toolbar','v18324-retirement-access','v18324-open-retirements','FUTBR_RETIRE_MODAL_18328_START','data-v18328-choice="confirm"','FUTBR_MANUAL_ADVANCE_18326_START','dayfast-single-day','stopsBeforeOwnFixture:true']
  for m in required:
   if m not in html:raise RuntimeError('Missing feature: '+m)
  if 'root.history=root.history.slice(0,80);' in html:raise RuntimeError('National title archive still capped at 80')
@@ -29,8 +29,25 @@ def main():
 const assert=require('assert');
 const window={GestorFC:{}};
 const document={listeners:{},head:{appendChild(){}},
- createElement(){return {id:'',textContent:''}},
- addEventListener(name,cb){this.listeners[name]=cb;}};
+ createElement(tag){
+  return {id:'',textContent:'',className:'',dataset:{},listeners:{},removed:false,
+   setAttribute(){},remove(){this.removed=true},focus(){document.activeElement=this},
+   addEventListener(key,cb){this.listeners[key]=cb},
+   querySelector(sel){
+    if(!this.fields)this.fields={};
+    if(!this.fields[sel]){
+     const el={textContent:'',dataset:{},focus(){document.activeElement=this},closest(){return this}};
+     if(sel.includes('choice="confirm"'))el.dataset.v18328Choice='confirm';
+     if(sel.includes('choice="cancel"'))el.dataset.v18328Choice='cancel';
+     this.fields[sel]=el;
+    }return this.fields[sel];
+   },
+   querySelectorAll(sel){return sel==='button'
+    ?[this.querySelector('[data-v18328-choice="cancel"]'),this.querySelector('[data-v18328-choice="confirm"]')]:[]}
+  };
+ },
+ addEventListener(name,cb){this.listeners[name]=cb;},
+ removeEventListener(name,cb){if(this.listeners[name]===cb)delete this.listeners[name];}};
 const esc=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const WorldCatalog={countries:[{id:'bra',name:'Brasil',cup:'Copa do Brasil'},{id:'eng',name:'Inglaterra',cup:'FA Cup'}]};
 let state=null,view='competitions',renderCalls=0,persistCalls=0;
@@ -39,7 +56,7 @@ const selectedCountry=()=>state?.teams?.[0]?.country||'bra',selectedDivision=()=
 const badge=t=>'<i class="shield">ESCUDO '+esc(t.id)+'</i>';
 const render=()=>{renderCalls++;};
 const persist=()=>{persistCalls++;};
-const toast=()=>{},confirm=()=>true;
+const toast=()=>{},confirm=()=>{throw Error('Native confirm forbidden')};
 const v640Flag=code=>'<i class="flag">FLAG '+esc(code)+'</i>';
 const E={
  team:(s,id)=>(s?.teams||[]).find(x=>x.id===id)||null,
@@ -91,7 +108,7 @@ function testState(){
 }
 
 const advanceCases={dayfast:0,next:0,nationalNext:0,legacy:0};
-document.body={classList:{toggle(){}}};document.querySelectorAll=()=>[];document.querySelector=()=>null;document.hidden=false;
+document.body={classList:{toggle(){}},appendChild(el){this.lastModal=el;}};document.querySelectorAll=()=>[];document.querySelector=()=>null;document.hidden=false;document.activeElement=null;
 let v53Sim={active:false,starting:false},v53Creating=false,v128NationalAdvanceBusy=false;
 let v555UpdateChrome=()=>{},v128UpdateNationalChrome=()=>{};
 let v53StartSimulation=async mode=>{
@@ -111,7 +128,7 @@ E.upcoming=s=>s.schedule?.[s.day]?.fixtures?.find(x=>x.home===s.user||x.away===s
 state=testState();
 """ + body.group(0) + r"""
 const api=window.GestorFC.championsRetire18322;
-assert.equal(api.version,'18.326');
+assert.equal(api.version,'18.328');
 const count=v18322CaptureSeason(state,2026);
 assert.equal(count,4,'2 divisions + cup + continental');
 const saved=state.v18322Champions;
@@ -166,8 +183,26 @@ assert(competitionsPage().includes('value="1" selected'),'Default division 1 not
 act({dataset:{action:'v18322-toggle-national',mode:'history'}});
 assert(v640NationalPage().includes('FLAG BRA'));
 assert(!transferActivityPage().includes('Veterano aposentado'),'Retirement history must not appear in Movimentacoes');
+const savesBeforeModal=persistCalls;
 act({dataset:{action:'v18322-retire',player:'p3'}});
-assert(state.players.p3.v579ManualRetire&&persistCalls>0);
+assert(!state.players.p3.v579ManualRetire,'Opening must not commit retirement');
+assert.equal(persistCalls,savesBeforeModal,'Opening cannot persist');
+assert(document.body.lastModal?.listeners.click,'Missing in-game confirmation');
+assert.equal(document.body.lastModal.fields['[data-v18328-player]'].textContent,'Veterano');
+document.body.lastModal.listeners.click({target:document.body.lastModal.querySelector('[data-v18328-choice="cancel"]')});
+assert(!state.players.p3.v579ManualRetire,'Cancel must leave player unchanged');
+act({dataset:{action:'v18322-retire',player:'p3'}});
+const escapeModal=document.body.lastModal;
+document.listeners.keydown({key:'Escape',preventDefault(){},stopPropagation(){}});
+assert(escapeModal.removed&&!state.players.p3.v579ManualRetire,'Esc must cancel without saving');
+act({dataset:{action:'v18322-retire',player:'p3'}});
+const modal=document.body.lastModal;
+const button=modal.querySelector('[data-v18328-choice="confirm"]');
+modal.listeners.click({target:button});
+modal.listeners.click({target:button});
+assert(state.players.p3.v579ManualRetire&&persistCalls===savesBeforeModal+1,'Duplicate confirmation must only save once');
+assert(modal.removed,'Modal did not close');
+assert(window.GestorFC.retirementModal18328.status().nativeConfirm===false);
 const previous=JSON.parse(JSON.stringify(state));
 state.year=2027;state.seasonDone=false;state.competitionStats={};state.cupWinners={};state.competitions={};
 assert.equal(v18322ChampionsRows(state).filter(x=>x.year===2026).length,4);
@@ -217,8 +252,8 @@ async function v18326Regression(){
  return true;
 }
 
-console.log(JSON.stringify({ok:true,version:'18.326',editions:count,topScorer:true,runnerUp:true,
- nationalHistory:true,teamCrests:true,retirementHistory:true,manualRetirement:true,
+console.log(JSON.stringify({ok:true,version:'18.328',editions:count,topScorer:true,runnerUp:true,
+ nationalHistory:true,teamCrests:true,retirementHistory:true,manualRetirement:true,inGameRetirementConfirm:true,noNativeRetirementDialog:true,
  defaultFilters:true,yearFilter:true,standingsToolbarHeightPreserved:true,scorersFromCompetitionStats:true,tiedScorersVertical:true,
  realToolbarClassMatched:true,twentyTeamRowsCompact:true,retirementAccessFromSquad:true,retirementOnlyInSquad:true,
  preservesReload:true,noFabricatedLegacy:true,allFourRankTabsPreserved:true,manualAdvancePresent:true}));
@@ -242,9 +277,9 @@ v18326Regression().then(()=>console.log(JSON.stringify({ok:true,version:'18.326'
   page.on('pageerror',lambda err:runtime_errors.append(str(err)))
   page.set_content(html,wait_until='domcontentloaded',timeout=90000)
   page.wait_for_timeout(1500)
-  installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function'})")
+  installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function' ,retirementModal:window.GestorFC?.retirementModal18328?.version||null})")
   browser.close()
- if installed['version']!='18.326' or not installed['clubRows'] or not installed['nationalRows']:
+ if installed['version']!='18.328' or installed['retirementModal']!='18.328' or not installed['clubRows'] or not installed['nationalRows']:
   raise RuntimeError('18.322 missing in browser runtime: '+json.dumps({'api':installed,'errors':runtime_errors[:6]},ensure_ascii=False))
  data=json.loads(r.stdout.strip().splitlines()[-1])
  if not data.get('ok'):raise RuntimeError('18.322 invalid result')

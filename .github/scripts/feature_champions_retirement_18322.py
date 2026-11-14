@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import sys
 
-VERSION = '18.326'
+VERSION = '18.328'
 MARK = 'FUTBR_CHAMPIONS_RETIREMENT_18322'
 UI = r"""
 /* FUTBR_CHAMPIONS_RETIREMENT_18322 */
@@ -393,12 +393,9 @@ act=function(el){
  if(action==='v18322-toggle-national'){v18322NationalOpen=el.dataset.mode==='history';render();return;}
 
  if(action==='v18322-retire'){
-  try{
-   const p=E.player(state,el.dataset.player);if(!p)throw Error('Jogador indisponível.');
-   if(!p.v579ManualRetire&&!confirm('Confirmar aposentadoria de '+p.name+' ao fim da temporada?'))return;
-   const marked=v579ToggleRetirement(state,p.id);persist();render();
-   toast(marked?'Aposentadoria anunciada.':'Aposentadoria cancelada.','success');
-  }catch(e){toast(e?.message||String(e),'warn');}return;
+  try{v18328OpenRetireModal(el.dataset.player);}
+  catch(e){toast(e?.message||String(e),'warn');}
+  return;
  }
  return v18322BaseAction(el);
 };
@@ -425,7 +422,7 @@ v18322Style.textContent="\n.v18322-switch{display:flex;align-items:center;gap:6p
 v18322Style.textContent += "\n/* 18.324: tabs are children of the existing toolbar, not a new block row. */\n@media(min-width:761px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  display:grid!important;\n  grid-template-columns:minmax(215px,auto) minmax(140px,175px) minmax(150px,1fr) minmax(105px,130px)!important;\n  align-items:center!important;gap:7px!important;\n  box-sizing:border-box!important;padding:3px 7px!important;\n  margin:0 0 4px!important;min-height:37px!important;max-height:44px!important;\n }\n .v18324-docked-toolbar>.v18322-switch{\n  display:flex!important;align-items:center!important;justify-content:flex-start!important;\n  gap:4px!important;margin:0!important;padding:0!important;\n  min-height:0!important;height:30px!important;flex-wrap:nowrap!important;\n }\n .v18324-docked-toolbar>.v18322-switch .btn{\n  min-height:28px!important;height:28px!important;max-height:28px!important;\n  padding:4px 7px!important;font-size:9.4px!important;line-height:1.1!important;\n  white-space:nowrap!important;\n }\n .v18324-docked-toolbar>.field{min-width:0!important;margin:0!important}\n .v18324-docked-toolbar>.field select{min-height:29px!important;height:29px!important}\n /* 20 positions fit at standard desktop heights, with one row per club. */\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table td{\n  height:clamp(23px,3.35dvh,31px)!important;min-height:0!important;\n  padding-top:1px!important;padding-bottom:1px!important;\n  line-height:1!important;font-size:10px!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .v247-standing-club-box{\n  min-height:0!important;height:clamp(21px,2.9dvh,27px)!important;\n  max-height:27px!important;padding:1px 5px!important;box-sizing:border-box!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .shield.small{\n  width:19px!important;height:21px!important;min-height:0!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .table-button{\n  font-size:10px!important;line-height:1!important;\n }\n}\n.v54-competitions-screen{position:relative}\n.v18324-toolbar-fallback{position:absolute;top:1px;right:8px;z-index:3}\n.v18324-toolbar-fallback .v18322-switch{margin:0;padding:0}\n.v18324-retirement-access{display:flex;align-items:center;justify-content:space-between;gap:12px;\n margin:0 0 9px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;\n background:var(--panel);min-width:0}\n.v18324-retirement-access span{display:flex;flex-direction:column;gap:3px;min-width:0}\n.v18324-retirement-access strong{font-size:12px}\n.v18324-retirement-access small{font-size:10px;opacity:.78}\n.v18324-retirement-access button{flex:0 0 auto}\n@media(min-width:761px) and (max-width:1150px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  grid-template-columns:minmax(175px,auto) minmax(120px,145px) minmax(125px,1fr) minmax(95px,115px)!important}\n .v18324-docked-toolbar>.v18322-switch .btn{font-size:8.3px!important;padding:4px 5px!important}\n}\n@media(max-width:760px){\n .v18324-docked-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important}\n .v18324-docked-toolbar>.v18322-switch{grid-column:1/-1;padding:0!important}\n .v18324-retirement-access{flex-wrap:wrap}\n}\n";
 document.head.appendChild(v18322Style);
 window.GestorFC.championsRetire18322={
- version:'18.326',clubRows:()=>v18322ChampionsRows(state),
+ version:'18.328',clubRows:()=>v18322ChampionsRows(state),
  nationalRows:()=>state?.v640National?.history||[],
  retirements:()=>state?.retirements||[],
  stats:()=>({saved:state?.v18322Champions?.length||0,national:state?.v640National?.history?.length||0,
@@ -515,6 +512,123 @@ window.GestorFC.manualAdvance18326={version:'18.326',status:()=>({busy:v18326Adv
  dayMode:'dayfast-single-day',nextMode:'nextmatch-worker',nationalOneDay:true,serializesClicks:true,stopsBeforeOwnFixture:true};
 /* FUTBR_MANUAL_ADVANCE_18326_END */
 
+
+/* FUTBR_RETIRE_MODAL_18328_START */
+let v18328RetireOverlay=null,v18328RetirePreviousFocus=null;
+function v18328CloseRetireModal(){
+ const old=v18328RetireOverlay;v18328RetireOverlay=null;
+ document.removeEventListener('keydown',v18328RetireKeydown,true);
+ if(old)old.remove();
+ const prior=v18328RetirePreviousFocus;v18328RetirePreviousFocus=null;
+ if(prior&&typeof prior.focus==='function'){
+  try{prior.focus({preventScroll:true})}catch(e){try{prior.focus()}catch(_){}}
+ }
+}
+function v18328RetireKeydown(e){
+ if(!v18328RetireOverlay)return;
+ if(e.key==='Escape'){e.preventDefault();e.stopPropagation();v18328CloseRetireModal();return;}
+ if(e.key!=='Tab')return;
+ const buttons=v18328RetireOverlay.querySelectorAll('button');
+ if(!buttons.length)return;
+ const first=buttons[0],last=buttons[buttons.length-1];
+ if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+ else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+}
+function v18328OpenRetireModal(id){
+ const s=state,p=E.player(s,id);
+ if(!p||!v579ManualRetirementEligible(s,p))throw Error('Jogador n\u00e3o est\u00e1 eleg\u00edvel para aposentadoria.');
+ const wasScheduled=!!p.v579ManualRetire;
+ if(v18328RetireOverlay)v18328CloseRetireModal();
+ v18328RetirePreviousFocus=document.activeElement;
+ const overlay=document.createElement('div');
+ overlay.className='v18328-retire-backdrop';
+ overlay.setAttribute('data-v18328-modal','retirement');
+ overlay.innerHTML=`
+ <section class="v18328-retire-card" role="dialog" aria-modal="true"
+   aria-labelledby="v18328-retire-heading" aria-describedby="v18328-retire-details">
+   <div class="v18328-retire-top"><span class="v18328-retire-symbol" aria-hidden="true">&#9203;</span>
+    <div><div class="v18328-retire-kicker">ELENCO / APOSENTADORIAS</div>
+    <h2 id="v18328-retire-heading"></h2></div></div>
+   <div class="v18328-retire-body"><div class="v18328-retire-player" data-v18328-player></div>
+    <p id="v18328-retire-details" data-v18328-details></p></div>
+   <div class="v18328-retire-footer">
+    <button type="button" class="v18328-retire-btn v18328-retire-secondary" data-v18328-choice="cancel">Voltar</button>
+    <button type="button" class="v18328-retire-btn v18328-retire-primary" data-v18328-choice="confirm"></button>
+   </div>
+ </section>`;
+ overlay.querySelector('#v18328-retire-heading').textContent=wasScheduled?'Cancelar aposentadoria':'Confirmar aposentadoria';
+ overlay.querySelector('[data-v18328-player]').textContent=p.name||'Jogador';
+ overlay.querySelector('[data-v18328-details]').textContent=wasScheduled
+  ?'Deseja cancelar a aposentadoria j\u00e1 anunciada? O jogador continuar\u00e1 no elenco.'
+  :'Deseja confirmar a aposentadoria deste jogador ao fim da temporada? A confirma\u00e7\u00e3o ser\u00e1 registrada na carreira.';
+ overlay.querySelector('[data-v18328-choice="confirm"]').textContent=wasScheduled?'Confirmar cancelamento':'Confirmar aposentadoria';
+ let processing=false;
+ overlay.addEventListener('click',e=>{
+  if(v18328RetireOverlay!==overlay)return;
+  if(e.target===overlay){v18328CloseRetireModal();return;}
+  const choice=e.target?.closest?.('[data-v18328-choice]')?.dataset?.v18328Choice;
+  if(choice==='cancel'){v18328CloseRetireModal();return;}
+  if(choice!=='confirm'||processing)return;
+  processing=true;
+  try{
+   const latest=E.player(state,id);
+   if(state!==s||!latest||!v579ManualRetirementEligible(state,latest))
+    throw Error('O elenco mudou. Abra novamente a confirma\u00e7\u00e3o.');
+   if(!!latest.v579ManualRetire!==wasScheduled)
+    throw Error('A decis\u00e3o do jogador foi alterada. Abra novamente a confirma\u00e7\u00e3o.');
+   const marked=v579ToggleRetirement(state,id);
+   v18328CloseRetireModal();
+   try{
+    const saved=persist();
+    if(saved&&typeof saved.catch==='function')
+     saved.catch(err=>toast('N\u00e3o foi poss\u00edvel salvar a aposentadoria: '+(err?.message||err),'warn'));
+   }catch(err){toast('N\u00e3o foi poss\u00edvel salvar a aposentadoria: '+(err?.message||err),'warn');}
+   render();
+   toast(marked?'Aposentadoria anunciada.':'Aposentadoria cancelada.','success');
+  }catch(err){v18328CloseRetireModal();toast(err?.message||String(err),'warn');}
+ });
+ v18328RetireOverlay=overlay;
+ document.body.appendChild(overlay);
+ document.addEventListener('keydown',v18328RetireKeydown,true);
+ overlay.querySelector('[data-v18328-choice="confirm"]').focus();
+}
+const v18328RetireStyle=document.createElement('style');
+v18328RetireStyle.id='v18328-retire-modal-style';
+v18328RetireStyle.textContent=`
+.v18328-retire-backdrop{position:fixed;inset:0;z-index:2147483000;display:flex;
+ align-items:center;justify-content:center;box-sizing:border-box;padding:20px;
+ background:rgba(16,5,8,.79);backdrop-filter:blur(3px)}
+.v18328-retire-card{box-sizing:border-box;width:min(470px,100%);max-height:min(90dvh,700px);
+ overflow:auto;border:1px solid #ad5b56;border-radius:16px;
+ background:linear-gradient(145deg,#5d2324 0%,#3a181c 100%);color:#fff;
+ box-shadow:0 22px 70px rgba(0,0,0,.55);font-family:inherit}
+.v18328-retire-top{display:flex;align-items:center;gap:14px;padding:22px 24px 14px;
+ border-bottom:1px solid rgba(255,255,255,.12)}
+.v18328-retire-symbol{display:flex;justify-content:center;align-items:center;flex:none;
+ width:42px;height:42px;border:1px solid rgba(255,255,255,.2);border-radius:12px;
+ background:#702c31;font-size:23px}
+.v18328-retire-kicker{font-size:10px;font-weight:700;letter-spacing:.12em;color:#f6aaa5}
+.v18328-retire-top h2{margin:4px 0 0;font-size:20px;font-weight:800;line-height:1.25;color:#fff}
+.v18328-retire-body{padding:19px 24px 22px}
+.v18328-retire-player{font-size:17px;font-weight:800;margin-bottom:11px}
+.v18328-retire-body p{margin:0;font-size:13px;line-height:1.65;color:#edcecd}
+.v18328-retire-footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;
+ padding:15px 24px 22px;border-top:1px solid rgba(255,255,255,.10)}
+.v18328-retire-btn{appearance:none;border-radius:9px;padding:11px 15px;min-height:39px;
+ cursor:pointer;font:700 12px inherit;font-family:inherit;transition:filter .15s ease,transform .15s ease}
+.v18328-retire-btn:hover{filter:brightness(1.1)}
+.v18328-retire-btn:focus-visible{outline:2px solid #ffcbc4;outline-offset:3px}
+.v18328-retire-secondary{color:#fff;border:1px solid #ad5b56;background:#4d2326}
+.v18328-retire-primary{color:#211010;border:1px solid #ed585d;background:#ed5057}
+@media(max-width:540px){.v18328-retire-top{padding:18px 17px 14px}
+ .v18328-retire-body{padding:17px}.v18328-retire-footer{padding:14px 17px 18px}
+ .v18328-retire-btn{flex:1 1 auto}.v18328-retire-top h2{font-size:18px}}
+`;
+document.head.appendChild(v18328RetireStyle);
+window.GestorFC.retirementModal18328={version:'18.328',open:v18328OpenRetireModal,
+ close:v18328CloseRetireModal,status:()=>({open:!!v18328RetireOverlay,source:'in-game-modal',nativeConfirm:false})};
+/* FUTBR_RETIRE_MODAL_18328_END */
+
 /* FUTBR_CHAMPIONS_RETIREMENT_18322_END */
 """
 
@@ -546,7 +660,7 @@ def main():
       'Aposentadoria automatica de veteranos de 40 anos')
     html=replace_once(html,
       "v91Stats.retired=retired.size;\n t=v91Now();",
-      "v91Stats.retired=retired.size;\n if(retired.size)try{E.news(s,'Aposentadorias',retired.size+' jogadores encerraram a carreira na virada para '+s.year+'. Consulte Movimentações > Aposentadorias.','info');}catch(e){}\n t=v91Now();",
+      "v91Stats.retired=retired.size;\n if(retired.size)try{E.news(s,'Aposentadorias',retired.size+' jogadores encerraram a carreira na virada para '+s.year+'. Consulte Elenco > Gerenciar aposentadorias.','info');}catch(e){}\n t=v91Now();",
       'Aviso de aposentadorias na nova temporada')
     # Preserve all national tournament editions and the scorer at the final.
     national_legacy="root.history=root.history.slice(0,80);"
@@ -569,7 +683,7 @@ def main():
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,
       'retirementAutomaticAge40':True,'manualAge35':True,
-      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True,'retirementOnlyInSquad':True,'manualAdvanceSingleDay':True,'manualAdvanceStopBeforeMatch':True,'nationalAdvanceButtons':True}
+      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True,'retirementOnlyInSquad':True,'manualAdvanceSingleDay':True,'manualAdvanceStopBeforeMatch':True,'nationalAdvanceButtons':True,'inGameRetirementModal':True,'noNativeRetirementConfirm':True}
     (project/'champions-retirement-18322-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
