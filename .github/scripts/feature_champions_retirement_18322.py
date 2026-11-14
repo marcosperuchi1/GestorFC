@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import sys
 
-VERSION = '18.325'
+VERSION = '18.326'
 MARK = 'FUTBR_CHAMPIONS_RETIREMENT_18322'
 UI = r"""
 /* FUTBR_CHAMPIONS_RETIREMENT_18322 */
@@ -425,12 +425,96 @@ v18322Style.textContent="\n.v18322-switch{display:flex;align-items:center;gap:6p
 v18322Style.textContent += "\n/* 18.324: tabs are children of the existing toolbar, not a new block row. */\n@media(min-width:761px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  display:grid!important;\n  grid-template-columns:minmax(215px,auto) minmax(140px,175px) minmax(150px,1fr) minmax(105px,130px)!important;\n  align-items:center!important;gap:7px!important;\n  box-sizing:border-box!important;padding:3px 7px!important;\n  margin:0 0 4px!important;min-height:37px!important;max-height:44px!important;\n }\n .v18324-docked-toolbar>.v18322-switch{\n  display:flex!important;align-items:center!important;justify-content:flex-start!important;\n  gap:4px!important;margin:0!important;padding:0!important;\n  min-height:0!important;height:30px!important;flex-wrap:nowrap!important;\n }\n .v18324-docked-toolbar>.v18322-switch .btn{\n  min-height:28px!important;height:28px!important;max-height:28px!important;\n  padding:4px 7px!important;font-size:9.4px!important;line-height:1.1!important;\n  white-space:nowrap!important;\n }\n .v18324-docked-toolbar>.field{min-width:0!important;margin:0!important}\n .v18324-docked-toolbar>.field select{min-height:29px!important;height:29px!important}\n /* 20 positions fit at standard desktop heights, with one row per club. */\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table td{\n  height:clamp(23px,3.35dvh,31px)!important;min-height:0!important;\n  padding-top:1px!important;padding-bottom:1px!important;\n  line-height:1!important;font-size:10px!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .v247-standing-club-box{\n  min-height:0!important;height:clamp(21px,2.9dvh,27px)!important;\n  max-height:27px!important;padding:1px 5px!important;box-sizing:border-box!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .shield.small{\n  width:19px!important;height:21px!important;min-height:0!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .table-button{\n  font-size:10px!important;line-height:1!important;\n }\n}\n.v54-competitions-screen{position:relative}\n.v18324-toolbar-fallback{position:absolute;top:1px;right:8px;z-index:3}\n.v18324-toolbar-fallback .v18322-switch{margin:0;padding:0}\n.v18324-retirement-access{display:flex;align-items:center;justify-content:space-between;gap:12px;\n margin:0 0 9px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;\n background:var(--panel);min-width:0}\n.v18324-retirement-access span{display:flex;flex-direction:column;gap:3px;min-width:0}\n.v18324-retirement-access strong{font-size:12px}\n.v18324-retirement-access small{font-size:10px;opacity:.78}\n.v18324-retirement-access button{flex:0 0 auto}\n@media(min-width:761px) and (max-width:1150px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  grid-template-columns:minmax(175px,auto) minmax(120px,145px) minmax(125px,1fr) minmax(95px,115px)!important}\n .v18324-docked-toolbar>.v18322-switch .btn{font-size:8.3px!important;padding:4px 5px!important}\n}\n@media(max-width:760px){\n .v18324-docked-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important}\n .v18324-docked-toolbar>.v18322-switch{grid-column:1/-1;padding:0!important}\n .v18324-retirement-access{flex-wrap:wrap}\n}\n";
 document.head.appendChild(v18322Style);
 window.GestorFC.championsRetire18322={
- version:'18.325',clubRows:()=>v18322ChampionsRows(state),
+ version:'18.326',clubRows:()=>v18322ChampionsRows(state),
  nationalRows:()=>state?.v640National?.history||[],
  retirements:()=>state?.retirements||[],
  stats:()=>({saved:state?.v18322Champions?.length||0,national:state?.v640National?.history?.length||0,
   retirements:state?.retirements?.length||0})
 };
+
+/* FUTBR_MANUAL_ADVANCE_18326_START */
+let v18326AdvanceBusy=false,v18326LastAction=null;
+function v18326AdvanceVisual(busy){
+ v18326AdvanceBusy=!!busy;
+ try{document.body.classList.toggle('v18326-advance-busy',v18326AdvanceBusy);}catch(e){}
+ try{document.querySelectorAll('.v555-advance-wrap [data-action="advance"],.v555-advance-wrap [data-action="v1891-nextmatch"]').forEach(b=>{b.disabled=!!busy;});}catch(e){}
+}
+function v18326HasOwnMatch(s){
+ if(!s||s.seasonDone)return false;
+ if(s.v640National?.userTeam){
+  if(s.schedule?.[s.day]?.type==='national')v640PrepareNationalStage(s);
+  const f=v640UserFixture(s);return !!(f&&!f.result);
+ }
+ const f=E.upcoming(s);return !!(f&&!f.result);
+}
+async function v18326ManualAdvance(el){
+ const mode=el?.dataset?.action;
+ if(!state)return v18326BaseAct(el);
+ if(v18326AdvanceBusy||v53Sim?.active||v53Sim?.starting||v53Creating){toast('Um avanço já está em andamento. Aguarde a conclusão.','warn');return;}
+ const before=state,oldDay=Number(state.day)||0,oldYear=Number(state.year)||0,from=view;
+ v18326AdvanceVisual(true);
+ v18326LastAction={mode,year:oldYear,day:oldDay,phase:'starting'};
+ try{
+  if(mode==='advance'&&(state.seasonDone||state.live))return await v18326BaseAct(el);
+  if(mode==='v1891-nextmatch'&&(state.seasonDone||state.live))return await v1891AdvanceToNextMatch();
+  if(state.vacation?.active){toast('Pause ou encerre as férias antes de avançar manualmente.','warn');return;}
+  if(mode==='v1891-nextmatch'){
+   if(state.v640National?.userTeam)return await v128AdvanceAsNationalCoach();
+   return await v1891AdvanceToNextMatch();
+  }
+  if(mode!=='advance')return await v18326BaseAct(el);
+  if(state.userEmployed===false&&!state.v640National?.userTeam){toast('Assuma um clube ou uma seleção antes de avançar.','warn');return;}
+  // Preserve every human fixture: never simulate a match that the coach must play.
+  if(v18326HasOwnMatch(state)){
+   v18326LastAction.phase='match-ready';return await v18326BaseAct(el);
+  }
+  // One click means one world jornada. dayfast is the tested single-step Worker
+  // path, avoiding the heavy generic 'day' and its separate old world baseline.
+  v18326LastAction.phase='simulating-one-day';
+  const result=await v53StartSimulation('dayfast');
+  if(!state||state!==before){v18326LastAction.phase='reloaded';return result;}
+  if(Number(state.day)<=oldDay&&Number(state.year)===oldYear&&!state.seasonDone)
+   throw Error('A jornada não avançou. Nenhuma nova simulação foi iniciada para evitar duplicidade.');
+  v18326LastAction={mode,year:Number(state.year)||oldYear,day:Number(state.day)||oldDay,steps:1,phase:'finished'};
+  if(!document.hidden){render();if(view===from&&state.lastDay!=null&&typeof showDay==='function')showDay(state.lastDay);}
+  return result;
+ }catch(e){
+  v18326LastAction={mode,year:oldYear,day:oldDay,phase:'error',error:String(e?.message||e)};
+  toast('Falha no avanço: '+(e?.message||e),'error');
+  try{if(state&&!document.hidden)render();}catch(_){}
+ }finally{
+  v18326AdvanceVisual(false);
+  try{const root=document.querySelector('#app');if(root?.dataset?.v555Shell==='1')v555UpdateChrome(root);}catch(e){}
+ }
+}
+// National careers also show the two commands, one-day vs. next national match.
+const v18326BaseNationalChrome=v128UpdateNationalChrome;
+v128UpdateNationalChrome=function(root){
+ const result=v18326BaseNationalChrome(root);
+ if(!root||!state?.v640National?.userTeam)return result;
+ const adv=root.querySelector('.v555-advance-wrap');if(!adv)return result;
+ const btn=adv.querySelector('[data-action="advance"]');
+ if(btn){btn.innerHTML=icon('play')+' Avançar jornada';btn.disabled=!!(v18326AdvanceBusy||v53Sim?.active||v53Sim?.starting||v128NationalAdvanceBusy);}
+ const canJump=!state.seasonDone&&!state.live&&!v18326HasOwnMatch(state);
+ const old=adv.querySelector('[data-action="v1891-nextmatch"]');
+ if(canJump&&!old){adv.insertAdjacentHTML('beforeend',button('v1891-nextmatch',icon('arrow')+' Avançar até a Próxima Partida','secondary v1891-nextmatch-button',v18326AdvanceBusy?'disabled':'title="Parar antes da próxima partida da seleção"'));}
+ else if(!canJump&&old)old.remove();
+ adv.querySelectorAll('button').forEach(b=>{if(v18326AdvanceBusy)b.disabled=true;});
+ return result;
+};
+const v18326BaseAct=act;
+act=function(el){
+ const action=el?.dataset?.action;
+ if(action==='advance'||action==='v1891-nextmatch')return v18326ManualAdvance(el);
+ return v18326BaseAct(el);
+};
+const v18326CSS=document.createElement('style');v18326CSS.id='v18326-advance-style';
+v18326CSS.textContent='body.v18326-advance-busy .v555-advance-wrap button{pointer-events:none!important;opacity:.56!important;cursor:wait!important}';
+document.head.appendChild(v18326CSS);
+window.GestorFC.manualAdvance18326={version:'18.326',status:()=>({busy:v18326AdvanceBusy,last:v18326LastAction}),
+ dayMode:'dayfast-single-day',nextMode:'nextmatch-worker',nationalOneDay:true,serializesClicks:true,stopsBeforeOwnFixture:true};
+/* FUTBR_MANUAL_ADVANCE_18326_END */
+
 /* FUTBR_CHAMPIONS_RETIREMENT_18322_END */
 """
 
@@ -485,7 +569,7 @@ def main():
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,
       'retirementAutomaticAge40':True,'manualAge35':True,
-      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True,'retirementOnlyInSquad':True}
+      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True,'retirementOnlyInSquad':True,'manualAdvanceSingleDay':True,'manualAdvanceStopBeforeMatch':True,'nationalAdvanceButtons':True}
     (project/'champions-retirement-18322-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()

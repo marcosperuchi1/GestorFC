@@ -7,7 +7,7 @@ def main():
  required=['FUTBR_CHAMPIONS_RETIREMENT_18322','v18322CaptureSeason(s,oldYear);',
   'v18322BaseCompetitionsPage=competitionsPage','v18322BaseNationalPage=v640NationalPage',
   'v18322BaseTransfersPage=transferActivityPage','auto=clubBefore===s.user?',
-  'root.history[0].scorer={id:p.id','function v18322RetirementPage()','data-v18322="c-year"','v18322-docked-toolbar','v18322-scorer-list','v18322VisibleLimit=120','v18324-docked-toolbar','v18324-retirement-access','v18324-open-retirements']
+  'root.history[0].scorer={id:p.id','function v18322RetirementPage()','data-v18322="c-year"','v18322-docked-toolbar','v18322-scorer-list','v18322VisibleLimit=120','v18324-docked-toolbar','v18324-retirement-access','v18324-open-retirements','FUTBR_MANUAL_ADVANCE_18326_START','dayfast-single-day','stopsBeforeOwnFixture:true']
  for m in required:
   if m not in html:raise RuntimeError('Missing feature: '+m)
  if 'root.history=root.history.slice(0,80);' in html:raise RuntimeError('National title archive still capped at 80')
@@ -89,10 +89,29 @@ function testState(){
  retirements:[{year:2025,retiredAt:2026,id:'r1',name:'Veterano aposentado',age:40,ovr:77,club:'b2',clubName:'Palmeiras'}]
  };
 }
+
+const advanceCases={dayfast:0,next:0,nationalNext:0,legacy:0};
+document.body={classList:{toggle(){}}};document.querySelectorAll=()=>[];document.querySelector=()=>null;document.hidden=false;
+let v53Sim={active:false,starting:false},v53Creating=false,v128NationalAdvanceBusy=false;
+let v555UpdateChrome=()=>{},v128UpdateNationalChrome=()=>{};
+let v53StartSimulation=async mode=>{
+ if(mode!=='dayfast')throw Error('Unexpected worker mode '+mode);
+ advanceCases.dayfast++;const day=state.day;state.day++;state.lastDay=day;return state;
+};
+let v1891AdvanceToNextMatch=async()=>{advanceCases.next++;while(state.day<state.schedule.length){
+ const f=state.schedule[state.day]?.fixtures?.find(x=>x.home===state.user||x.away===state.user);
+ if(f&&!f.result)break;state.day++;
+}return state;};
+let v128AdvanceAsNationalCoach=async()=>{advanceCases.nationalNext++;return state;};
+let v640PrepareNationalStage=()=>{};
+let v640UserFixture=s=>s.schedule?.[s.day]?.nationalFixtures?.find(x=>x.home===s.v640National?.userTeam||x.away===s.v640National?.userTeam)||null;
+let showDay=()=>{};
+E.upcoming=s=>s.schedule?.[s.day]?.fixtures?.find(x=>x.home===s.user||x.away===s.user)||null;
+
 state=testState();
 """ + body.group(0) + r"""
 const api=window.GestorFC.championsRetire18322;
-assert.equal(api.version,'18.325');
+assert.equal(api.version,'18.326');
 const count=v18322CaptureSeason(state,2026);
 assert.equal(count,4,'2 divisions + cup + continental');
 const saved=state.v18322Champions;
@@ -169,11 +188,41 @@ assert.equal(v18322CollectSeason(actualIntl,2026).find(x=>x.competition==='lib')
 const defaultLeague=v18322ChampionsRows(actualIntl,{country:'bra',kind:'league',division:'1',year:'2026',competition:'all'});
 assert.equal(defaultLeague.length,1,'Default filtered view must show Brazil first division only');
 const years=v18322AvailableYears(actualIntl);assert(years.includes(2026));
-console.log(JSON.stringify({ok:true,version:'18.325',editions:count,topScorer:true,runnerUp:true,
+
+const v18326Fixture=()=>{
+ const s=testState();s.year=2027;s.day=0;s.seasonDone=false;s.live=null;
+ s.vacation={active:false};s.v640National=null;
+ s.schedule=[{type:'league',fixtures:[]},{type:'league',fixtures:[]},
+  {type:'league',fixtures:[{home:'b1',away:'b2',result:null}]},{type:'league',fixtures:[]}];return s;
+};
+async function v18326Regression(){
+ state=v18326Fixture();const n=advanceCases.dayfast;await act({dataset:{action:'advance'}});
+ assert.equal(advanceCases.dayfast,n+1);assert.equal(state.day,1,'One day only');
+ state=v18326Fixture();await act({dataset:{action:'v1891-nextmatch'}});
+ assert.equal(state.day,2,'Stop before club game');
+ const n2=advanceCases.dayfast;await act({dataset:{action:'advance'}});
+ assert.equal(advanceCases.dayfast,n2,'Do not auto play user fixture');
+ state=v18326Fixture();state.v640National={userTeam:'BRA'};
+ await act({dataset:{action:'advance'}});
+ assert.equal(state.day,1,'National one day only');
+ await act({dataset:{action:'v1891-nextmatch'}});
+ assert.equal(advanceCases.nationalNext,1);
+ state=v18326Fixture();state.v640National={userTeam:'BRA'};
+ state.schedule[0]={type:'national',nationalFixtures:[{home:'BRA',away:'ARG',result:null}],fixtures:[]};
+ const n3=advanceCases.dayfast;await act({dataset:{action:'advance'}});
+ assert.equal(advanceCases.dayfast,n3,'National match must not be simulated');
+ state=v18326Fixture();state.seasonDone=true;
+ const n4=advanceCases.dayfast;await act({dataset:{action:'advance'}});
+ assert.equal(advanceCases.dayfast,n4,'Season modal must be preserved');
+ return true;
+}
+
+console.log(JSON.stringify({ok:true,version:'18.326',editions:count,topScorer:true,runnerUp:true,
  nationalHistory:true,teamCrests:true,retirementHistory:true,manualRetirement:true,
  defaultFilters:true,yearFilter:true,standingsToolbarHeightPreserved:true,scorersFromCompetitionStats:true,tiedScorersVertical:true,
  realToolbarClassMatched:true,twentyTeamRowsCompact:true,retirementAccessFromSquad:true,retirementOnlyInSquad:true,
- preservesReload:true,noFabricatedLegacy:true,allFourRankTabsPreserved:true}));
+ preservesReload:true,noFabricatedLegacy:true,allFourRankTabsPreserved:true,manualAdvancePresent:true}));
+v18326Regression().then(()=>console.log(JSON.stringify({ok:true,version:'18.326',manualAdvanceOneDay:true,stopBeforeUserMatch:true,nationalOneDay:true,nationalNextFixture:true}))).catch(e=>{console.error(e);process.exitCode=1;});
 """
  path=root/'.test18322.js'
  path.write_text(code,encoding='utf-8')
@@ -195,7 +244,7 @@ console.log(JSON.stringify({ok:true,version:'18.325',editions:count,topScorer:tr
   page.wait_for_timeout(1500)
   installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function'})")
   browser.close()
- if installed['version']!='18.325' or not installed['clubRows'] or not installed['nationalRows']:
+ if installed['version']!='18.326' or not installed['clubRows'] or not installed['nationalRows']:
   raise RuntimeError('18.322 missing in browser runtime: '+json.dumps({'api':installed,'errors':runtime_errors[:6]},ensure_ascii=False))
  data=json.loads(r.stdout.strip().splitlines()[-1])
  if not data.get('ok'):raise RuntimeError('18.322 invalid result')
