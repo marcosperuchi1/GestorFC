@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import sys
 
-VERSION = '18.323'
+VERSION = '18.324'
 MARK = 'FUTBR_CHAMPIONS_RETIREMENT_18322'
 UI = r"""
 /* FUTBR_CHAMPIONS_RETIREMENT_18322 */
@@ -316,14 +316,13 @@ function v18322RetirementPage(){
  const s=state,rows=Array.isArray(s?.retirements)?s.retirements:[],
  years=[...new Set(rows.map(x=>v18322N(x.year)))].sort((a,b)=>b-a),
  shown=rows.filter(x=>v18322RetireYear==='all'||v18322N(x.year)===v18322N(v18322RetireYear));
- const team=s?.userEmployed?E.team(s,s.user):null,
- senior=[...(team?.roster||[]),...(team?.proReserve||[])].map(id=>s?.players?.[id]).filter(p=>p&&p.squad!=='youth'&&v18322N(p.age)>=35);
+ const senior=v18324EligibleVeterans();
  return '<section class="v18322-panel"><h2>Aposentadorias</h2><p class="tiny muted">Aposentadorias efetivadas na virada da temporada. Jogadores do seu clube podem anunciar a aposentadoria a partir de 35 anos; aos 40 anos ou mais também poderão se aposentar automaticamente.</p>'+
  '<div class="stats-grid"><div class="stat-card"><strong>'+rows.length+'</strong><span>Jogadores aposentados na carreira</span></div><div class="stat-card"><strong>'+rows.filter(x=>v18322N(x.year)===v18322N(s?.year)-1).length+'</strong><span>Na última virada</span></div></div>'+
  (senior.length?'<h3>Veteranos do seu clube</h3><div class="v18322-scroller"><table><thead><tr><th>Jogador</th><th>Idade</th><th>OVR</th><th>Decisão</th></tr></thead><tbody>'+
  senior.sort((a,b)=>v18322N(b.age)-v18322N(a.age)).map(p=>'<tr><td>'+v18322Esc(p.name)+'</td><td>'+p.age+'</td><td>'+E.overall(p)+'</td><td><button class="btn small" data-action="v18322-retire" data-player="'+v18322Esc(p.id)+'">'+
  (p.v579ManualRetire?'Cancelar aposentadoria':'Aposentar ao fim da temporada')+'</button></td></tr>').join('')+'</tbody></table></div>':
- '<p class="tiny muted">Não há jogadores do seu clube com 35 anos ou mais disponíveis para aposentadoria manual.</p>')+
+ '<p class="tiny muted">Não há jogadores elegíveis no seu clube. A aposentadoria manual fica disponível a partir dos 35 anos.</p>')+
  '<h3>Histórico de aposentadorias</h3><label class="v18322-year">Temporada<select data-v18322="retire-year">'+v18322Option('all','Todas',v18322RetireYear)+years.map(y=>v18322Option(y,y,v18322RetireYear)).join('')+'</select></label>'+
  '<div class="v18322-scroller"><table><thead><tr><th>Temporada</th><th>Jogador</th><th>Clube</th><th>Idade</th><th>OVR</th><th>Tipo</th></tr></thead><tbody>'+
  (shown.length?shown.slice(0,700).map(x=>'<tr><td>'+v18322N(x.year)+'</td><td>'+v18322Esc(x.name||x.id)+'</td><td>'+v18322ClubCrest(x.club,x.clubName)+'</td><td>'+v18322N(x.age)+'</td><td>'+v18322N(x.ovr)+'</td><td>'+(x.manual?'Anunciada':'Automática')+'</td></tr>').join(''):
@@ -331,9 +330,11 @@ function v18322RetirementPage(){
  '</tbody></table></div></section>';
 }
 
+
 const v18322BaseCompetitionsPage=competitionsPage;
 function v18322ClubSwitch(){
- return '<div class="v18322-switch"><button class="btn small '+(v18322ClubOpen?'':'primary')+
+ return '<div class="v18322-switch" role="group" aria-label="Visualização das competições">'+
+ '<button class="btn small '+(v18322ClubOpen?'':'primary')+
  '" data-action="v18322-toggle-clubs" data-mode="current">Temporada atual</button>'+
  '<button class="btn small '+(v18322ClubOpen?'primary':'')+
  '" data-action="v18322-toggle-clubs" data-mode="history">Histórico de campeões</button></div>';
@@ -342,10 +343,32 @@ competitionsPage=function(){
  const tabs=v18322ClubSwitch();
  if(v18322ClubOpen)return '<div class="v18322-history-screen">'+tabs+v18322HistoryPage('club')+'</div>';
  const current=v18322BaseCompetitionsPage();
- const toolbar='<div class="v54-competition-toolbar">';
- // Avoid an extra row: the season standings should retain their full height.
- return current.includes(toolbar)?current.replace(toolbar,
-  '<div class="v54-competition-toolbar v18322-docked-toolbar">'+tabs):tabs+current;
+ // Class "v605-label-free-toolbar" makes a literal class=...toolbar exact match fail.
+ // Insert controls WITHIN the real toolbar; no separate row above the table.
+ const toolbar=/<div class="v54-competition-toolbar(?:\s+[^"]*)?">/;
+ if(toolbar.test(current))return current.replace(toolbar,open=>
+  open.replace('v54-competition-toolbar',
+  'v54-competition-toolbar v18322-docked-toolbar v18324-docked-toolbar')+tabs);
+ // Fallback overlaid inside competition screen: never increase page height.
+ return current.replace(/<div class="v54-competitions-screen([^"]*)">/,match=>
+  match+'<div class="v18324-toolbar-fallback">'+tabs+'</div>');
+};
+const v18324BaseSquadPage=squadPage;
+function v18324EligibleVeterans(){
+ const club=state?.userEmployed?E.team(state,state.user):null;
+ const ids=new Set([...(club?.roster||[]),...(club?.proReserve||[])]);
+ return [...ids].map(id=>E.player(state,id)).filter(p=>v579ManualRetirementEligible(state,p));
+}
+squadPage=function(){
+ const eligible=v18324EligibleVeterans();
+ const info=eligible.length
+  ?eligible.length+' jogador(es) com 35 anos ou mais podem anunciar aposentadoria'
+  :'Disponível para jogadores do clube a partir de 35 anos';
+ return '<div class="v18324-retirement-access">'+
+  '<span><strong>Aposentadorias</strong><small>'+v18322Esc(info)+'</small></span>'+
+  '<button class="btn small" type="button" data-action="v18324-open-retirements">'+
+  'Gerenciar aposentadorias'+(eligible.length?' ('+eligible.length+')':'')+'</button>'+
+  '</div>'+v18324BaseSquadPage();
 };
 
 const v18322BaseNationalPage=v640NationalPage;
@@ -365,6 +388,7 @@ act=function(el){
  const action=el?.dataset?.action;
  if(action==='v18322-toggle-clubs'){if(el.dataset.mode==='history')v18322InitClubFilters();v18322ClubOpen=el.dataset.mode==='history';render();return;}
  if(action==='v18322-more'){v18322VisibleLimit+=120;render();return;}
+ if(action==='v18324-open-retirements'){v18322TransferTab='retirements';view='transfers';render();return;}
  if(action==='v18322-toggle-national'){v18322NationalOpen=el.dataset.mode==='history';render();return;}
  if(action==='v18322-transfer-tab'){v18322TransferTab=el.dataset.tab==='retirements'?'retirements':'transfers';render();return;}
  if(action==='v18322-retire'){
@@ -397,9 +421,10 @@ document.addEventListener('change',e=>{
 },true);
 const v18322Style=document.createElement('style');v18322Style.id='v18322-history-style';
 v18322Style.textContent="\n.v18322-switch{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:6px 0 10px}\n.v18322-switch .btn{white-space:nowrap}\n.v18322-docked-toolbar{grid-template-columns:minmax(245px,auto) minmax(150px,180px) minmax(170px,1fr) minmax(115px,.55fr)!important;gap:7px!important;align-items:end!important}\n.v18322-docked-toolbar>.v18322-switch{padding:0!important;min-width:0;align-self:end}\n.v18322-docked-toolbar>.v18322-switch .btn{font-size:10px!important;padding:7px 9px!important;min-height:31px;line-height:1.4}\n.v18322-panel{padding:14px;border:1px solid var(--line,#875251);background:var(--panel,#331716);border-radius:14px;min-width:0}\n.v18322-panel h2{font-size:19px;margin:0 0 5px}\n.v18322-panel h3{margin:18px 0 10px;font-size:16px}\n.v18322-filters{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;margin:12px 0}\n.v18322-filters label,.v18322-year{display:flex;flex-direction:column;gap:5px;font-size:11px;min-width:0}\n.v18322-filters select,.v18322-year select{width:100%;min-width:0;background:var(--panel2,#482221);border:1px solid var(--line,#82423c);color:inherit;border-radius:8px;padding:9px}\n.v18322-scroller{overflow:auto;max-height:calc(100dvh - 345px);min-height:190px;border:1px solid var(--line,#82423c);border-radius:10px}\n.v18322-scroller table{width:100%;min-width:820px;border-collapse:collapse;font-size:12px}\n.v18322-scroller th{position:sticky;top:0;background:var(--panel2,#482221);z-index:2}\n.v18322-scroller th,.v18322-scroller td{padding:8px 9px;border-bottom:1px solid var(--line,#82423c);text-align:left;vertical-align:middle;overflow-wrap:anywhere}\n.v18322-scroller th:first-child,.v18322-scroller td:first-child{width:6%}\n.v18322-scroller th:last-child,.v18322-scroller td:last-child{width:30%}\n.v18322-club{display:inline-flex;align-items:center;gap:6px;white-space:normal;max-width:100%}\n.v18322-scorer-list{display:flex;flex-direction:column;gap:5px;width:100%}\n.v18322-scorer{display:flex;align-items:center;gap:7px;min-width:0;white-space:normal}\n.v18322-scorer>span:last-child{min-width:0;overflow-wrap:anywhere}\n.v18322-scorer small{opacity:.75;white-space:nowrap}\n.v18322-foot{margin-top:8px}\n.v18322-more{margin-top:10px}\n.v18322-year{margin:8px 0 14px;max-width:180px}\n@media(max-width:1150px){.v18322-docked-toolbar{grid-template-columns:minmax(215px,auto) minmax(135px,160px) minmax(120px,1fr) minmax(100px,.6fr)!important}.v18322-docked-toolbar>.v18322-switch .btn{padding:6px!important;font-size:9px!important}}\n@media(max-width:850px){.v18322-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.v18322-docked-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))!important}.v18322-docked-toolbar>.v18322-switch{grid-column:1/-1}}\n";
+v18322Style.textContent += "\n/* 18.324: tabs are children of the existing toolbar, not a new block row. */\n@media(min-width:761px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  display:grid!important;\n  grid-template-columns:minmax(215px,auto) minmax(140px,175px) minmax(150px,1fr) minmax(105px,130px)!important;\n  align-items:center!important;gap:7px!important;\n  box-sizing:border-box!important;padding:3px 7px!important;\n  margin:0 0 4px!important;min-height:37px!important;max-height:44px!important;\n }\n .v18324-docked-toolbar>.v18322-switch{\n  display:flex!important;align-items:center!important;justify-content:flex-start!important;\n  gap:4px!important;margin:0!important;padding:0!important;\n  min-height:0!important;height:30px!important;flex-wrap:nowrap!important;\n }\n .v18324-docked-toolbar>.v18322-switch .btn{\n  min-height:28px!important;height:28px!important;max-height:28px!important;\n  padding:4px 7px!important;font-size:9.4px!important;line-height:1.1!important;\n  white-space:nowrap!important;\n }\n .v18324-docked-toolbar>.field{min-width:0!important;margin:0!important}\n .v18324-docked-toolbar>.field select{min-height:29px!important;height:29px!important}\n /* 20 positions fit at standard desktop heights, with one row per club. */\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table td{\n  height:clamp(23px,3.35dvh,31px)!important;min-height:0!important;\n  padding-top:1px!important;padding-bottom:1px!important;\n  line-height:1!important;font-size:10px!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .v247-standing-club-box{\n  min-height:0!important;height:clamp(21px,2.9dvh,27px)!important;\n  max-height:27px!important;padding:1px 5px!important;box-sizing:border-box!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .shield.small{\n  width:19px!important;height:21px!important;min-height:0!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .table-button{\n  font-size:10px!important;line-height:1!important;\n }\n}\n.v54-competitions-screen{position:relative}\n.v18324-toolbar-fallback{position:absolute;top:1px;right:8px;z-index:3}\n.v18324-toolbar-fallback .v18322-switch{margin:0;padding:0}\n.v18324-retirement-access{display:flex;align-items:center;justify-content:space-between;gap:12px;\n margin:0 0 9px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;\n background:var(--panel);min-width:0}\n.v18324-retirement-access span{display:flex;flex-direction:column;gap:3px;min-width:0}\n.v18324-retirement-access strong{font-size:12px}\n.v18324-retirement-access small{font-size:10px;opacity:.78}\n.v18324-retirement-access button{flex:0 0 auto}\n@media(min-width:761px) and (max-width:1150px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  grid-template-columns:minmax(175px,auto) minmax(120px,145px) minmax(125px,1fr) minmax(95px,115px)!important}\n .v18324-docked-toolbar>.v18322-switch .btn{font-size:8.3px!important;padding:4px 5px!important}\n}\n@media(max-width:760px){\n .v18324-docked-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important}\n .v18324-docked-toolbar>.v18322-switch{grid-column:1/-1;padding:0!important}\n .v18324-retirement-access{flex-wrap:wrap}\n}\n";
 document.head.appendChild(v18322Style);
 window.GestorFC.championsRetire18322={
- version:'18.323',clubRows:()=>v18322ChampionsRows(state),
+ version:'18.324',clubRows:()=>v18322ChampionsRows(state),
  nationalRows:()=>state?.v640National?.history||[],
  retirements:()=>state?.retirements||[],
  stats:()=>({saved:state?.v18322Champions?.length||0,national:state?.v640National?.history?.length||0,
@@ -459,7 +484,7 @@ def main():
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,
       'retirementAutomaticAge40':True,'manualAge35':True,
-      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True}
+      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True}
     (project/'champions-retirement-18322-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
