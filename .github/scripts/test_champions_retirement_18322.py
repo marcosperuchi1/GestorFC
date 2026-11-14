@@ -92,7 +92,7 @@ function testState(){
 state=testState();
 """ + body.group(0) + r"""
 const api=window.GestorFC.championsRetire18322;
-assert.equal(api.version,'18.324');
+assert.equal(api.version,'18.325');
 const count=v18322CaptureSeason(state,2026);
 assert.equal(count,4,'2 divisions + cup + continental');
 const saved=state.v18322Champions;
@@ -126,14 +126,18 @@ assert(leagueCurrent.includes('v18322-docked-toolbar'),'Expected legacy toolbar 
 assert(leagueCurrent.indexOf('v18322-switch')>leagueCurrent.indexOf('v54-competition-toolbar')&&
  leagueCurrent.indexOf('v18322-switch')<leagueCurrent.indexOf('v54-competition-shell'),'Tabs must be within the existing toolbar');
 assert(!leagueCurrent.includes('v18324-toolbar-fallback'),'The real toolbar must match (no fallback)');
-assert(squadPage().includes('Gerenciar aposentadorias'),'Squad entry for retirement missing');
+assert(squadPage().includes('Gerenciar aposentadorias'),'Elenco must show retirement entry');
 act({dataset:{action:'v18324-open-retirements'}});
-assert.equal(view,'transfers','Retirement button must navigate to Movimentações');
-assert(transferActivityPage().includes('Aposentadorias'));
+assert.equal(view,'squad','Retirement management must remain in Elenco');
+assert(squadPage().includes('Histórico de aposentadorias'),'Retirement management must render inside Elenco');
+assert(squadPage().includes('data-action="v18322-retire"'),'Eligible squad retirement controls absent');
+assert(!transferActivityPage().includes('Aposentadorias'),'Movimentacoes must not show retirement');
+act({dataset:{action:'v18324-open-retirements'}});
+assert(squadPage().includes('Gerenciar aposentadorias'),'Elenco must reopen normal squad list');
 view='competitions';
 assert(!competitionsPage().startsWith('<div class="v18322-switch">'),'Extra tabs row reduces standings height');
 assert(v640NationalPage().includes('Histórico de títulos'));
-assert(transferActivityPage().includes('Aposentadorias'));
+assert(!transferActivityPage().includes('Aposentadorias'),'Movimentacoes must remain transfer-only');
 act({dataset:{action:'v18322-toggle-clubs',mode:'history'}});
 assert(competitionsPage().includes('Artilheiro da liga'));
 assert(competitionsPage().includes('data-v18322="c-year"'),'Year filter missing');
@@ -142,8 +146,7 @@ assert(competitionsPage().includes('value="league" selected'),'Default league fi
 assert(competitionsPage().includes('value="1" selected'),'Default division 1 not selected');
 act({dataset:{action:'v18322-toggle-national',mode:'history'}});
 assert(v640NationalPage().includes('FLAG BRA'));
-act({dataset:{action:'v18322-transfer-tab',tab:'retirements'}});
-assert(transferActivityPage().includes('Veterano aposentado'));
+assert(!transferActivityPage().includes('Veterano aposentado'),'Retirement history must not appear in Movimentacoes');
 act({dataset:{action:'v18322-retire',player:'p3'}});
 assert(state.players.p3.v579ManualRetire&&persistCalls>0);
 const previous=JSON.parse(JSON.stringify(state));
@@ -166,10 +169,10 @@ assert.equal(v18322CollectSeason(actualIntl,2026).find(x=>x.competition==='lib')
 const defaultLeague=v18322ChampionsRows(actualIntl,{country:'bra',kind:'league',division:'1',year:'2026',competition:'all'});
 assert.equal(defaultLeague.length,1,'Default filtered view must show Brazil first division only');
 const years=v18322AvailableYears(actualIntl);assert(years.includes(2026));
-console.log(JSON.stringify({ok:true,version:'18.324',editions:count,topScorer:true,runnerUp:true,
+console.log(JSON.stringify({ok:true,version:'18.325',editions:count,topScorer:true,runnerUp:true,
  nationalHistory:true,teamCrests:true,retirementHistory:true,manualRetirement:true,
  defaultFilters:true,yearFilter:true,standingsToolbarHeightPreserved:true,scorersFromCompetitionStats:true,tiedScorersVertical:true,
- realToolbarClassMatched:true,twentyTeamRowsCompact:true,retirementAccessFromSquad:true,
+ realToolbarClassMatched:true,twentyTeamRowsCompact:true,retirementAccessFromSquad:true,retirementOnlyInSquad:true,
  preservesReload:true,noFabricatedLegacy:true,allFourRankTabsPreserved:true}));
 """
  path=root/'.test18322.js'
@@ -192,7 +195,7 @@ console.log(JSON.stringify({ok:true,version:'18.324',editions:count,topScorer:tr
   page.wait_for_timeout(1500)
   installed=page.evaluate("() => ({version:window.GestorFC?.championsRetire18322?.version||null, clubRows:typeof window.GestorFC?.championsRetire18322?.clubRows==='function', nationalRows:typeof window.GestorFC?.championsRetire18322?.nationalRows==='function'})")
   browser.close()
- if installed['version']!='18.324' or not installed['clubRows'] or not installed['nationalRows']:
+ if installed['version']!='18.325' or not installed['clubRows'] or not installed['nationalRows']:
   raise RuntimeError('18.322 missing in browser runtime: '+json.dumps({'api':installed,'errors':runtime_errors[:6]},ensure_ascii=False))
  data=json.loads(r.stdout.strip().splitlines()[-1])
  if not data.get('ok'):raise RuntimeError('18.322 invalid result')

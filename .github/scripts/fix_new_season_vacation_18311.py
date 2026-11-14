@@ -2,7 +2,7 @@ from __future__ import annotations
 import json, sys
 from pathlib import Path
 
-VERSION='18.311'
+VERSION='18.325'
 
 def fail(msg):
     raise RuntimeError(msg)
@@ -33,7 +33,7 @@ def main():
     base=once(
         base,
         'const compactHumanMatch=!!manualOverlaySnapshot;',
-        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=mode==='vacation'&&!!options?.liveStateNoPreSave&&!v52SavePromise;",
+        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=mode==='vacation'&&!!options?.liveStateNoPreSave;",
         'flag live-state vacation'
     )
     base=once(
@@ -68,11 +68,11 @@ def main():
     anchor=" if(v168DeferredRolloverSave&&state){"
     if wrapper.count(anchor)!=1:
         fail(f'ancora deferred save: esperado 1, encontrado {wrapper.count(anchor)}')
-    fast=r""" if(v168DeferredRolloverSave&&state&&mode==='vacation'&&!v52SavePromise){
+    fast=r""" if(v168DeferredRolloverSave&&state&&mode==='vacation'){
   if(v53Sim.active||v53Sim.starting||v53Creating)throw Error('Outra operação da carreira está em andamento.');
   v18121NewSeasonPreparation=true;
   v53Sim.starting=true;v53Sim.mode=mode;v53Sim.progress='Inicializando férias da nova temporada';
-  const target=state,year=Number(state.year)||0,day=Number(state.day)||0;
+  const target=state,year=Number(state.year)||0,day=Number(state.day)||0,hadPendingSave=!!v52SavePromise;
   try{
    v148EnsureNationalReady(target);
    if(state!==target||Number(state.year)!==year||Number(state.day)!==day)throw Error('A carreira mudou durante a preparação das férias.');
@@ -81,8 +81,8 @@ def main():
    const waiters=v52SaveWaiters.splice(0);for(const resolve of waiters)try{resolve();}catch(e){}
    v168DeferredRolloverSave=false;
    const G=window.GestorFC=window.GestorFC||{};
-   G.v18311VacationCheckpointFix={version:'18.311',liveStateStart:true,blockingFullPreSave:false,workerCheckpoint:true,previousSavePreserved:true};
-   G.v18311LastFastStart={year,day,at:Date.now(),mode};
+   G.v18311VacationCheckpointFix={version:'18.325',liveStateStart:true,blockingFullPreSave:false,workerCheckpoint:true,previousSavePreserved:true};
+   G.v18311LastFastStart={year,day,at:Date.now(),mode,hadPendingSave,phase:'live-state-vacation'};
   }catch(e){
    v168DeferredRolloverSave=true;
    if(state===target){v52PendingState=target;v52SaveDirty=true;v52NotifySave=false;}
@@ -120,6 +120,7 @@ def main():
         'blockingFullPreSave':False,
         'workerCheckpoint':True,
         'previousSavePreserved':True,
+        'inFlightSaveDoesNotBlockVacation':True,
         'fallbackForNonVacation':True,
     }
     (root/'new-season-vacation-18311-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')

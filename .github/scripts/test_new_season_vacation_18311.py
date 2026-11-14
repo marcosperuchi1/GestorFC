@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, sys
+import json, sys, subprocess
 from pathlib import Path
 
 def fail(msg):
@@ -13,13 +13,13 @@ def main():
 
     required=[
         'v18311VacationCheckpointFix',
-        "version:'18.311'",
+        "version:'18.325'",
         'blockingFullPreSave:false',
         'workerCheckpoint:true',
         'previousSavePreserved:true',
         'liveStateNoPreSave:true',
         'vacationCheckpoint:true',
-        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=mode==='vacation'&&!!options?.liveStateNoPreSave&&!v52SavePromise;",
+        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=mode==='vacation'&&!!options?.liveStateNoPreSave;",
         "if(!v18311LiveVacation&&state?.v1903CareerId&&!saveOK){",
         "const canLoadSaved=!v18311LiveVacation&&!!saveOK&&(mode==='day'||mode==='dayfast'||mode==='nationaljump'||mode==='nextmatch'||mode==='vacation');",
     ]
@@ -47,7 +47,7 @@ def main():
     if ws<0 or we<0:
         fail('wrapper 18.181 nao localizado')
     wrapper=html[ws:we]
-    fs=wrapper.find("if(v168DeferredRolloverSave&&state&&mode==='vacation'&&!v52SavePromise){")
+    fs=wrapper.find("if(v168DeferredRolloverSave&&state&&mode==='vacation'){")
     legacy=wrapper.find('if(v168DeferredRolloverSave&&state){',fs+1)
     if fs<0 or legacy<0 or fs>legacy:
         fail('fast path de ferias nao precede fallback legado')
@@ -63,13 +63,61 @@ def main():
     if "v168DeferredRolloverSave=true" not in fast:
         fail('fallback de recuperacao nao restaura flag em caso de erro')
 
+
+    # Regression: initial 2027 vacation must start despite a pending full save.
+    # The preceding legacy path called v52FlushSave and blocked indefinitely.
+    harness=r"""
+const assert=require('node:assert/strict');
+const window={GestorFC:{}};
+let state={year:2027,day:1,user:'flamengo'},v168DeferredRolloverSave=true;
+let v53Sim={active:false,starting:false,mode:'',progress:''},v53Creating=false;
+let v52SavePromise=new Promise(()=>{}),v52SaveDirty=true,v52PendingState=state;
+let v52SaveTimer=1,v52NotifySave=false,v52SaveWaiters=[],saveOK=true;
+let flushed=0,started=0,opts=null;
+function v148EnsureNationalReady(){return false}
+function v53PaintStatus(){}
+async function v52FlushSave(){flushed++;throw Error('blocking full save must not execute')}
+let v53StartSimulation=async(mode,options)=>{
+  started++;opts=options;
+  assert.equal(mode,'vacation');
+  return 'worker-started';
+};
+""" + wrapper + r"""
+(async()=>{
+  const result=await Promise.race([
+    v53StartSimulation('vacation'),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('blocked on full save')),3000))
+  ]);
+  assert.equal(result,'worker-started');
+  assert.equal(flushed,0);
+  assert.equal(started,1);
+  assert.equal(opts.liveStateNoPreSave,true);
+  assert.equal(opts.vacationCheckpoint,true);
+  assert.equal(v168DeferredRolloverSave,false);
+  assert.equal(window.GestorFC.v18311LastFastStart.hadPendingSave,true);
+  assert.equal(v53Sim.starting,false);
+  console.log(JSON.stringify({ok:true,year:2027,hadPendingFullSave:true,blockingPreSave:false,workerStarted:true}));
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+    test=root/'test-first-vacation-18325.cjs'
+    test.write_text(harness,encoding='utf-8')
+    try:
+        p=subprocess.run(['node',str(test)],capture_output=True,text=True,timeout=12)
+    finally:
+        test.unlink(missing_ok=True)
+    if p.returncode:
+        fail('Regressao da primeira ferias 2027: '+(p.stderr or p.stdout)[-3500:])
+    race=json.loads(p.stdout.strip())
+    if not race.get('workerStarted'):fail('A simulacao nao iniciou')
+
     result={
         'ok':True,
-        'version':'18.311',
+        'version':'18.325',
         'newSeasonVacationStartsWithoutFullPreSave':True,
         'liveStatePostedToWorker':True,
         'vacationCheckpointRequested':True,
         'previousCommittedSavePreserved':True,
+        'raceWithActiveFullSave':race,
         'nonVacationFallbackPreserved':True,
     }
     (root/'new-season-vacation-18311-tests.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')

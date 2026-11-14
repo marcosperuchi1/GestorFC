@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import sys
 
-VERSION = '18.324'
+VERSION = '18.325'
 MARK = 'FUTBR_CHAMPIONS_RETIREMENT_18322'
 UI = r"""
 /* FUTBR_CHAMPIONS_RETIREMENT_18322 */
@@ -354,12 +354,15 @@ competitionsPage=function(){
   match+'<div class="v18324-toolbar-fallback">'+tabs+'</div>');
 };
 const v18324BaseSquadPage=squadPage;
+let v18324RetirementOpen=false,v18324RetirementState=null;
 function v18324EligibleVeterans(){
  const club=state?.userEmployed?E.team(state,state.user):null;
  const ids=new Set([...(club?.roster||[]),...(club?.proReserve||[])]);
  return [...ids].map(id=>E.player(state,id)).filter(p=>v579ManualRetirementEligible(state,p));
 }
 squadPage=function(){
+ if(!state?.userEmployed)return v18324BaseSquadPage();
+ if(v18324RetirementState!==state){v18324RetirementState=state;v18324RetirementOpen=false;}
  const eligible=v18324EligibleVeterans();
  const info=eligible.length
   ?eligible.length+' jogador(es) com 35 anos ou mais podem anunciar aposentadoria'
@@ -367,10 +370,10 @@ squadPage=function(){
  return '<div class="v18324-retirement-access">'+
   '<span><strong>Aposentadorias</strong><small>'+v18322Esc(info)+'</small></span>'+
   '<button class="btn small" type="button" data-action="v18324-open-retirements">'+
-  'Gerenciar aposentadorias'+(eligible.length?' ('+eligible.length+')':'')+'</button>'+
-  '</div>'+v18324BaseSquadPage();
+  (v18324RetirementOpen?'Voltar ao elenco':'Gerenciar aposentadorias')+
+  (eligible.length&&!v18324RetirementOpen?' ('+eligible.length+')':'')+'</button>'+
+  '</div>'+(v18324RetirementOpen?v18322RetirementPage():v18324BaseSquadPage());
 };
-
 const v18322BaseNationalPage=v640NationalPage;
 v640NationalPage=function(){
  return '<div class="v18322-switch"><button class="btn small '+(v18322NationalOpen?'':'primary')+'" data-action="v18322-toggle-national" data-mode="current">Seleções</button>'+
@@ -378,19 +381,17 @@ v640NationalPage=function(){
  (v18322NationalOpen?v18322HistoryPage('national'):v18322BaseNationalPage());
 };
 const v18322BaseTransfersPage=transferActivityPage;
-transferActivityPage=function(){
- return '<div class="v18322-switch"><button class="btn small '+(v18322TransferTab==='transfers'?'primary':'')+'" data-action="v18322-transfer-tab" data-tab="transfers">Transferências</button>'+
- '<button class="btn small '+(v18322TransferTab==='retirements'?'primary':'')+'" data-action="v18322-transfer-tab" data-tab="retirements">Aposentadorias</button></div>'+
- (v18322TransferTab==='retirements'?v18322RetirementPage():v18322BaseTransfersPage());
-};
+// Aposentadorias ficam somente em Elenco; Movimentacoes volta a ser
+// exclusivamente o historico do mercado de transferencias.
+transferActivityPage=function(){return v18322BaseTransfersPage();};
 const v18322BaseAction=act;
 act=function(el){
  const action=el?.dataset?.action;
  if(action==='v18322-toggle-clubs'){if(el.dataset.mode==='history')v18322InitClubFilters();v18322ClubOpen=el.dataset.mode==='history';render();return;}
  if(action==='v18322-more'){v18322VisibleLimit+=120;render();return;}
- if(action==='v18324-open-retirements'){v18322TransferTab='retirements';view='transfers';render();return;}
+ if(action==='v18324-open-retirements'){v18324RetirementOpen=!v18324RetirementOpen;view='squad';render();return;}
  if(action==='v18322-toggle-national'){v18322NationalOpen=el.dataset.mode==='history';render();return;}
- if(action==='v18322-transfer-tab'){v18322TransferTab=el.dataset.tab==='retirements'?'retirements':'transfers';render();return;}
+
  if(action==='v18322-retire'){
   try{
    const p=E.player(state,el.dataset.player);if(!p)throw Error('Jogador indisponível.');
@@ -424,7 +425,7 @@ v18322Style.textContent="\n.v18322-switch{display:flex;align-items:center;gap:6p
 v18322Style.textContent += "\n/* 18.324: tabs are children of the existing toolbar, not a new block row. */\n@media(min-width:761px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  display:grid!important;\n  grid-template-columns:minmax(215px,auto) minmax(140px,175px) minmax(150px,1fr) minmax(105px,130px)!important;\n  align-items:center!important;gap:7px!important;\n  box-sizing:border-box!important;padding:3px 7px!important;\n  margin:0 0 4px!important;min-height:37px!important;max-height:44px!important;\n }\n .v18324-docked-toolbar>.v18322-switch{\n  display:flex!important;align-items:center!important;justify-content:flex-start!important;\n  gap:4px!important;margin:0!important;padding:0!important;\n  min-height:0!important;height:30px!important;flex-wrap:nowrap!important;\n }\n .v18324-docked-toolbar>.v18322-switch .btn{\n  min-height:28px!important;height:28px!important;max-height:28px!important;\n  padding:4px 7px!important;font-size:9.4px!important;line-height:1.1!important;\n  white-space:nowrap!important;\n }\n .v18324-docked-toolbar>.field{min-width:0!important;margin:0!important}\n .v18324-docked-toolbar>.field select{min-height:29px!important;height:29px!important}\n /* 20 positions fit at standard desktop heights, with one row per club. */\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table td{\n  height:clamp(23px,3.35dvh,31px)!important;min-height:0!important;\n  padding-top:1px!important;padding-bottom:1px!important;\n  line-height:1!important;font-size:10px!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .v247-standing-club-box{\n  min-height:0!important;height:clamp(21px,2.9dvh,27px)!important;\n  max-height:27px!important;padding:1px 5px!important;box-sizing:border-box!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .shield.small{\n  width:19px!important;height:21px!important;min-height:0!important;\n }\n body.v54-competitions-view .v604-comp-league-fit .v54-standings-table .table-button{\n  font-size:10px!important;line-height:1!important;\n }\n}\n.v54-competitions-screen{position:relative}\n.v18324-toolbar-fallback{position:absolute;top:1px;right:8px;z-index:3}\n.v18324-toolbar-fallback .v18322-switch{margin:0;padding:0}\n.v18324-retirement-access{display:flex;align-items:center;justify-content:space-between;gap:12px;\n margin:0 0 9px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;\n background:var(--panel);min-width:0}\n.v18324-retirement-access span{display:flex;flex-direction:column;gap:3px;min-width:0}\n.v18324-retirement-access strong{font-size:12px}\n.v18324-retirement-access small{font-size:10px;opacity:.78}\n.v18324-retirement-access button{flex:0 0 auto}\n@media(min-width:761px) and (max-width:1150px){\n body.v54-competitions-view .v54-competition-toolbar.v18324-docked-toolbar{\n  grid-template-columns:minmax(175px,auto) minmax(120px,145px) minmax(125px,1fr) minmax(95px,115px)!important}\n .v18324-docked-toolbar>.v18322-switch .btn{font-size:8.3px!important;padding:4px 5px!important}\n}\n@media(max-width:760px){\n .v18324-docked-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important}\n .v18324-docked-toolbar>.v18322-switch{grid-column:1/-1;padding:0!important}\n .v18324-retirement-access{flex-wrap:wrap}\n}\n";
 document.head.appendChild(v18322Style);
 window.GestorFC.championsRetire18322={
- version:'18.324',clubRows:()=>v18322ChampionsRows(state),
+ version:'18.325',clubRows:()=>v18322ChampionsRows(state),
  nationalRows:()=>state?.v640National?.history||[],
  retirements:()=>state?.retirements||[],
  stats:()=>({saved:state?.v18322Champions?.length||0,national:state?.v640National?.history?.length||0,
@@ -484,7 +485,7 @@ def main():
     report={'ok':True,'version':VERSION,'seasonWinnersPersistent':True,'noHistoryTruncation':True,
       'domesticDivisions':True,'continentalAndNational':True,'scorersWithActualStatistics':True,
       'retirementAutomaticAge40':True,'manualAge35':True,
-      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True}
+      'retirementHistoryVisible':True,'noRetroactiveFabricatedStats':True,'yearFilter':True,'lightweightDefaultView':True,'scorerFallback':True,'compactTableToolbar':True,'realToolbarDocking':True,'twentyVisibleClubs':True,'retirementAccessInSquad':True,'retirementOnlyInSquad':True}
     (project/'champions-retirement-18322-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
