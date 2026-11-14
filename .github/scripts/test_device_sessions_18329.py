@@ -16,9 +16,15 @@ def main():
  assert "'/functions/v1/validate-license'" in html
  assert '[204,205,304].includes(nativeStatus)?null:native.body' in html
  assert "v548Session=null" in patch
+ rust=(root/'src-tauri'/'src'/'lib.rs').read_text(encoding='utf-8')
+ assert 'fn device_identity(preferred_id: String)' in rust
+ assert r'HKCU\Software\FutBRManager\Identity' in rust
+ assert 'request.path == "/functions/v1/release-device"' in rust
+ assert 'device_identity,' in rust
+ assert "deviceIdentity:preferredId=>call('device_identity'" in html
  test=r'''
 const assert=require('node:assert/strict');
-const local=new Map(),disk=new Map(),calls=[];
+const local=new Map(),disk=new Map(),registry=new Map(),calls=[];
 const USER='11111111-1111-4111-8111-111111111111';
 let failRelease=false, authFailure=false, renderLogin=0, persisted=0, vacationEpoch=0;
 const V580_DEVICE_KEY='gestorfc_device_v580',V580_REMOTE_SESSION='gestorfc_supabase_session_v580',V548_AUTH_SESSION='gestor_fc_session_v548';
@@ -42,7 +48,7 @@ function stopTimer(){}
 function closeModal(){}
 function persist(){persisted++;return Promise.resolve()}
 let state={vacation:{active:false,paused:false}},v53Sim={active:false,starting:false},v53Worker={postMessage(){}},vacationLoop=false;
-window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,value)=>{disk.set(k,value)},remove:async k=>{disk.delete(k)}};
+window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,value)=>{disk.set(k,value)},remove:async k=>{disk.delete(k)},deviceIdentity:async preferredId=>{if(!registry.has('DeviceId'))registry.set('DeviceId',preferredId);return registry.get('DeviceId')}};
 ''' + patch + r'''
 (async()=>{
  const auth={access_token:'token-author',user:{id:USER}};
@@ -52,8 +58,9 @@ window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,valu
  await v580ValidateLicense(auth);
  assert.equal(calls.at(-1).deviceId,prior);
  assert.equal(disk.get(V18329_DEVICE_NATIVE),prior);
- // A reinstall that resets WebView localStorage still keeps native KV.
- local.delete(V580_DEVICE_KEY);v18329DevicePromise=null;
+ assert.equal(registry.get('DeviceId'),prior);
+ // A full reinstall resets both WebView and native SQLite; registry remains.
+ local.delete(V580_DEVICE_KEY);disk.delete(V18329_DEVICE_NATIVE);v18329DevicePromise=null;
  await v580ValidateLicense(auth);
  assert.equal(calls.at(-1).deviceId,prior);
  assert.equal(v548SafeGet(V580_DEVICE_KEY),prior);
@@ -108,6 +115,7 @@ window.FutBRDesktop={available:true,read:async k=>disk.get(k),write:async(k,valu
  await v18329ClearPending();
  const output={ok:true,version:'18.329',migration:true,persistentNativeIdAcrossReinstall:true,
   authorGlobalSignOut:true,customerLocalSignOut:true,expiredTokenRefresh:true,releaseBeforeSignOut:true,
+  registryIdentityAcrossReinstall:true,releaseDeviceAllowedByNativeProxy:true,
   offlineReleaseRetry:true,onlyAuthenticatedOwner:true,noPersistedAccessToken:true,savePreserved:true};
  console.log(JSON.stringify(output));
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -17,6 +17,30 @@ async function v18329StableDeviceId(){
  v18329DevicePromise=(async()=>{
   const native=v18329NativeStore();
   const legacy=v548SafeGet(V580_DEVICE_KEY);
+  // Registry-backed ID survives an ordinary uninstall. Migrate the existing
+  // authorized installation ID before checking the license.
+  if(native&&typeof native.deviceIdentity==='function'){
+   try{
+    let candidate=v18329ValidDeviceId(legacy)?legacy:null;
+    if(!candidate){
+     try{
+      const prior=await native.read(V18329_DEVICE_NATIVE);
+      if(v18329ValidDeviceId(prior))candidate=prior;
+     }catch(_){}
+    }
+    if(!candidate)candidate=v580DeviceId();
+    const durable=await native.deviceIdentity(candidate);
+    if(v18329ValidDeviceId(durable)){
+     v548SafeSet(V580_DEVICE_KEY,durable);
+     try{await native.write(V18329_DEVICE_NATIVE,durable);}catch(err){
+      console.warn('[FutBR] espelho SQLite do dispositivo indisponivel:',err?.message||err);
+     }
+     return durable;
+    }
+   }catch(err){
+    console.warn('[FutBR] identidade permanente do Windows indisponivel:',err?.message||err);
+   }
+  }
   if(native){
    try{
     const persisted=await native.read(V18329_DEVICE_NATIVE);

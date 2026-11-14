@@ -143,6 +143,67 @@ fn load_player_base(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn device_identity(preferred_id: String) -> Result<String, String> {
+    // Dedicated HKCU registry storage is intentionally separate from NSIS.
+    // Only an opaque random ID is saved here, not a hardware serial.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const REG_PATH: &str = r"HKCU\Software\FutBRManager\Identity";
+        const NO_WINDOW: u32 = 0x08000000;
+        let valid_id = |id: &str| -> bool {
+            (13..=254).contains(&id.len())
+                && id.as_bytes().first().is_some_and(|c| c.is_ascii_alphanumeric())
+                && id.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-')
+        };
+        let read_id = || -> Option<String> {
+            let output = std::process::Command::new("reg.exe")
+                .args(["query", REG_PATH, "/v", "DeviceId"])
+                .creation_flags(NO_WINDOW)
+                .output().ok()?;
+            if !output.status.success() {
+                return None;
+            }
+            let text = String::from_utf8_lossy(&output.stdout);
+            for line in text.lines() {
+                let columns: Vec<&str> = line.split_whitespace().collect();
+                if columns.len() >= 3
+                    && columns[0].eq_ignore_ascii_case("DeviceId")
+                    && columns[1].eq_ignore_ascii_case("REG_SZ")
+                    && valid_id(columns[2])
+                {
+                    return Some(columns[2].to_string());
+                }
+            }
+            None
+        };
+        if let Some(id) = read_id() {
+            return Ok(id);
+        }
+        if !valid_id(&preferred_id) {
+            return Err("Identificador local invalido".to_string());
+        }
+        let output = std::process::Command::new("reg.exe")
+            .args(["add", REG_PATH, "/v", "DeviceId", "/t", "REG_SZ",
+                "/d", preferred_id.as_str(), "/f"])
+            .creation_flags(NO_WINDOW)
+            .output().map_err(|e| format!("Falha ao guardar dispositivo: {e}"))?;
+        if !output.status.success() {
+            return Err("Falha ao registrar identificador persistente no Windows".to_string());
+        }
+        if read_id().as_deref() != Some(preferred_id.as_str()) {
+            return Err("Nao foi possivel confirmar a identidade persistente".to_string());
+        }
+        Ok(preferred_id)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = preferred_id;
+        Err("Identificacao nativa disponivel apenas no Windows".to_string())
+    }
+}
+
+#[tauri::command]
 async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyResponse, String> {
     const BASE: &str = "https://ticwckvvxswturovwlqu.supabase.co";
     const APIKEY: &str = "sb_publishable_tGhqX7Jozn1cfO-Odj1mkQ__6xJ2ZqZ";
@@ -151,7 +212,8 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
         return Err("Caminho Supabase invalido.".to_string());
     }
     let allowed = request.path.starts_with("/auth/v1/")
-        || request.path.starts_with("/functions/v1/validate-license");
+        || request.path.starts_with("/functions/v1/validate-license")
+        || request.path == "/functions/v1/release-device";
     if !allowed {
         return Err("Endpoint Supabase nao permitido.".to_string());
     }
@@ -224,7 +286,7 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
         lib=replace_once(
             lib,
             "            kv_commit_manifest,\n            desktop_info,",
-            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            open_premium_site,\n            load_player_base,\n            supabase_proxy,\n            desktop_info,",
+            "            kv_commit_manifest,\n            kv_put_many,\n            open_external_url,\n            close_game,\n            open_premium_site,\n            load_player_base,\n            supabase_proxy,\n            device_identity,\n            desktop_info,",
             "handler commands"
         )
     lib_path.write_text(lib,encoding="utf-8")
@@ -256,7 +318,7 @@ async fn supabase_proxy(request: SupabaseProxyRequest) -> Result<SupabaseProxyRe
     html=replace_once(
         html,
         "  openDataFolder:()=>call('open_data_folder')",
-        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  openPremium:()=>call('open_premium_site'),\n  loadPlayerBase:()=>call('load_player_base'),\n  supabaseRequest:request=>call('supabase_proxy',{request}),\n  closeGame:()=>call('close_game')",
+        "  openDataFolder:()=>call('open_data_folder'),\n  writeMany:entries=>call('kv_put_many',{entries:entries||[]}),\n  openUrl:url=>call('open_external_url',{url:String(url)}),\n  openPremium:()=>call('open_premium_site'),\n  loadPlayerBase:()=>call('load_player_base'),\n  supabaseRequest:request=>call('supabase_proxy',{request}),\n  deviceIdentity:preferredId=>call('device_identity',{preferredId:String(preferredId||'')}),\n  closeGame:()=>call('close_game')",
         "desktop api"
     )
 

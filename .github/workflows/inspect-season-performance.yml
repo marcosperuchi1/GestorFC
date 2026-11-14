@@ -33,6 +33,7 @@ on:
       - '.github/scripts/test_champions_retirement_18322.py'
       - '.github/scripts/optimize_unemployed_turbo_18327.py'
       - '.github/scripts/test_unemployed_turbo_18327.py'
+      - '.github/scripts/prepare_desktop_project.py'
       - '.github/scripts/device_session_patch_18329.js'
       - '.github/scripts/fix_device_sessions_18329.py'
       - '.github/scripts/test_device_sessions_18329.py'
