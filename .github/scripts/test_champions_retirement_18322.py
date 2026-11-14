@@ -52,6 +52,7 @@ let squadPage=()=>'<section><h2>Elenco</h2></section>';
 let v640NationalPage=()=>'<p>Seleção atual</p>';
 let transferActivityPage=()=>'<p>Mercado atual</p>';
 let act=el=>null;
+const v579ManualRetirementEligible=(s,p)=>!!(s&&p&&p.clubId===s.user&&p.squad!=='youth'&&Number(p.age)>=35);
 let v579ToggleRetirement=(s,id)=>{
  const p=s.players[id];
  p.v579ManualRetire=!p.v579ManualRetire;
