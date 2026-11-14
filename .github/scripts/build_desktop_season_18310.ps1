@@ -30,6 +30,8 @@ Run-Python '.github/scripts/fix_rankings_ui_18321.py'
 Run-Python '.github/scripts/test_rankings_ui_18321.py'
 Run-Python '.github/scripts/feature_champions_retirement_18322.py'
 Run-Python '.github/scripts/test_champions_retirement_18322.py'
+Run-Python '.github/scripts/optimize_unemployed_turbo_18327.py'
+Run-Python '.github/scripts/test_unemployed_turbo_18327.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -63,6 +65,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'ranking-ui-18321-tests.json' 'artifacts/ranking-ui-18321-tests.json'
   Copy-Item 'champions-retirement-18322-install.json' 'artifacts/champions-retirement-18322-install.json'
   Copy-Item 'champions-retirement-18322-tests.json' 'artifacts/champions-retirement-18322-tests.json'
+  Copy-Item 'unemployed-turbo-18327-install.json' 'artifacts/unemployed-turbo-18327-install.json'
+  Copy-Item 'unemployed-turbo-18327-tests.json' 'artifacts/unemployed-turbo-18327-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)

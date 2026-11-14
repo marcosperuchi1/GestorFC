@@ -31,6 +31,8 @@ on:
       - '.github/scripts/test_rankings_ui_18321.py'
       - '.github/scripts/feature_champions_retirement_18322.py'
       - '.github/scripts/test_champions_retirement_18322.py'
+      - '.github/scripts/optimize_unemployed_turbo_18327.py'
+      - '.github/scripts/test_unemployed_turbo_18327.py'
       - '.github/scripts/build_desktop_season_18310.ps1'
       - '.github/workflows/build-season-sync-18310.yml'
   workflow_dispatch:
@@ -156,6 +158,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar historicos e aposentadorias 18.322.' }
           python .github/scripts/test_champions_retirement_18322.py "$env:FUTBR_INSPECT_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes de historico de campeoes e aposentadorias 18.322.' }
+          python .github/scripts/optimize_unemployed_turbo_18327.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar modo Turbo apos demissao 18.327.' }
+          python .github/scripts/test_unemployed_turbo_18327.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Modo Turbo sem clube nao preservou ofertas ou resultados 18.327.' }
       - name: Publicar codigo e relatorios 18.322
         if: always()
         uses: actions/upload-artifact@v4
