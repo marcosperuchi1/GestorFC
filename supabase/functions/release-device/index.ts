@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await admin.from('device_authorizations')
-    .update({ revoked_at: new Date().toISOString() })
+    .delete()
     .eq('user_id', user.id)
     .eq('device_hash', deviceHash)
     .is('revoked_at', null)
