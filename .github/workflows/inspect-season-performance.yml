@@ -33,6 +33,10 @@ on:
       - '.github/scripts/test_champions_retirement_18322.py'
       - '.github/scripts/optimize_unemployed_turbo_18327.py'
       - '.github/scripts/test_unemployed_turbo_18327.py'
+      - '.github/scripts/device_session_patch_18329.js'
+      - '.github/scripts/fix_device_sessions_18329.py'
+      - '.github/scripts/test_device_sessions_18329.py'
+      - 'supabase/functions/release-device/index.ts'
       - '.github/scripts/build_desktop_season_18310.ps1'
       - '.github/workflows/build-season-sync-18310.yml'
   workflow_dispatch:
@@ -162,6 +166,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar modo Turbo apos demissao 18.327.' }
           python .github/scripts/test_unemployed_turbo_18327.py "$env:FUTBR_INSPECT_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'Modo Turbo sem clube nao preservou ofertas ou resultados 18.327.' }
+          python .github/scripts/fix_device_sessions_18329.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar correcoes de dispositivos 18.329.' }
+          python .github/scripts/test_device_sessions_18329.py "$env:FUTBR_INSPECT_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha na validacao de logout e dispositivos 18.329.' }
       - name: Publicar codigo e relatorios 18.322
         if: always()
         uses: actions/upload-artifact@v4
