@@ -39,7 +39,7 @@ for(let t=0;t<teamCount;t++){
 }
 const state={teams,user:1,year:2026,day:1,schedule:[1,2],v638ScoutSeq:0};
 const own=teams[0];
-const byId=Object.fromEntries(players.map(x=>[x.id,x]));
+const byId=Object.fromEntries(players.filter(Boolean).map(x=>[x.id,x]));
 const E={human:()=>own,player:(_,id)=>byId[id],attributes:p=>p.attributes,overall:p=>55+(p.id%39),transferPrice:(_,id)=>id%100*1000000,value:p=>p.id%100*1000000,clamp:(n,a,b)=>Math.min(b,Math.max(a,n))};
 const V529_VALUE_BANDS={any:[0,Infinity]};
 const q={scope:'both',pos:'all',maxAge:40,minOvr:35,minPot:45,attr1:'none',attr2:'none',minAttr1:1,minAttr2:1,valueBand:'any',cashMode:'any'};
