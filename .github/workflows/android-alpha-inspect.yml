@@ -1,0 +1,51 @@
+name: Diagnose FutBR Android Source
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/android-alpha]
+    paths: ['.github/workflows/android-alpha-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Tauri source, configuration and asset sizes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib,zipfile,hashlib,json,os,re,collections
+          root=pathlib.Path('.')
+          parts=sorted(root.glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts, 'Archive chunks missing'
+          z=pathlib.Path('/tmp/futbr-source.zip')
+          with z.open('wb') as output:
+            for p in parts:
+              with p.open('rb') as f:
+                while (chunk:=f.read(1024*1024)):
+                  output.write(chunk)
+          expected=(root/'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt').read_text().split()[0].lower()
+          print('ZIP_SHA256_VALID',hashlib.file_digest(z.open('rb'),'sha256').hexdigest()==expected,flush=True)
+          with zipfile.ZipFile(z) as f:
+            infos=f.infolist()
+            print('TOTAL_FILES',len(infos),'UNCOMPRESSED',sum(x.file_size for x in infos),flush=True)
+            print('TOP_FILE_SIZES',json.dumps([[x.filename,x.file_size] for x in sorted(infos,key=lambda a:-a.file_size)[:30]],ensure_ascii=False),flush=True)
+            for inf in infos:
+              if inf.filename.endswith(('/src-tauri/tauri.conf.json','/src-tauri/Cargo.toml','/package.json','/src-tauri/build.rs','/src-tauri/src/main.rs','/src-tauri/src/lib.rs','.gitignore')):
+                data=f.read(inf).decode('utf-8','replace')
+                if inf.filename.endswith('/src-tauri/src/lib.rs'):
+                  print('RUST_LIB_HEAD',data[:2600],flush=True)
+                  print('RUST_LIB_MOBILE_REFS',[(m.group(0),m.start()) for m in list(re.finditer('windows|plugin|desktop|sqlite',data,re.I))[:24]],flush=True)
+                else:
+                  print('FILE',inf.filename, data[:15000],flush=True)
+            html_candidates=[x for x in infos if x.filename.endswith('/src/index.html')]
+            if len(html_candidates)==1:
+              data=f.read(html_candidates[0]).decode('utf-8','replace')
+              print('HTML_LENGTH',len(data),flush=True)
+              print('HTML_HEAD',data[:5500],flush=True)
+              for word in ('FutBRDesktop','futbr-desktop','directStorage','rosters.v310.bin','assets/data','Content-Security-Policy','navigator.userAgent','localStorage','indexedDB','Tauri'):
+                print('HTML_COUNT',word,data.count(word),flush=True)
+              print('HTML_TAIL',data[-2500:],flush=True)
+          PY
