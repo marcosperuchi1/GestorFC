@@ -73,7 +73,7 @@ jobs:
           print('=== FULL TARGET FUNCTIONS ===',flush=True)
           targets=['v638CandidateUniverse','v638SortedCandidates','v638StoreMissionReports','v638CreateMission','v638UpdateMissions','v638ScoutStatusHTML','v638MissionResultsHTML','v638Stage','v638Department']
           for name in targets:
-            match=re.search(r'function\\s+'+re.escape(name)+r'\\s*\\(',source)
+            match=re.search(r'function\s+'+re.escape(name)+r'\s*\(',source)
             if not match:
               print('MISSING',name,flush=True); continue
             start=match.start()
