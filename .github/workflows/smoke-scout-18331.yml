@@ -1,0 +1,42 @@
+name: Smoke Test Olheiro 18.331
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/smoke-scout-18331.yml', '.github/scripts/optimize_scout_18331.py', '.github/scripts/test_scout_18331.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Teste isolado Olheiro
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,tempfile,hashlib,subprocess,sys
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          z=pathlib.Path('source-scout.zip')
+          with z.open('wb') as o:
+            for p in parts:
+              with p.open('rb') as f:
+                while c:=f.read(1024*1024):o.write(c)
+          expected=pathlib.Path('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt').read_text().split()[0]
+          assert hashlib.sha256(z.read_bytes()).hexdigest().lower()==expected.lower()
+          with zipfile.ZipFile(z) as src:
+            names=[x for x in src.namelist() if x.endswith('/src/index.html')]
+            assert len(names)==1
+            index=pathlib.Path(names[0])
+            index.parent.mkdir(parents=True,exist_ok=True)
+            index.write_bytes(src.read(names[0]))
+          project=pathlib.Path('FutBR_Manager_Desktop_RC1')
+          for script in ('optimize_scout_18331','test_scout_18331'):
+            subprocess.run([sys.executable,'.github/scripts/'+script+'.py',str(project)],check=True)
+          PY
