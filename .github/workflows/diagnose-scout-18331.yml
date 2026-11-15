@@ -96,6 +96,6 @@ jobs:
             print('FUNCTION',name,'LEN',len(code),'LINE',source.count('\\n',0,start)+1,flush=True)
             print(code[:18000],flush=True)
           print('=== ACTION SITES ===',flush=True)
-          for m in list(re.finditer(r'v638CreateMission\\(|v638-scout-send|v638-scout-start|v638-scout-order|v638-scout-dispatch',source))[-25:]:
+          for m in list(re.finditer(r'v638CreateMission\(|v638-scout-send|v638-scout-start|v638-scout-order|v638-scout-dispatch',source))[-25:]:
             print('ACTION',m.start(),repr(source[max(0,m.start()-350):m.start()+500]),flush=True)
           PY
