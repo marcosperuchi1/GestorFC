@@ -14,7 +14,7 @@ concurrency:
 jobs:
   android-apk:
     name: Montar FutBR 18.331 e gerar APK ARM64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       CI: "true"
@@ -32,17 +32,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src-tauri -> target
 
       - name: Preparar Android SDK e NDK
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
+          command -v sdkmanager
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" >/dev/null
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
