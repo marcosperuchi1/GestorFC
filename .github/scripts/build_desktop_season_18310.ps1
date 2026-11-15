@@ -34,6 +34,8 @@ Run-Python '.github/scripts/optimize_unemployed_turbo_18327.py'
 Run-Python '.github/scripts/test_unemployed_turbo_18327.py'
 Run-Python '.github/scripts/fix_device_sessions_18329.py'
 Run-Python '.github/scripts/test_device_sessions_18329.py'
+Run-Python '.github/scripts/optimize_scout_18331.py'
+Run-Python '.github/scripts/test_scout_18331.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -72,6 +74,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'device-sessions-18329-install.json' 'artifacts/device-sessions-18329-install.json'
   Copy-Item 'device-sessions-18329-tests.json' 'artifacts/device-sessions-18329-tests.json'
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
+  Copy-Item 'scout-18331-install.json' 'artifacts/scout-18331-install.json'
+  Copy-Item 'scout-18331-tests.json' 'artifacts/scout-18331-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }

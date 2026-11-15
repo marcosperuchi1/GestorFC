@@ -1,4 +1,4 @@
-name: Build FutBR Manager 18.330 - identidade persistente Windows
+name: Build FutBR Manager 18.331 - identidade persistente Windows
 on:
   workflow_run:
     workflows: ['Validar sincronizacao e temporadas 18.310']
@@ -62,7 +62,7 @@ jobs:
       - name: Disponibilizar instalador para teste
         uses: actions/upload-artifact@v4
         with:
-          name: FutBR-Manager-18.330-Windows
+          name: FutBR-Manager-18.331-Windows
           path: |
             ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
@@ -94,6 +94,8 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-turbo-18327-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/device-sessions-18329-install.json
             ${{ env.FUTBR_PROJECT }}/artifacts/device-sessions-18329-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scout-18331-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scout-18331-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/create-performance-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/architecture-validation.json
           if-no-files-found: error
