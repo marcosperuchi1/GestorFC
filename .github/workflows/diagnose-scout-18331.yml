@@ -1,0 +1,73 @@
+name: Diagnostico isolado Olheiro 18.331
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-scout-18331.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Examinar o codigo fonte do Olheiro
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib, zipfile, re, collections, hashlib
+          root=pathlib.Path.cwd()
+          parts=sorted(root.glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          if not parts: raise Exception('source parts missing')
+          p=pathlib.Path('scout_source.zip')
+          with p.open('wb') as f:
+            for x in parts:
+              with x.open('rb') as r:
+                while True:
+                  chunk=r.read(1024*1024)
+                  if not chunk:break
+                  f.write(chunk)
+          with zipfile.ZipFile(p) as z:
+            names=z.namelist()
+            matches=[n for n in names if n.endswith('/src/index.html')]
+            print('HTML PATHS',matches,flush=True)
+            if not matches: raise Exception('index.html not in zip')
+            source=z.read(matches[0]).decode('utf-8','replace')
+          print('SCOUT_SOURCE_BYTES',len(source.encode('utf-8')),'LINES',source.count('\n')+1,flush=True)
+          terms=['olheiro','Olheiro','scout','Scout','missao','mission','avaliarJogador','searchPlayers']
+          for term in terms:
+            loc=[m.start() for m in re.finditer(re.escape(term),source)]
+            print('COUNT',term,len(loc), flush=True)
+          lines=source.splitlines()
+          candidates=[]
+          for i,line in enumerate(lines):
+            low=line.lower()
+            if any(k in low for k in ['scout','olheiro','missao de olheiro']):
+              if any(k in low for k in ['function ','const ','let ','=>','filter(','.map(','.sort(','window.','addEventListener','foreach','for(']):
+                candidates.append(i)
+          print('FUNCTION CANDIDATES',len(candidates), flush=True)
+          seen=set()
+          for i in candidates[:100]:
+            s=max(0,i-3);e=min(len(lines),i+5)
+            if any(j in seen for j in range(s,e)):continue
+            seen.update(range(s,e))
+            print('---LINES',s+1,'-',e,'---', flush=True)
+            for j in range(s,e):
+              line=lines[j]
+              if len(line)>900:
+                pos=min((line.lower().find(k) for k in ['scout','olheiro','missao'] if k in line.lower()), default=0)
+                line=line[max(0,pos-250):pos+650]
+              print(f'{j+1}: {line}',flush=True)
+          # searchable raw excerpts, including non-line oriented sources
+          for term in ('function startScout','function scout','scoutMission','scoutMissions','olheiro','Olheiro','missaoScout','olheiroMissao'):
+            hits=list(re.finditer(re.escape(term),source,re.I))
+            print('=== TERM',term,'HITS',len(hits),'===',flush=True)
+            for m in hits[:8]:
+              pos=m.start()
+              print('CHAR',pos,'LINE',source.count('\n',0,pos)+1,repr(source[max(0,pos-300):pos+900]),flush=True)
+          PY
