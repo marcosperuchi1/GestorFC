@@ -1,0 +1,120 @@
+name: Build FutBR Manager Android Alpha (APK)
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/android-alpha]
+    paths:
+      - '.github/workflows/build-android-alpha.yml'
+      - '.github/scripts/prepare_android_alpha.py'
+permissions:
+  contents: read
+concurrency:
+  group: futbr-android-alpha-apk
+  cancel-in-progress: true
+jobs:
+  android-apk:
+    name: Montar FutBR 18.331 e gerar APK ARM64
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "true"
+      PYTHONUNBUFFERED: "1"
+      RUST_BACKTRACE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src-tauri -> target
+
+      - name: Preparar Android SDK e NDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" >/dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          java -version
+          rustup target list --installed
+
+      - name: Instalar requisitos de preparacao da base
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+
+      - name: Montar fonte e aplicar melhorias do Windows 18.301
+        run: python .github/scripts/inspect_season_performance.py
+
+      - name: Aplicar atualizacoes do motor ate 18.331
+        run: |
+          set -euo pipefail
+          project="$FUTBR_INSPECT_PROJECT"
+          for script in \
+            optimize_season_sync_18310 \
+            fix_new_season_vacation_18311 \
+            optimize_rankings_finals_18312 \
+            optimize_career_runtime_18313 \
+            fix_rank_details_18314 \
+            fix_rank_titles_sparse_18315 \
+            fix_rank_rollover_18316 \
+            fix_rank_titles_18317 \
+            rebuild_rankings_18318 \
+            clean_rankings_18320 \
+            fix_rankings_ui_18321 \
+            feature_champions_retirement_18322 \
+            optimize_unemployed_turbo_18327 \
+            fix_device_sessions_18329 \
+            optimize_scout_18331; do
+              echo "PATCH $script"
+              python ".github/scripts/$script.py" "$project"
+          done
+          python .github/scripts/test_scout_18331.py "$project"
+
+      - name: Preparar Tauri mobile e base offline
+        run: |
+          set -euo pipefail
+          python .github/scripts/prepare_android_alpha.py prepare "$FUTBR_INSPECT_PROJECT"
+          cd "$FUTBR_INSPECT_PROJECT"
+          npm install --no-audit --no-fund
+          npm run tauri -- android init --ci --skip-targets-install
+          python "$GITHUB_WORKSPACE/.github/scripts/prepare_android_alpha.py" manifest "$FUTBR_INSPECT_PROJECT"
+
+      - name: Compilar APK Android instalavel (debug, ARM64)
+        working-directory: ${{ env.FUTBR_INSPECT_PROJECT }}
+        run: |
+          npm run tauri -- android build --debug --apk --target aarch64 --ci
+
+      - name: Validar e preparar artefato APK
+        run: |
+          set -euo pipefail
+          project="$FUTBR_INSPECT_PROJECT"
+          mkdir -p "$GITHUB_WORKSPACE/android-output"
+          find "$project/src-tauri/gen/android/app/build/outputs" -type f -name '*.apk' -print
+          apk="$(find "$project/src-tauri/gen/android/app/build/outputs" -type f -name '*debug.apk' -print -quit)"
+          if [ -z "$apk" ]; then echo "ERROR: APK debug nao gerado" >&2; exit 1; fi
+          cp "$apk" "$GITHUB_WORKSPACE/android-output/FutBR-Manager-Android-Alpha-ARM64.apk"
+          cp "$project/android-alpha-report.json" "$GITHUB_WORKSPACE/android-output/"
+          sha256sum "$GITHUB_WORKSPACE/android-output/"*.apk > "$GITHUB_WORKSPACE/android-output/SHA256SUMS.txt"
+          if command -v aapt >/dev/null; then aapt dump badging "$GITHUB_WORKSPACE/android-output/FutBR-Manager-Android-Alpha-ARM64.apk" | head -n 18; fi
+          echo "APK_SIZE:"
+          ls -lh "$GITHUB_WORKSPACE/android-output/"
+
+      - name: Disponibilizar APK para teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-Android-Alpha-ARM64
+          path: android-output/*
+          if-no-files-found: error
+          retention-days: 7
