@@ -1,0 +1,46 @@
+name: Preparar chaves FutBR sem instalar programas
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/generate-signing-keys-18339.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-one-time-signing-key-generator
+  cancel-in-progress: false
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Prepare Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate updater signing keys without exposing content to logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/futbr-secrets"
+          cd "$RUNNER_TEMP/futbr-secrets"
+          if ! npx --yes @tauri-apps/cli@2 signer generate --ci --password '' --write-keys futbr-manager.key > /dev/null 2>&1; then
+            echo "::error::Falha ao gerar o par de chaves Tauri, sem expor informacoes privadas."
+            exit 1
+          fi
+          test -s futbr-manager.key
+          test -s futbr-manager.key.pub
+          printf 'Arquivos criados: futbr-manager.key (PRIVADO) e futbr-manager.key.pub (PUBLICO).\n'
+          printf 'Copie a chave privada para GitHub Actions Secret TAURI_SIGNING_PRIVATE_KEY.\n'
+          printf 'Copie a chave publica para GitHub Actions Variable FUTBR_UPDATER_PUBLIC_KEY.\n'
+          printf 'Nao envie nenhuma chave por chat ou email.\n'
+      - name: Download one-time keys for GitHub Actions setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18339-CHAVES-PRIVADAS-CADASTRAR-E-EXCLUIR
+          path: |
+            ${{ runner.temp }}/futbr-secrets/futbr-manager.key
+            __TEMP__/futbr-secrets/futbr-manager.key.pub
+          if-no-files-found: error
+          retention-days: 1
