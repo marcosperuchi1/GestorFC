@@ -1,0 +1,43 @@
+name: Analyze FutBR Android responsive markup 18.334
+on:
+  push:
+    branches: [mobile/android-18334-responsive]
+    paths: ['.github/workflows/inspect-mobile-markup-18334.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect source markup and CSS constraints
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib,zipfile,re,hashlib
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts
+          p=pathlib.Path('/tmp/futbr-inspect.zip')
+          with p.open('wb') as out:
+            for part in parts:
+              with part.open('rb') as f:
+                while (chunk:=f.read(1024*1024)):out.write(chunk)
+          with zipfile.ZipFile(p) as z:
+            names=[x for x in z.namelist() if x.endswith('/src/index.html')]
+            assert len(names)==1,names
+            src=z.read(names[0]).decode('utf-8')
+          print('HTML_BYTES',len(src),flush=True)
+          terms=['class="v548-auth','class="v548-auth-shell','class="v548-auth-card','class="welcome','class="setup-card','class="main-wrap','class="sidebar','class="topbar','function renderWelcome','function v548','function careerPage','function v570','v548-auth-shell','v570-career-start','data-action="new-career"']
+          for term in terms:
+            hits=list(re.finditer(re.escape(term),src))
+            print('\n==== TERM',term,'COUNT',len(hits),'====',flush=True)
+            for m in hits[:3]+hits[-2:]:
+              print('L',src.count('\n',0,m.start())+1,'AT',m.start(),'TEXT',repr(src[max(0,m.start()-220):m.start()+800]),flush=True)
+          for name in ('renderWelcome','v548AuthPage','v548RenderAuth','v570CareerStart','careerPage'):
+            matches=list(re.finditer(r'function\\s+'+re.escape(name)+r'\\s*\\(',src))
+            for match in matches[-2:]:
+              print('\n==== FUNCTION',name,'LINE',src.count('\n',0,match.start())+1,'====',flush=True)
+              print(src[match.start():match.start()+4200],flush=True)
+          PY
