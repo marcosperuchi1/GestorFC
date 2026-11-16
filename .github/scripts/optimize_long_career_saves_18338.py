@@ -92,7 +92,14 @@ def main():
         raise RuntimeError('18.338 already installed; start with a clean source')
     for marker in ('FUTBR_UNEMPLOYED_RESUME_18334_BEGIN','FUTBR_MANUAL_ADVANCE_18326_START','function v18183DbWriteMany','async function saveSharded'):
         if marker not in src:raise RuntimeError('Missing validated Windows baseline: '+marker)
-    src=once(src,OLD_ENSURE,NEW_ENSURE,'named save / exit checkpoint fast path')
+    begin=src.find("async function ensureSaved(){")
+    finish=src.find("\\nasync function archiveCurrent(",begin)
+    if begin<0 or finish<0 or src.count("async function ensureSaved(){")!=1:
+        raise RuntimeError('18.338 named save / exit function not found')
+    legacy=src[begin:finish]
+    if "const clean=!!state&&!v52SavePromise&&!v52SaveDirty&&!v52PendingState" not in legacy:
+        raise RuntimeError('18.338 unexpected pre-existing save implementation')
+    src=src[:begin]+NEW_ENSURE+src[finish:]
     # The UI save now processes at most 1600 players in one native IPC batch
     # for later seasons, rather than 17600. No players or fields are dropped.
     src=once(src,
@@ -120,7 +127,7 @@ def main():
     # The save only reclaims expendable workers and memoized UI caches; not
     # historical records. Existing checkpoint/manifest commit remains atomic.
     src=once(src,
-        "  const basePersist=persist;persist=function(notify=false){if(nextEmploymentPersist)",
+        " const basePersist=persist;persist=function(notify=false){if(nextEmploymentPersist)",
         NATIVE_RELEASE+"  const basePersist=persist;persist=function(notify=false){if(nextEmploymentPersist)",
         'pre-save transient memory release')
     src=once(src,
