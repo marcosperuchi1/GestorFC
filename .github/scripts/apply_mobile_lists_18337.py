@@ -292,6 +292,7 @@ JS=r"""
     }
   }
  }
+ }
  function scan(){
   queued=false;
   updateCompetitionFlag();
