@@ -1,0 +1,49 @@
+name: Inspecao detalhada da base inicial 18.340
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/inspect-18340-schema.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspecionar arquivo base, schema e metodos de compactacao
+        run: |
+          python3 - <<'PY'
+          import base64,gzip,zipfile,re,json,io
+          from pathlib import Path
+          paths=sorted(Path('.github/scripts').glob('consolidate_initial_database.py.gz.b64.part*'))
+          script=gzip.decompress(base64.b64decode(''.join(p.read_text().strip() for p in paths))).decode()
+          lines=script.splitlines()
+          print("BEGIN_CONSOLIDATOR_1_115")
+          for i in range(0,115):print(f"{i+1}: {lines[i]}")
+          print("END_CONSOLIDATOR_1_115")
+          print("BEGIN_CONSOLIDATOR_140_265")
+          for i in range(139,265):print(f"{i+1}: {lines[i]}")
+          print("END_CONSOLIDATOR_140_265")
+          zip_parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          print('ZIP_PARTS',[(p.name,p.stat().st_size) for p in zip_parts])
+          z=zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in zip_parts)))
+          names=z.namelist()
+          print("ZIP_FILES",len(names),"ROSTERS",[(i,z.getinfo(i).file_size) for i in names if 'roster' in i.lower() or 'index.html' in i.lower()][:35])
+          html_names=[n for n in names if n.endswith('src/index.html')]
+          if html_names:
+              html=z.read(html_names[0]).decode('utf-8')
+              for needle in ('Matt Baddie','Matt Badie','Badie','Baddie','Roberto Firmino','Hekari United','score-query','v641-score-query','const WorldCatalog','V310_ROSTER_INDEX'):
+                  hits=list(re.finditer(re.escape(needle),html,re.I))
+                  print("ORIGINAL",needle,"count",len(hits))
+                  for m in hits[:2]:
+                      print('SRC_CONTEXT',needle,repr(html[max(0,m.start()-200):m.start()+300]))
+          for n in names:
+              if n.endswith('rosters.v310.bin'):
+                  raw=z.read(n)
+                  print("BUNDLED_ROSTERS_BYTES",len(raw))
+                  for needle in (b'Firmino',b'Baddie',b'Badie'):
+                      print('ROSTER_SEARCH',needle.decode(),raw.find(needle))
+                  break
+          PY
