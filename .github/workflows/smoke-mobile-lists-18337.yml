@@ -1,0 +1,40 @@
+name: Smoke Mobile 18.337 compact squad and league lists
+on:
+  push:
+    branches: [mobile/android-18337-lists]
+    paths:
+      - '.github/workflows/smoke-mobile-lists-18337.yml'
+      - '.github/scripts/apply_mobile_lists_18337.py'
+      - '.github/scripts/test_mobile_lists_18337.py'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium smoke dependencies
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+      - name: Test list rendering and touch behavior without rebuilding game
+        run: |
+          python - <<'PY'
+          import runpy
+          from pathlib import Path
+          a=runpy.run_path('.github/scripts/apply_mobile_responsive_18335.py')
+          b=runpy.run_path('.github/scripts/apply_mobile_internal_pages_18336.py')
+          c=runpy.run_path('.github/scripts/apply_mobile_lists_18337.py')
+          root=Path('/tmp/futbr-mobile-smoke-18337')
+          (root/'src').mkdir(parents=True,exist_ok=True)
+          html='<!doctype html><html><head></head><body>'
+          html+='<!-- FUTBR_UNEMPLOYED_RESUME_18334_BEGIN -->'
+          html+=a['STYLE']+a['SCRIPT']+b['CSS']+b['JS']+c['CSS']+c['JS']
+          html+='</body></html>'
+          (root/'src'/'index.html').write_text(html,encoding='utf8')
+          PY
+          python .github/scripts/test_mobile_lists_18337.py /tmp/futbr-mobile-smoke-18337
