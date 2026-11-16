@@ -1,0 +1,58 @@
+name: Diagnose FutBR Windows memory and save performance 18.338
+on:
+  push:
+    branches: [perf-windows-18338]
+    paths:
+      - '.github/workflows/inspect-perf-windows-18338.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild baseline source using validated pipeline
+        run: python .github/scripts/inspect_season_performance.py
+      - name: Apply current vacation checkpoint and season patches
+        run: |
+          python .github/scripts/optimize_season_sync_18310.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_new_season_vacation_18311.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/optimize_rankings_finals_18312.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/optimize_career_runtime_18313.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_rank_details_18314.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_rank_titles_sparse_18315.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_rank_rollover_18316.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_rank_titles_18317.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/rebuild_rankings_18318.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/clean_rankings_18320.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_rankings_ui_18321.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/feature_champions_retirement_18322.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/optimize_unemployed_turbo_18327.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_device_sessions_18329.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/optimize_scout_18331.py "$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/fix_unemployed_resume_18334.py "$FUTBR_INSPECT_PROJECT"
+          python - <<'PY'
+          import os, re, json
+          from pathlib import Path
+          p=Path(os.environ['FUTBR_INSPECT_PROJECT'])
+          s=(p/'src/index.html').read_text(encoding='utf-8')
+          patterns=['saveSharded','v52FlushSave','async function doSave(','async function v53StartSimulation(','streamVacationWorld125','E.nextSeason(state)','function v169','v53PatchQueue','function v18310VacationRows','async function save(s)','function v171Save','history_store_season','v171DropManifest','v52SaveTimer','v52SavePromise','window.FutBRDesktop.writeMany']
+          positions={k:[m.start() for m in re.finditer(re.escape(k),s)][:30] for k in patterns}
+          (p/'performance-source-index.json').write_text(json.dumps({'chars':len(s),'patterns':positions},indent=2))
+          print(json.dumps({'source_chars':len(s),'pattern_counts':{k:len(v) for k,v in positions.items()}}))
+          PY
+      - name: Upload reconstructed Windows source for save/season performance QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Windows-18338-Performance-Source
+          path: |
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src/index.html
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/src-tauri/src/lib.rs
+            ${{ runner.temp }}/futbr-season-inspection/FutBR_Manager_Desktop_RC1/performance-source-index.json
+          retention-days: 1
+          if-no-files-found: error
