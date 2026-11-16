@@ -20,20 +20,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             candidates.insert(0, decoded_string);
         }
     }
-    let mut keybox = None;
+    let mut private = None;
     for candidate in &candidates {
+        let mut choices = vec![candidate.trim().to_owned()];
         for line in candidate.lines() {
-            if line.starts_with("untrusted comment:") || line.trim().is_empty() {
-                continue;
-            }
-            if let Ok(parsed) = SecretKeyBox::from_string(line.trim()) {
-                keybox = Some(parsed);
-                break;
+            if !line.starts_with("untrusted comment:") && !line.trim().is_empty() {
+                choices.push(format!("untrusted comment: minisign secret key\n{}\n", line.trim()));
             }
         }
-        if keybox.is_some() { break; }
+        for choice in choices {
+            if let Ok(secret_box) = SecretKeyBox::from_string(&choice) {
+                if let Ok(secret) = SecretKey::from_box(secret_box, Some(pass.clone())) {
+                    private = Some(secret);
+                    break;
+                }
+            }
+        }
+        if private.is_some() { break; }
     }
-    let private = SecretKey::from_box(keybox.ok_or("could not parse the existing Tauri signing key")?, Some(pass))?;
+    let private = private.ok_or("could not load existing Tauri signing private key; invalid key or passphrase")?;
     let public = PublicKey::from_secret_key(&private)?;
     let output_key = STANDARD.encode(public.to_box()?.into_string().as_bytes());
     // The public key can be shared. Keep its value out of logs to avoid accidental
