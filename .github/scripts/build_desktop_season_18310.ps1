@@ -36,6 +36,8 @@ Run-Python '.github/scripts/fix_device_sessions_18329.py'
 Run-Python '.github/scripts/test_device_sessions_18329.py'
 Run-Python '.github/scripts/optimize_scout_18331.py'
 Run-Python '.github/scripts/test_scout_18331.py'
+Run-Python '.github/scripts/fix_unemployed_resume_18334.py'
+Run-Python '.github/scripts/test_unemployed_resume_18334.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -76,6 +78,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'history-incremental-18310-tests.json' 'artifacts/history-incremental-18310-tests.json'
   Copy-Item 'scout-18331-install.json' 'artifacts/scout-18331-install.json'
   Copy-Item 'scout-18331-tests.json' 'artifacts/scout-18331-tests.json'
+  Copy-Item 'unemployed-resume-18334-install.json' 'artifacts/unemployed-resume-18334-install.json'
+  Copy-Item 'unemployed-resume-18334-tests.json' 'artifacts/unemployed-resume-18334-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -86,6 +90,8 @@ if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_details_18314.py
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_sparse_18315.py'")) { throw 'Arquitetura 18.315 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_rollover_18316.py'")) { throw 'Handoff 18.316 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/clean_rankings_18320.py'")) { throw 'Motor limpo 18.320 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_unemployed_resume_18334.py'")) { throw 'Recuperacao 18.334 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_resume_18334.py'")) { throw 'Teste 18.334 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_18317.py'")) { throw 'Motor de titulos 18.317 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
