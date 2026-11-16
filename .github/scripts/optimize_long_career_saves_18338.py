@@ -138,6 +138,19 @@ def main():
         "finally{v52SavePromise=null;waiters.forEach(r=>r());updateSaveStatus();try{if(v53Worker",
         "finally{if(saveOK&&!v52SaveDirty&&v52PendingState===current)v52PendingState=null;v52SavePromise=null;waiters.forEach(r=>r());updateSaveStatus();try{if(v53Worker",
         'discard stale pending reference after successful save')
+    # The UI previously decoded each vacation packet to a packed array and then
+    # allocated a second 900-row array of expanded player objects. Keep the same
+    # lossless codec but expand each player into the destination one by one.
+    src=once(src,
+        "return packed.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});",
+        "return {length:packed.length,*[Symbol.iterator](){for(const r of packed){const p=v18191uUnpackPlayer(r);yield [p.id,p];}}};",
+        'stream packed vacation players without a second expanded array')
+    # Reduce worker-side compressed checkpoint backlog in long careers, while
+    # keeping the same round-trip and UI ACK ordering. No history is discarded.
+    src=once(src,
+        "if(!checkpointMeta||!pending.length||(!force&&pending.length<8))return;",
+        "if(!checkpointMeta||!pending.length||(!force&&pending.length<(Number(world.year)>=2029?4:8)))return;",
+        'bounded in-flight vacation checkpoint backlog')
     # Strong invariants: snapshots remain sharded, atomic, and retain all history.
     for marker in ('await commitManifest(manifest,old,meta)','v538CareerArchive','v555CareerArchive',
                    'scorerArchive','internationalHistory','v735NationalArchive','allTimeStats',
@@ -153,6 +166,7 @@ def main():
       'workerReleasedBeforeHeavyManualSave':True,
       'playerRowsPerChunkEarly':1600,'playerRowsPerChunkYear2029Plus':800,
       'playerChunksPerIPCYear2029Plus':2,'playerReadChunksYear2029Plus':4,
+      'vacationCheckpointPendingYear2029Plus':4,'vacationPlayerIterativeDecode':True,
       'existingAtomicManifestCommit':True,'careerHistoryRetention':'unchanged',
       'sqliteCareerTotalsRetention':'unchanged','playerFieldCodec':'unchanged',
     }
