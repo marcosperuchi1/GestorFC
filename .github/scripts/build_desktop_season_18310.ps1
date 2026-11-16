@@ -47,6 +47,7 @@ Run-Python '.github/scripts/test_desktop_updater_18339.py'
 Run-Python '.github/scripts/fix_scorers_submit_18340.py'
 Run-Python '.github/scripts/test_scorers_submit_18340.py'
 Run-Python '.github/scripts/set_desktop_version_18340.py'
+Run-Python '.github/scripts/set_desktop_version_18341.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -105,6 +106,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'scorers-submit-18340-install.json' 'artifacts/scorers-submit-18340-install.json'
    Copy-Item 'scorers-submit-18340-tests.json' 'artifacts/scorers-submit-18340-tests.json'
    Copy-Item 'desktop-version-18340-install.json' 'artifacts/desktop-version-18340-install.json'
+   Copy-Item 'desktop-version-18341-install.json' 'artifacts/desktop-version-18341-install.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -124,6 +126,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_18317.py'
 if (-not $source.Contains("Run-Python '.github/scripts/fix_initial_nationalities_18340.py'")) { throw 'Correcao base inicial 18.340 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_initial_nationalities_18340.py'")) { throw 'Teste da base 18.340 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_scorers_submit_18340.py'")) { throw 'Busca explicita de Artilheiros 18.340 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18341.py'")) { throw 'Reparo de assinatura Windows 18.341 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
