@@ -1,0 +1,47 @@
+name: Smoke 18.339 - linha do tempo real dos jogadores
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/smoke-player-career-18339.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Baixar fonte real validada sem compilar Windows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-18339-career
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-18339-career
+          test -f /tmp/futbr-18339-career/src/index.html
+      - name: Aplicar correcao de saves 18.338
+        run: python .github/scripts/optimize_long_career_saves_18338.py /tmp/futbr-18339-career
+      - name: Preservar validações 2031, historicos e SQLite
+        run: |
+          python .github/scripts/test_long_career_saves_18338.py /tmp/futbr-18339-career
+          python .github/scripts/test_history_incremental_18310.py /tmp/futbr-18339-career
+      - name: Corrigir e validar a linha do tempo real de cada atleta
+        run: |
+          python .github/scripts/fix_player_career_timeline_18339.py /tmp/futbr-18339-career
+          python .github/scripts/test_player_career_timeline_18339.py /tmp/futbr-18339-career
+      - name: Upload sem expor saves de usuarios
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18339-Player-Timeline-Regression
+          path: |
+            /tmp/futbr-18339-career/career-timeline-18339-tests.json
+            /tmp/futbr-18339-career/career-timeline-18339-install.json
+          if-no-files-found: error
+          retention-days: 7
