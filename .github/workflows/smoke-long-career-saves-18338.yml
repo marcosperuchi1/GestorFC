@@ -1,0 +1,48 @@
+name: Smoke 18.338 long-career save and memory integrity
+on:
+  push:
+    branches: [perf-windows-18338]
+    paths:
+      - '.github/workflows/smoke-long-career-saves-18338.yml'
+      - '.github/scripts/optimize_long_career_saves_18338.py'
+      - '.github/scripts/test_long_career_saves_18338.py'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: futbr-perf-18338-smoke
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retrieve verified 18.334 Windows game source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-perf-18338
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-perf-18338
+          test -f /tmp/futbr-perf-18338/src/index.html
+          test -f /tmp/futbr-perf-18338/src-tauri/src/lib.rs
+      - name: Patch Windows long-career save pipeline
+        run: python .github/scripts/optimize_long_career_saves_18338.py /tmp/futbr-perf-18338
+      - name: Verify 2031 exit, season transition, field and historical integrity
+        run: python .github/scripts/test_long_career_saves_18338.py /tmp/futbr-perf-18338
+      - name: Upload regression evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18338-Save-Integrity-Smoke
+          path: |
+            /tmp/futbr-perf-18338/long-career-saves-18338-install.json
+            /tmp/futbr-perf-18338/long-career-saves-18338-tests.json
+          retention-days: 7
+          if-no-files-found: error
