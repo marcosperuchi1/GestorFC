@@ -1,0 +1,8 @@
+[package]
+name = "derive_tauri_pubkey"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+minisign = "0.10"
