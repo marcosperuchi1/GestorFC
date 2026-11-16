@@ -53,6 +53,8 @@ async function ensureSaved(){
   }
   if(!matches(x)||!saveOK||v52SaveDirty||v52SavePromise)
    throw Error('O salvamento não corresponde à carreira e à jornada atuais. A cópia anterior foi preservada; tente salvar novamente.');
+  // A successful explicit save also finishes a 16.8 deferred rollover.
+  if(v168DeferredRolloverSave)v168DeferredRolloverSave=false;
   return x;
 }
 /* FUTBR_LONG_CAREER_SAVE_18338_END */
