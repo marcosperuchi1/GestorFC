@@ -76,12 +76,27 @@ jobs:
       - name: Single Windows build - all past fixes plus corrected update trust
         shell: pwsh
         run: .github/scripts/build_desktop_season_18310.ps1
-      - name: Cryptographically verify installer and gate publication
+      - name: Package signed candidate for restricted artifact retention
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           python .github/scripts/make_desktop_update_release_18341.py "$env:FUTBR_PROJECT"
-          if ($LASTEXITCODE -ne 0) { throw 'Missing 18.341 signed NSIS output.' }
+          if ($LASTEXITCODE -ne 0) { throw 'Missing signed 18.341 NSIS candidate.' }
+      - name: Upload restricted installer candidate before independent cryptographic verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.341-PRIVATE-CANDIDATE-DO-NOT-DISTRIBUTE
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.341-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.341-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Cryptographically verify installer and gate publication
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
           python .github/scripts/verify_desktop_updater_signature_18341.py "$env:FUTBR_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Public key does not match installer or release signature.' }
           $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
