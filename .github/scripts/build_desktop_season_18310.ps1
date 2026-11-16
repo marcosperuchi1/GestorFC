@@ -40,6 +40,8 @@ Run-Python '.github/scripts/fix_unemployed_resume_18334.py'
 Run-Python '.github/scripts/test_unemployed_resume_18334.py'
 Run-Python '.github/scripts/optimize_long_career_saves_18338.py'
 Run-Python '.github/scripts/test_long_career_saves_18338.py'
+Run-Python '.github/scripts/enable_desktop_updater_18339.py'
+Run-Python '.github/scripts/test_desktop_updater_18339.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -84,6 +86,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'unemployed-resume-18334-tests.json' 'artifacts/unemployed-resume-18334-tests.json'
   Copy-Item 'long-career-saves-18338-install.json' 'artifacts/long-career-saves-18338-install.json'
   Copy-Item 'long-career-saves-18338-tests.json' 'artifacts/long-career-saves-18338-tests.json'
+  Copy-Item 'desktop-updater-18339-install.json' 'artifacts/desktop-updater-18339-install.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -98,6 +101,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/fix_unemployed_resume_183
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_resume_18334.py'")) { throw 'Teste 18.334 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_long_career_saves_18338.py'")) { throw 'Otimizacao de saves 18.338 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_long_career_saves_18338.py'")) { throw 'Regressao de integridade de saves 18.338 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/enable_desktop_updater_18339.py'")) { throw 'Atualizador assinado 18.339 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_18317.py'")) { throw 'Motor de titulos 18.317 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
