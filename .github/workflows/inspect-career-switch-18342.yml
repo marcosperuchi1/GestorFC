@@ -1,0 +1,34 @@
+name: Inspect career-start mode state and preview markup for 18.342
+on:
+  push:
+    branches: [feature/desktop-18341-updater-signature-repair]
+    paths: ['.github/workflows/inspect-career-switch-18342.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/game-src
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/game-src
+      - name: Inspect exact selectors, handlers and preview effects
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('/tmp/game-src/src/index.html').read_text(encoding='utf-8')
+          terms=['data-v643-start','v643StartMode','v643Start','v738WelcomePolish','club-preview','national-preview','national-select','start-national','selectedNational','nationalCountry','v643National','v643-start','renderClubPreview=function','renderWelcome=function','start-country','v744','V744']
+          for term in terms:
+              hits=[m.start() for m in re.finditer(re.escape(term),html,re.I)]
+              print('OCCURRENCE',term,len(hits),'last',hits[-6:])
+              for p in hits[-3:]:
+                  print('CONTEXT',term,p,repr(html[max(0,p-900):p+1600]))
+          PY
