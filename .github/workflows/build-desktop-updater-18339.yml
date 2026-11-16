@@ -45,6 +45,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Updater 18.339 regression failed' }
           python .github/scripts/test_competition_history_context_18339.py
           if ($LASTEXITCODE -ne 0) { throw 'Contextual champions history 18.339 regression failed' }
+          python -m py_compile .github/scripts/fix_player_career_timeline_18339.py .github/scripts/test_player_career_timeline_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Player timeline Python syntax failed' }
       - name: Check signature key provisioning without exposing secrets
         shell: pwsh
         run: |
@@ -80,7 +82,7 @@ jobs:
           python .github/scripts/make_desktop_update_release_18339.py "$env:FUTBR_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'No signed NSIS update package' }
           $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
-          foreach ($name in @('FutBR-Manager-18.339-Windows.exe','FutBR-Manager-18.339-Windows.exe.sig','latest.json','SHA256SUMS.txt','desktop-updater-18339-install.json','long-career-saves-18338-tests.json','champions-retirement-18322-tests.json')) {
+          foreach ($name in @('FutBR-Manager-18.339-Windows.exe','FutBR-Manager-18.339-Windows.exe.sig','latest.json','SHA256SUMS.txt','desktop-updater-18339-install.json','career-timeline-18339-tests.json','long-career-saves-18338-tests.json','champions-retirement-18322-tests.json')) {
             if (-not (Test-Path (Join-Path $art $name))) { throw "Missing verification file: $name" }
           }
           $sha = (Get-FileHash (Join-Path $art 'FutBR-Manager-18.339-Windows.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -88,7 +90,8 @@ jobs:
           if ($sha -ne $expected) { throw 'Installer SHA256 mismatch' }
           $save = Get-Content (Join-Path $art 'long-career-saves-18338-tests.json') -Raw | ConvertFrom-Json
           $history = Get-Content (Join-Path $art 'champions-retirement-18322-tests.json') -Raw | ConvertFrom-Json
-          if (-not $save.ok -or -not $history.ok) { throw 'Career save or champions history regression' }
+          $timeline = Get-Content (Join-Path $art 'career-timeline-18339-tests.json') -Raw | ConvertFrom-Json
+          if (-not $save.ok -or -not $history.ok -or -not $timeline.ok -or -not $timeline.inter2026And2027Removed) { throw 'Career save, champions history or player timeline regression' }
           Write-Host 'Installer signed; history, long-career saves and checksum validated.'
       - name: Upload signed installer and update feed
         if: env.FUTBR_SIGNING_READY == 'true'
@@ -101,6 +104,7 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
             ${{ env.FUTBR_PROJECT }}/artifacts/desktop-updater-18339-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-timeline-18339-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/desktop-update-release-18339.json
             ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/champions-retirement-18322-tests.json
