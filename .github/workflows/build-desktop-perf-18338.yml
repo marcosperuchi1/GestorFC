@@ -1,0 +1,95 @@
+name: Build FutBR Manager 18.338 - saves e memoria longas temporadas
+on:
+  push:
+    branches: [perf-windows-18338]
+    paths:
+      - '.github/workflows/build-desktop-perf-18338.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-desktop-perf-18338
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Testar e gerar instalador Windows 18.338
+    runs-on: windows-latest
+    timeout-minutes: 110
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+    steps:
+      - name: Obter o codigo da versao 18.338
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar Rust para Windows
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Preparar navegador de testes
+        shell: pwsh
+        run: |
+          python -m pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw 'Falha na instalacao do Playwright' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Falha na instalacao do Chromium' }
+      - name: Compilar FutBR 18.338 com testes de 2031 e historicos
+        shell: pwsh
+        run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Confirmar testes de integridade, preservacao e instalador
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $artifactDir = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          $installer = Join-Path $artifactDir 'FutBR-Manager-Desktop-RC1-INSTALADOR.exe'
+          $report = Join-Path $artifactDir 'long-career-saves-18338-tests.json'
+          $unemployed = Join-Path $artifactDir 'unemployed-resume-18334-tests.json'
+          $seasonSync = Join-Path $artifactDir 'season-sync-18310-tests.json'
+          $historical = Join-Path $artifactDir 'history-incremental-18310-tests.json'
+          if (-not (Test-Path $installer)) { throw 'Instalador 18.338 nao foi gerado.' }
+          foreach ($f in @($report,$unemployed,$seasonSync,$historical)) {
+            if (-not (Test-Path $f)) { throw "Relatorio de integridade nao gerado: $f" }
+          }
+          $test = Get-Content $report -Raw | ConvertFrom-Json
+          if (-not $test.ok -or $test.version -ne '18.338' -or
+              -not $test.chunk.retainedPlayerExtras -or -not $test.chunk.retainedScorerArchive -or
+              -not $test.vacation.lossless -or -not $test.vacation.legacyCompatible -or
+              -not $test.release.noConcurrentWorkerTermination -or
+              [int]$test.chunk.maxNativeBatch -gt 2) {
+            throw 'Falha nos testes de seguranca do save e historico de 2031.'
+          }
+          $old = Get-Content $unemployed -Raw | ConvertFrom-Json
+          if (-not $old.ok -or -not $old.recovered2031) { throw 'Regressao 18.334 detectada.' }
+          $sync = Get-Content $seasonSync -Raw | ConvertFrom-Json
+          $history = Get-Content $historical -Raw | ConvertFrom-Json
+          if (-not $sync.ok -or -not $history.ok) { throw 'Integridade do historico ou da sincronizacao nao confirmada.' }
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  FutBR-Manager-Desktop-RC1-INSTALADOR.exe" | Set-Content (Join-Path $artifactDir 'SHA256SUMS.txt') -Encoding ascii
+          Write-Host "Instalador 18.338 verificado. SHA256=$hash"
+          Get-ChildItem $artifactDir | Select-Object Name,Length
+      - name: Publicar instalador Windows 18.338 otimizado
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.338-Windows-Performance
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-Desktop-RC1-INSTALADOR.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-sync-18310-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/history-incremental-18310-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-resume-18334-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-resume-18334-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-turbo-18327-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scout-18331-tests.json
+          if-no-files-found: error
+          retention-days: 7
+
+# 18.338 rebuilt on top of validated Windows 18.334, preserving every career archive.
