@@ -40,6 +40,8 @@ Run-Python '.github/scripts/fix_unemployed_resume_18334.py'
 Run-Python '.github/scripts/test_unemployed_resume_18334.py'
 Run-Python '.github/scripts/optimize_long_career_saves_18338.py'
 Run-Python '.github/scripts/test_long_career_saves_18338.py'
+Run-Python '.github/scripts/fix_player_career_timeline_18339.py'
+Run-Python '.github/scripts/test_player_career_timeline_18339.py'
 Run-Python '.github/scripts/enable_desktop_updater_18339.py'
 Run-Python '.github/scripts/test_desktop_updater_18339.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
@@ -87,6 +89,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'long-career-saves-18338-install.json' 'artifacts/long-career-saves-18338-install.json'
   Copy-Item 'long-career-saves-18338-tests.json' 'artifacts/long-career-saves-18338-tests.json'
   Copy-Item 'desktop-updater-18339-install.json' 'artifacts/desktop-updater-18339-install.json'
+  Copy-Item 'career-timeline-18339-install.json' 'artifacts/career-timeline-18339-install.json'
+  Copy-Item 'career-timeline-18339-tests.json' 'artifacts/career-timeline-18339-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
