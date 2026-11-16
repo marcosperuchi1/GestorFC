@@ -1,0 +1,44 @@
+name: Testar derivacao segura da chave Tauri 18.341
+on:
+  push:
+    branches: [feature/desktop-18340-auto-updates]
+    paths: ['.github/workflows/test-tauri-public-18341.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      FUTBR_UPDATER_PUBLIC_KEY: ${{ vars.FUTBR_UPDATER_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derivar chave publica apenas no runner
+        run: cargo run --release --quiet --manifest-path .github/tools/derive_tauri_pubkey/Cargo.toml -- /tmp/futbr-derived-updater-public.b64
+      - name: Exigir compatibilidade com assinatura 18.340 publicada
+        run: |
+          python3 - <<'PY'
+          import base64,urllib.request,os,re
+          from pathlib import Path
+          wrapped=Path('/tmp/futbr-derived-updater-public.b64').read_text().strip()
+          plain=base64.b64decode(wrapped,validate=True).decode('utf-8')
+          lines=[x.strip() for x in plain.splitlines() if re.fullmatch(r'RW[A-Za-z0-9+/=]+',x.strip())]
+          if len(lines)!=1:raise RuntimeError('Public key could not be decoded into a valid Tauri Minisign key')
+          raw=base64.b64decode(lines[0],validate=True)
+          if len(raw)!=42:raise RuntimeError('Unexpected public key binary length')
+          url='https://download.futbrmanager.com.br/updates/FutBR-Manager-18.340-Windows.exe.sig'
+          with urllib.request.urlopen(url,timeout=30) as r:sig_text=r.read().decode()
+          sig_plain=base64.b64decode(sig_text,validate=True).decode()
+          signature_candidates=[]
+          for line in sig_plain.splitlines():
+              try:z=base64.b64decode(line,validate=True)
+              except:continue
+              if len(z)==74:signature_candidates.append(z)
+          if len(signature_candidates)!=1:raise RuntimeError('Cannot decode existing Minisign signature')
+          matches=raw[2:10]==signature_candidates[0][2:10]
+          print('PUBLIC_DERIVATION_MATCHES_ACTIVE_PRIVATE_SIGNING_KEY='+str(matches).lower())
+          if not matches:raise RuntimeError('The derived key does not match signing key for release 18.340')
+          PY
