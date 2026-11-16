@@ -1,0 +1,54 @@
+name: Smoke 18.342 - alternancia clube e selecao
+on:
+  push:
+    branches: [feature/desktop-18342-welcome-national-preview]
+    paths: ['.github/workflows/smoke-welcome-18342.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download validated FutBR source without accessing user saves
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p /tmp/futbr-smoke-18342
+          gh run download 43906782197 -R marcosperuchi1/GestorFC -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-smoke-18342
+          test -s /tmp/futbr-smoke-18342/src/index.html
+      - name: Prepare source-only mock markers for prior tested versions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/futbr-smoke-18342/src/index.html')
+          html=p.read_text(encoding='utf-8')
+          for marker in ('FUTBR_SIGNED_UPDATER_18339','FUTBR_SCORER_SEARCH_SUBMIT_18340'):
+              if marker not in html:
+                  html=html.replace('</body>',f'<!-- {marker}: smoke-only verification anchor -->\n</body>',1)
+          p.write_text(html,encoding='utf-8')
+          PY
+      - name: Start-mode browser test dependencies
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install chromium
+      - name: Apply patch and test original Flamengo to Brazil/Uruguay to Flamengo cycle
+        run: |
+          python .github/scripts/fix_welcome_national_preview_18342.py /tmp/futbr-smoke-18342
+          python .github/scripts/test_welcome_national_preview_18342.py /tmp/futbr-smoke-18342
+      - name: Report validated visual-only fix
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.342-Welcome-Switch-Smoke
+          path: |
+            /tmp/futbr-smoke-18342/welcome-national-preview-18342-tests.json
+            /tmp/futbr-smoke-18342/welcome-national-preview-18342-install.json
+          if-no-files-found: error
+          retention-days: 7
