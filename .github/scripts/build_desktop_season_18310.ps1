@@ -44,11 +44,20 @@ Run-Python '.github/scripts/fix_player_career_timeline_18339.py'
 Run-Python '.github/scripts/test_player_career_timeline_18339.py'
 Run-Python '.github/scripts/enable_desktop_updater_18339.py'
 Run-Python '.github/scripts/test_desktop_updater_18339.py'
+Run-Python '.github/scripts/fix_scorers_submit_18340.py'
+Run-Python '.github/scripts/test_scorers_submit_18340.py'
+Run-Python '.github/scripts/set_desktop_version_18340.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
 "@.Trim()
 $source = $source.Replace($syncAnchor, $syncSteps)
+$initialAnchor = "Run-Python '.github/scripts/externalize_player_base.py'"
+if (-not $source.Contains($initialAnchor)) { throw 'Base inicial 18.340: etapa de externalizacao ausente.' }
+$source = $source.Replace($initialAnchor, "$initialAnchor`nRun-Python '.github/scripts/fix_initial_nationalities_18340.py'")
+$initialTestAnchor = "Run-Python '.github/scripts/test_initial_database.py'"
+if (-not $source.Contains($initialTestAnchor)) { throw 'Base inicial 18.340: teste do consolidador ausente.' }
+$source = $source.Replace($initialTestAnchor, "$initialTestAnchor`nRun-Python '.github/scripts/test_initial_nationalities_18340.py'")
 $reportAnchor = "Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json'"
 if (-not $source.Contains($reportAnchor)) { throw 'Ancora de relatorios ausente.' }
 $reportSteps = @"
@@ -91,6 +100,11 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-updater-18339-install.json' 'artifacts/desktop-updater-18339-install.json'
   Copy-Item 'career-timeline-18339-install.json' 'artifacts/career-timeline-18339-install.json'
   Copy-Item 'career-timeline-18339-tests.json' 'artifacts/career-timeline-18339-tests.json'
+   Copy-Item 'initial-nationalities-18340-install.json' 'artifacts/initial-nationalities-18340-install.json'
+   Copy-Item 'initial-nationalities-18340-tests.json' 'artifacts/initial-nationalities-18340-tests.json'
+   Copy-Item 'scorers-submit-18340-install.json' 'artifacts/scorers-submit-18340-install.json'
+   Copy-Item 'scorers-submit-18340-tests.json' 'artifacts/scorers-submit-18340-tests.json'
+   Copy-Item 'desktop-version-18340-install.json' 'artifacts/desktop-version-18340-install.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -107,6 +121,9 @@ if (-not $source.Contains("Run-Python '.github/scripts/optimize_long_career_save
 if (-not $source.Contains("Run-Python '.github/scripts/test_long_career_saves_18338.py'")) { throw 'Regressao de integridade de saves 18.338 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/enable_desktop_updater_18339.py'")) { throw 'Atualizador assinado 18.339 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_rank_titles_18317.py'")) { throw 'Motor de titulos 18.317 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_initial_nationalities_18340.py'")) { throw 'Correcao base inicial 18.340 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_initial_nationalities_18340.py'")) { throw 'Teste da base 18.340 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_scorers_submit_18340.py'")) { throw 'Busca explicita de Artilheiros 18.340 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
