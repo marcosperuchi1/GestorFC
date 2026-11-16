@@ -1,0 +1,69 @@
+name: Diagnosticar assinatura do atualizador FutBR sem expor chaves
+on:
+  push:
+    branches: [feature/desktop-18340-auto-updates]
+    paths: ['.github/workflows/diagnose-updater-key-18340.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FUTBR_UPDATER_PUBLIC_KEY: ${{ vars.FUTBR_UPDATER_PUBLIC_KEY }}
+    steps:
+      - name: Comparar IDs das chaves publicas e assinaturas oficiais
+        run: |
+          python3 - <<'PY'
+          import os,base64,urllib.request,json
+          pub_input=os.environ.get('FUTBR_UPDATER_PUBLIC_KEY','').strip().replace('\\n','\n')
+          def to_bytes(line,required=40):
+              raw=base64.b64decode(line.strip(),validate=True)
+              if len(raw)<required:raise ValueError('short minisign key or signature')
+              return raw
+          def key_id_from_public(s):
+              if not s: raise ValueError('Empty GitHub public key')
+              try:
+                  decoded=base64.b64decode(s,validate=True).decode('utf-8')
+              except (ValueError, UnicodeDecodeError):
+                  decoded=s
+              for line in decoded.splitlines():
+                  if line.startswith('RW'):
+                      data=to_bytes(line,42)
+                      if len(data)!=42:raise ValueError('Unexpected pubkey length')
+                      return data[2:10],data[:2]
+              raise ValueError('No Minisign public key found')
+          def sig_id(s):
+              txt=s.strip()
+              try: txt=base64.b64decode(txt,validate=True).decode('utf-8')
+              except (ValueError,UnicodeDecodeError):pass
+              for line in txt.splitlines():
+                  try: data=to_bytes(line,74)
+                  except (ValueError,UnicodeDecodeError):continue
+                  if len(data)==74:return data[2:10],data[:2]
+              raise ValueError('No Minisign signature found')
+          def get(url):
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'FutBR-key-diagnostic/1.0'}),timeout=30) as r:
+                  return r.read()
+          pub,palg=key_id_from_public(pub_input)
+          base='https://download.futbrmanager.com.br/updates/'
+          output={}
+          for version in ('18.339','18.340'):
+              name=f'FutBR-Manager-{version}-Windows.exe.sig'
+              sig,alg=sig_id(get(base+name).decode())
+              output[version]={'signatureKeyMatchesConfiguredPubkey':sig==pub,'signatureAlgorithmValid':alg in (b'Ed',b'ED'),
+                               'signatureKeyEqualsOtherRelease':None}
+              output[version]['_sig']=sig
+          output['18.339']['signatureKeyEqualsOtherRelease']=output['18.339']['_sig']==output['18.340']['_sig']
+          output['18.340']['signatureKeyEqualsOtherRelease']=output['18.339']['_sig']==output['18.340']['_sig']
+          for version in output:del output[version]['_sig']
+          manifest=json.loads(get(base+'latest.json'))
+          manifest_sig,_=sig_id(manifest['platforms']['windows-x86_64']['signature'])
+          report={'currentManifestVersion':manifest.get('version'),
+                  'publicKeySyntaxValid':palg in (b'Ed',b'ED'),
+                  'currentManifestKeyMatchesConfiguredPubkey':manifest_sig==pub,
+                  'currentManifestSignatureMatchesPublishedFile':manifest_sig==sig_id(get(base+'FutBR-Manager-18.340-Windows.exe.sig').decode())[0],
+                  'releases':output}
+          print('SAFE_DIAGNOSTIC='+json.dumps(report,sort_keys=True))
+          PY
