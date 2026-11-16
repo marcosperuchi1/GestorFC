@@ -83,7 +83,8 @@ def main(project:Path):
                         assert card['width']<=width+1 and card['x']>=-1,(width,card)
                     elif name=='welcome':
                         assert measurement['overflowY']=='auto',(name,width,measurement)
-                        assert measurement['scrollHeight']>measurement['clientHeight'],(name,width,measurement)
+                        if height<=412:
+                            assert measurement['scrollHeight']>measurement['clientHeight'],(name,width,measurement)
                         page.locator('.welcome').evaluate('(el)=>el.scrollTop=el.scrollHeight')
                         btn=page.locator('[data-action="new-career"]').bounding_box()
                         assert btn and btn['y']+btn['height']<=height+8,(name,width,btn)

@@ -173,8 +173,13 @@ html.futbr-android-alpha #app>.sidebar {
  transition:transform .2s ease!important;
  box-shadow:14px 0 30px rgba(0,0,0,.35);
 }
+/* Lift the career shell above the backdrop, but permit clicks only on the drawer.
+   The backdrop lives outside #app, which creates its own fixed stacking context. */
+html.futbr-android-alpha.futbr-mobile-nav-open #app {
+ z-index:10055!important; pointer-events:none!important;
+}
 html.futbr-android-alpha.futbr-mobile-nav-open #app>.sidebar {
- transform:translateX(0)!important;
+ transform:translateX(0)!important; pointer-events:auto!important;
 }
 html.futbr-android-alpha #app>.main-wrap {
  display:flex!important; flex-direction:column!important; flex:1 1 auto!important;
