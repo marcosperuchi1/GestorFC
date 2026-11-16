@@ -19,7 +19,7 @@ jobs:
           mkdir -p /tmp/futbr-base /tmp/futbr-source
           gh api "repos/marcosperuchi1/GestorFC/contents/.github/scripts/consolidate_initial_database.py.gz.b64.part1?ref=feature/desktop-18339-auto-updates" --jq .content | base64 -d > /tmp/futbr-base/part1
           gh api "repos/marcosperuchi1/GestorFC/contents/.github/scripts/consolidate_initial_database.py.gz.b64.part2?ref=feature/desktop-18339-auto-updates" --jq .content | base64 -d > /tmp/futbr-base/part2
-          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+          gh run download 43906782197 -R marcosperuchi1/GestorFC -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
       - name: Mostrar exatamente formato do roster, tecnicos e nacionalidades
         run: |
           python3 - <<'PY'
