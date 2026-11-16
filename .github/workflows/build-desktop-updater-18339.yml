@@ -1,0 +1,123 @@
+name: FutBR Windows 18.339 - atualizador assinado
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/build-desktop-updater-18339.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-desktop-18339-signed-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      FUTBR_UPDATER_PUBLIC_KEY: ${{ vars.FUTBR_UPDATER_PUBLIC_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      FUTBR_UPDATE_ASSET_BASE_URL: ${{ vars.FUTBR_UPDATE_ASSET_BASE_URL }}
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout 18.339
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static security and updater regression tests
+        shell: pwsh
+        run: |
+          python -m py_compile .github/scripts/enable_desktop_updater_18339.py .github/scripts/make_desktop_update_release_18339.py .github/scripts/publish_signed_update_r2_18339.py .github/scripts/test_desktop_updater_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Python syntax error in updater code' }
+          python .github/scripts/test_desktop_updater_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Updater 18.339 regression failed' }
+      - name: Check signature key provisioning without exposing secrets
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:FUTBR_UPDATER_PUBLIC_KEY) -or [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            "FUTBR_SIGNING_READY=false" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host '::warning::Compilacao assinada bloqueada ate configurar GitHub variable FUTBR_UPDATER_PUBLIC_KEY e secret TAURI_SIGNING_PRIVATE_KEY.'
+          } else {
+            "FUTBR_SIGNING_READY=true" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host 'Chaves presentes, iniciando build Windows assinado.'
+          }
+      - name: Rust Windows
+        if: env.FUTBR_SIGNING_READY == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Browser regression prerequisites
+        if: env.FUTBR_SIGNING_READY == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed' }
+      - name: Single Windows build - history, saves and signed updater
+        if: env.FUTBR_SIGNING_READY == 'true'
+        shell: pwsh
+        run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Verify output and create update manifest
+        if: env.FUTBR_SIGNING_READY == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/make_desktop_update_release_18339.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'No signed NSIS update package' }
+          $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          foreach ($name in @('FutBR-Manager-18.339-Windows.exe','FutBR-Manager-18.339-Windows.exe.sig','latest.json','SHA256SUMS.txt','desktop-updater-18339-install.json','long-career-saves-18338-tests.json','champions-retirement-18322-tests.json')) {
+            if (-not (Test-Path (Join-Path $art $name))) { throw "Missing verification file: $name" }
+          }
+          $sha = (Get-FileHash (Join-Path $art 'FutBR-Manager-18.339-Windows.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = ((Get-Content (Join-Path $art 'SHA256SUMS.txt') -Raw) -split '\s+')[0]
+          if ($sha -ne $expected) { throw 'Installer SHA256 mismatch' }
+          $save = Get-Content (Join-Path $art 'long-career-saves-18338-tests.json') -Raw | ConvertFrom-Json
+          $history = Get-Content (Join-Path $art 'champions-retirement-18322-tests.json') -Raw | ConvertFrom-Json
+          if (-not $save.ok -or -not $history.ok) { throw 'Career save or champions history regression' }
+          Write-Host 'Installer signed; history, long-career saves and checksum validated.'
+      - name: Upload signed installer and update feed
+        if: env.FUTBR_SIGNING_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.339-Windows-Signed-Update
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.339-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.339-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-updater-18339-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-update-release-18339.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/champions-retirement-18322-tests.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Check optional R2 publication
+        if: env.FUTBR_SIGNING_READY == 'true'
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID) -or [string]::IsNullOrWhiteSpace($env:R2_BUCKET) -or [string]::IsNullOrWhiteSpace($env:R2_ACCESS_KEY_ID) -or [string]::IsNullOrWhiteSpace($env:R2_SECRET_ACCESS_KEY)) {
+            "FUTBR_R2_READY=false" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Host '::notice::Signed installer ready, optional R2 release credentials not configured.'
+          } else {
+            "FUTBR_R2_READY=true" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          }
+      - name: Publish installer first, then latest.json to Cloudflare R2
+        if: env.FUTBR_SIGNING_READY == 'true' && env.FUTBR_R2_READY == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install boto3
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot install boto3' }
+          python .github/scripts/publish_signed_update_r2_18339.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'R2 publish failed, download from artifact instead.' }
