@@ -58,4 +58,12 @@ jobs:
             if i>=0:
               print('===== FUNCTION',term,'LINE',raw.count('\\n',0,i)+1)
               print(raw[i:i+5000])
+
+          # Narrow probe for the dismissal/vacation state lifecycle.
+          for term in ('const v18112Dismissal=', 'const v18112BaseStartSimulation=', 'v18112Dismissal.pending=true', 'v18112Dismissal.pending=false', 'v18112Dismissal.ready=true', 'v18112Dismissal.ready=false', 'const v18112BaseChrome=', 'const v18112BaseSim=', 'async function v53StartSimulation(mode', 'const v53Sim=', 'v172FinishJobWait'):
+            matches=list(re.finditer(re.escape(term),raw,re.I))
+            print('+++ TARGET',term,'COUNT',len(matches),flush=True)
+            for m in matches[:6]:
+              print('AT',m.start(),'LINE',raw.count('\n',0,m.start())+1,flush=True)
+              print(raw[max(0,m.start()-700):m.start()+3500],flush=True)
           PY
