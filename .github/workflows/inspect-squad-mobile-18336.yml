@@ -1,0 +1,42 @@
+name: Inspect final squad and table CSS for Android 18.336
+on:
+  push:
+    branches: [mobile/android-18336-pages]
+    paths: ['.github/workflows/inspect-squad-mobile-18336.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print actionable selector excerpts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,zipfile
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          z=Path('/tmp/futbr-inspect-squad.zip')
+          with z.open('wb') as f:
+            for p in parts:
+              with p.open('rb') as h:
+                while (c:=h.read(1048576)):f.write(c)
+          with zipfile.ZipFile(z) as f:
+            paths=[p for p in f.namelist() if p.endswith('/src/index.html')]
+            src=f.read(paths[0]).decode('utf8','replace')
+          print('LEN',len(src),flush=True)
+          selectors=['.v57-squad-page','.v553-squad-page','.v57-squad-table',
+           '.v58-squad-table','.v553-squad-head','.v57-squad-filters',
+           '.v57-squad-panel','.v57-squad-toolbar','.v555-page',
+           '.v556-nav-sub','.v5-workbench','.v5-board',
+           'function squadRows','squadRows=function','v553-squad-table',
+           'function v555RenderPage','function v555EnsureShell','const NAV=']
+          for key in selectors:
+            pts=[m.start() for m in re.finditer(re.escape(key),src)]
+            print('\n===',key,'COUNT',len(pts),'===',flush=True)
+            for pos in (pts[:1]+pts[-3:]):
+              span=src[max(0,pos-180):pos+2900]
+              if len(span)>3000:span=span[:3000]
+              print('POS',pos,'TEXT',span.replace('\n',' ')[:3000],flush=True)
+          PY
