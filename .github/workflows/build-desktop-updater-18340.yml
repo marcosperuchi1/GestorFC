@@ -140,3 +140,4 @@ jobs:
 # Complete 18.340 release: preserve signed updater key, save integrity and release to R2.
 # Build candidate 18.340.0: Firmino BRA, Matt Badiee USA, explicit scorer search only.
 # Retry verified run after resolving duplicate Al Sadd catalog names by roster ownership.
+# Safeguard scorer draft expression for isolated legacy ranking renderer tests.
