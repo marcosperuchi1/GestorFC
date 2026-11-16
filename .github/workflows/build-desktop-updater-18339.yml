@@ -43,6 +43,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Python syntax error in updater code' }
           python .github/scripts/test_desktop_updater_18339.py
           if ($LASTEXITCODE -ne 0) { throw 'Updater 18.339 regression failed' }
+          python .github/scripts/test_competition_history_context_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Contextual champions history 18.339 regression failed' }
       - name: Check signature key provisioning without exposing secrets
         shell: pwsh
         run: |
