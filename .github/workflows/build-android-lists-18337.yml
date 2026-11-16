@@ -1,0 +1,134 @@
+name: Build FutBR Mobile 18.337 listas compactas - PC 18.334
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/android-18337-lists]
+    paths:
+      - '.github/workflows/build-android-lists-18337.yml'
+      - '.github/scripts/apply_mobile_responsive_18335.py'
+      - '.github/scripts/test_mobile_layout_18335.py'
+      - '.github/scripts/apply_mobile_internal_pages_18336.py'
+      - '.github/scripts/test_mobile_internal_18336.py'
+      - '.github/scripts/apply_mobile_lists_18337.py'
+      - '.github/scripts/test_mobile_lists_18337.py'
+permissions:
+  contents: read
+concurrency:
+  group: futbr-mobile-lists-18337
+  cancel-in-progress: true
+jobs:
+  build:
+    name: FutBR 18.334 + elenco e competicoes mobile 18.337 + APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    env:
+      CI: "true"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Instalar Android SDK
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" >/dev/null
+      - name: Preparar testes Chromium e reconstruir base do jogo
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+          python .github/scripts/inspect_season_performance.py
+      - name: Aplicar melhorias 18.331 e a correcao Windows 18.334
+        run: |
+          set -euo pipefail
+          project="$FUTBR_INSPECT_PROJECT"
+          for script in \
+            optimize_season_sync_18310 fix_new_season_vacation_18311 \
+            optimize_rankings_finals_18312 optimize_career_runtime_18313 \
+            fix_rank_details_18314 fix_rank_titles_sparse_18315 \
+            fix_rank_rollover_18316 fix_rank_titles_18317 \
+            rebuild_rankings_18318 clean_rankings_18320 \
+            fix_rankings_ui_18321 feature_champions_retirement_18322 \
+            optimize_unemployed_turbo_18327 fix_device_sessions_18329 \
+            optimize_scout_18331 fix_unemployed_resume_18334; do
+              echo "APPLY $script"
+              python ".github/scripts/$script.py" "$project"
+          done
+          python .github/scripts/test_scout_18331.py "$project"
+          python .github/scripts/test_unemployed_resume_18334.py "$project"
+      - name: Adaptar a interface e verificar mobile
+        run: |
+          set -euo pipefail
+          project="$FUTBR_INSPECT_PROJECT"
+          python .github/scripts/prepare_android_alpha.py prepare "$project"
+          python .github/scripts/apply_mobile_responsive_18335.py "$project"
+          python .github/scripts/test_mobile_layout_18335.py "$project"
+          python .github/scripts/apply_mobile_internal_pages_18336.py "$project"
+          python .github/scripts/test_mobile_internal_18336.py "$project"
+          python .github/scripts/apply_mobile_lists_18337.py "$project"
+          python .github/scripts/test_mobile_lists_18337.py "$project"
+      - name: Criar aplicativo Android com Capacitor WebView
+        run: |
+          set -euo pipefail
+          cd "$FUTBR_INSPECT_PROJECT"
+          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/android@7 @capacitor/cli@7
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.futbrmanager.mobile18337",
+            "appName": "FutBR Mobile 18.337",
+            "webDir": "src",
+            "server": {"androidScheme": "https"}
+          }
+          JSON
+          npx cap add android
+          npx cap sync android
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("android/app/src/main/AndroidManifest.xml")
+          content=p.read_text(encoding="utf-8")
+          if 'android:screenOrientation=' not in content:
+              content=content.replace('<activity', '<activity android:screenOrientation="sensorLandscape"',1)
+          if 'android.permission.INTERNET' not in content:
+              content=content.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application',1)
+          p.write_text(content,encoding="utf-8")
+          PY
+      - name: Compilar APK de teste Android
+        run: |
+          set -euo pipefail
+          cd "$FUTBR_INSPECT_PROJECT/android"
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug
+      - name: Validar arquivo APK e checksum
+        run: |
+          set -euo pipefail
+          mkdir -p android-output
+          apk="$FUTBR_INSPECT_PROJECT/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$apk"
+          cp "$apk" android-output/FutBR-Manager-Mobile-18.337-Android.apk
+          cp "$FUTBR_INSPECT_PROJECT/android-alpha-report.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-responsive-18335-report.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-responsive-18335-tests.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-pages-18336-report.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-internal-18336-tests.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-lists-18337-report.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/mobile-lists-18337-tests.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/unemployed-resume-18334-tests.json" android-output/
+          cp "$FUTBR_INSPECT_PROJECT/scout-18331-tests.json" android-output/
+          sha256sum android-output/*.apk > android-output/SHA256SUMS.txt
+          ls -lh android-output/
+          if command -v aapt >/dev/null; then aapt dump badging "$GITHUB_WORKSPACE/android-output/FutBR-Manager-Mobile-18.337-Android.apk" | head -n 16; fi
+      - name: Publicar APK Android mobile
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-Mobile-18.337-APK
+          path: android-output/*
+          if-no-files-found: error
+          retention-days: 10
