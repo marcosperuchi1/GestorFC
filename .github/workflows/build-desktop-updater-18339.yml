@@ -131,3 +131,4 @@ jobs:
 
 # 18.339: startup version checks, contextual championships, save-safe signed NSIS updates.
 # Signing keys registered: run single signed installer build and verify integrity.
+# Rebuild after validating base64-encoded Tauri .key.pub; preserve signing key pair.
