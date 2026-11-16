@@ -69,8 +69,8 @@ def main():
     world=json.loads(world_raw)
     clubs=world.get('clubs',[])
     alsadd=[c for c in clubs if normalize(c.get('name')) in ('al sadd','al sadd sc','al sadd sports club') and str(c.get('country')).lower() in ('qat','qatar')]
-    if len(alsadd)!=1:
-        raise RuntimeError('Expected one Qatar Al Sadd club, found '+str([(x.get('id'),x.get('name')) for x in alsadd]))
+    if not alsadd:
+        raise RuntimeError('No Qatar Al Sadd club found in the original catalog')
     hekari=[c for c in clubs if normalize(c.get('name'))=='hekari united' and str(c.get('country')).lower()=='png']
     if len(hekari)!=1:
         raise RuntimeError('Expected exactly one PNG Hekari United club')
@@ -79,11 +79,19 @@ def main():
     index=json.loads(old_raw)
     blob=asset.read_text(encoding='utf-8')
     rosters=db.decode_asset(blob,index)
-    sadd_id=str(alsadd[0]['id'])
+    # The catalog contains two similarly named Al Sadd clubs. Identify the
+    # intended team by actual Roberto Firmino roster membership, not the label.
+    sadd_candidates=[(str(club['id']),player) for club in alsadd
+                     for player in rosters.get(str(club['id']),{}).get('players',[])
+                     if normalize(player.get('name'))=='roberto firmino']
+    if len(sadd_candidates)!=1:
+        raise RuntimeError('Roberto Firmino must belong to exactly one Qatar Al Sadd roster; matches: '+
+                           str([(cid,p.get('name')) for cid,p in sadd_candidates]))
+    sadd_id=sadd_candidates[0][0]
     hekari_id=str(hekari[0]['id'])
     if sadd_id not in rosters or hekari_id not in rosters:
         raise RuntimeError('Qatar Al Sadd or Hekari roster absent in packaged initial DB')
-    firmino=[p for p in rosters[sadd_id].get('players',[]) if normalize(p.get('name'))=='roberto firmino']
+    firmino=[sadd_candidates[0][1]]
     if len(firmino)!=1:
         sample=[(cid,p.get('name')) for cid,rec in rosters.items() for p in rec.get('players',[]) if 'firmino' in normalize(p.get('name'))][:12]
         raise RuntimeError('Expected exactly one Roberto Firmino at Al Sadd; nearby roster matches: '+str(sample))
