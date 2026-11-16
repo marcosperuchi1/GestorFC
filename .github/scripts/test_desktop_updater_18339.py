@@ -1,4 +1,5 @@
 from __future__ import annotations
+import base64
 import json
 import os
 import re
@@ -45,7 +46,7 @@ def main() -> None:
                                  capture_output=True, text=True)
         check(no_keys.returncode != 0, "Updater must fail closed without owner signing keys")
         check("TAURI_SIGNING_PRIVATE_KEY" in no_keys.stderr, "Missing signing key error should be actionable")
-        demo_pub = "untrusted comment: minisign public key\n" + "RW" + ("A" * 65)
+        demo_pub = base64.b64encode(("untrusted comment: minisign public key\n" + "RW" + ("A" * 65) + "\n").encode("utf-8")).decode("ascii")
         env = dict(os.environ)
         env.update({"FUTBR_UPDATER_PUBLIC_KEY": demo_pub,
                     "TAURI_SIGNING_PRIVATE_KEY": "fixture-only-never-distribute"})
