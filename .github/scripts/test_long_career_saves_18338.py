@@ -186,12 +186,12 @@ function releaseTest(){
  {chunk_tests}
  return chunkTest();
  }})();
- const vacation=(function(){
+ const vacation=(function(){{
  {vacation_harness}
  {vacation}
  {vacation_tests}
  return vacationTest();
- })();
+ }})();
  const release=(function(){{
  {release_harness}
  {release}
