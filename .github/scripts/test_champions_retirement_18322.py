@@ -180,6 +180,23 @@ assert(competitionsPage().includes('data-v18322="c-year"'),'Year filter missing'
 assert(competitionsPage().includes('value="bra" selected'),'Default country not selected');
 assert(competitionsPage().includes('value="league" selected'),'Default league filter not selected');
 assert(competitionsPage().includes('value="1" selected'),'Default division 1 not selected');
+assert.equal(v18322ClubFilters.competition,'league:bra:1','League context must select exactly Série A');
+assert.equal(v18322ChampionsRows(state,v18322ClubFilters).length,1,'Only selected league should appear');
+act({dataset:{action:'v18322-toggle-clubs',mode:'current'}});
+v54CompetitionMode='cup';
+act({dataset:{action:'v18322-toggle-clubs',mode:'history'}});
+assert.equal(v18322ClubFilters.competition,'cup:bra','Copa history must select Brazil cup');
+assert.equal(v18322ChampionsRows(state,v18322ClubFilters).length,1,'Only selected national cup should appear');
+act({dataset:{action:'v18322-toggle-clubs',mode:'current'}});
+v54CompetitionMode='international';v4Competition='lib';
+act({dataset:{action:'v18322-toggle-clubs',mode:'history'}});
+assert.equal(v18322ClubFilters.competition,'lib','Continental history must select exact competition');
+assert.equal(v18322ChampionsRows(state,v18322ClubFilters).length,1,'Only Libertadores should appear');
+act({dataset:{action:'v18322-toggle-clubs',mode:'current'}});
+v54CompetitionMode='league';
+act({dataset:{action:'v18322-toggle-clubs',mode:'history'}});
+assert.equal(v18322ClubFilters.competition,'league:bra:1','Reopening league must not reuse continental filters');
+
 act({dataset:{action:'v18322-toggle-national',mode:'history'}});
 assert(v640NationalPage().includes('FLAG BRA'));
 assert(!transferActivityPage().includes('Veterano aposentado'),'Retirement history must not appear in Movimentacoes');
