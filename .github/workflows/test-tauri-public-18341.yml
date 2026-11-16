@@ -31,7 +31,8 @@ jobs:
           if len(raw)!=42:raise RuntimeError('Unexpected public key binary length')
           url='https://download.futbrmanager.com.br/updates/FutBR-Manager-18.340-Windows.exe.sig'
           with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'FutBR-key-diagnostic/1.0'}),timeout=30) as r:sig_text=r.read().decode()
-          sig_plain=base64.b64decode(sig_text,validate=True).decode()
+          try:sig_plain=base64.b64decode(sig_text,validate=True).decode('utf-8')
+          except (ValueError,UnicodeDecodeError):sig_plain=sig_text
           signature_candidates=[]
           for line in sig_plain.splitlines():
               try:z=base64.b64decode(line,validate=True)
