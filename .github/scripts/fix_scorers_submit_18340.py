@@ -8,8 +8,8 @@ MARKER = 'FUTBR_SCORER_SEARCH_SUBMIT_18340'
 CANONICAL = '''<div class="field grow"><label for="score-query">Buscar atleta</label><input id="score-query" data-v641-score-query value="'+v18220Esc(f.query)+'" placeholder="Nome do jogador"></div>'''
 CANONICAL_NEW = '''<div class="field grow"><label for="score-query">Buscar atleta</label><div class="flex" style="gap:8px;align-items:center"><input id="score-query" type="search" style="flex:1;min-width:0" data-v641-score-query value="'+v18220Esc(v18340ScorerDraft===null?f.query:v18340ScorerDraft)+'" placeholder="Nome do jogador"><button class="btn small" type="button" data-v18340-score-search="1">Pesquisar</button></div></div>'''
 
-FALLBACK = '''<div class="field grow"><label for="score-query">Buscar atleta</label><input id="score-query" data-v641-score-query value="\${esc(f.query)}" placeholder="Nome do jogador"></div>'''
-FALLBACK_NEW = '''<div class="field grow"><label for="score-query">Buscar atleta</label><div class="flex" style="gap:8px;align-items:center"><input id="score-query" type="search" style="flex:1;min-width:0" data-v641-score-query value="\${esc(v18340ScorerDraft===null?f.query:v18340ScorerDraft)}" placeholder="Nome do jogador"><button class="btn small" type="button" data-v18340-score-search="1">Pesquisar</button></div></div>'''
+FALLBACK = '''<div class="field grow"><label for="score-query">Buscar atleta</label><input id="score-query" data-v641-score-query value="${esc(f.query)}" placeholder="Nome do jogador"></div>'''
+FALLBACK_NEW = '''<div class="field grow"><label for="score-query">Buscar atleta</label><div class="flex" style="gap:8px;align-items:center"><input id="score-query" type="search" style="flex:1;min-width:0" data-v641-score-query value="${esc(v18340ScorerDraft===null?f.query:v18340ScorerDraft)}" placeholder="Nome do jogador"><button class="btn small" type="button" data-v18340-score-search="1">Pesquisar</button></div></div>'''
 
 OLD_INPUT = "document.addEventListener('input',event=>{const el=event.target;if(el?.dataset?.v641ScoreQuery!==undefined){scorerFilter.query=el.value;scorerFilter.page=0;v96ScheduleScorerSearch(el);}},true);"
 
