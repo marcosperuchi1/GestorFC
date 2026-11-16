@@ -37,6 +37,12 @@ jobs:
         run: python .github/scripts/optimize_long_career_saves_18338.py /tmp/futbr-perf-18338
       - name: Verify 2031 exit, season transition, field and historical integrity
         run: python .github/scripts/test_long_career_saves_18338.py /tmp/futbr-perf-18338
+      - name: Validate complete 200k-player vacation sync and checkpoint retention
+        run: python .github/scripts/test_season_sync_18310.py /tmp/futbr-perf-18338
+      - name: Validate relational SQLite career totals stay exact and idempotent
+        run: python .github/scripts/test_history_incremental_18310.py /tmp/futbr-perf-18338
+      - name: Validate dismissal during vacations and Turbo job wait remains safe
+        run: python .github/scripts/test_unemployed_resume_18334.py /tmp/futbr-perf-18338
       - name: Upload regression evidence
         uses: actions/upload-artifact@v4
         with:
