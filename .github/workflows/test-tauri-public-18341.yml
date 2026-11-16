@@ -42,3 +42,4 @@ jobs:
           print('PUBLIC_DERIVATION_MATCHES_ACTIVE_PRIVATE_SIGNING_KEY='+str(matches).lower())
           if not matches:raise RuntimeError('The derived key does not match signing key for release 18.340')
           PY
+# Retry with full Minisign private key file parsing.
