@@ -30,7 +30,7 @@ jobs:
           from pathlib import Path
           p=Path('/tmp/futbr-smoke-18342/src/index.html')
           html=p.read_text(encoding='utf-8')
-          for marker in ('FUTBR_SIGNED_UPDATER_18339','FUTBR_SCORER_SEARCH_SUBMIT_18340'):
+          for marker in ('FUTBR_LONG_CAREER_SAVE_18338_BEGIN','FUTBR_SIGNED_UPDATER_18339','FUTBR_SCORER_SEARCH_SUBMIT_18340'):
               if marker not in html:
                   html=html.replace('</body>',f'<!-- {marker}: smoke-only verification anchor -->\n</body>',1)
           p.write_text(html,encoding='utf-8')
