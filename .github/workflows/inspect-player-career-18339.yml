@@ -1,0 +1,40 @@
+name: Inspect FutBR player-career timeline 18.339
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/inspect-player-career-18339.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download verified career source without building installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-career-source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-career-source
+          test -f /tmp/futbr-career-source/src/index.html
+      - name: Show career timeline function and archives for diagnosis
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('/tmp/futbr-career-source/src/index.html').read_text(encoding='utf-8')
+          for keyword in ('function v539CareerRows(', 'v539CareerRows=function(', 'function v538CareerRows(', 'function v555PackedRows(', 'function v538CareerRows(', 'function v539CareerPage(', 'function v539CareerRow(', 'function v539CareerStats('):
+              positions=[m.start() for m in re.finditer(re.escape(keyword),src)]
+              print('\nMARKER',keyword,'COUNT',len(positions))
+              for p in positions[:5]:
+                  print(src[max(p-800,0):p+4500].replace('\x00',''))
+          for keyword in ('v538CareerArchive', 'v555CareerArchive', 'career timeline', 'careerRows', 'v539CareerRows('):
+              print('\nOCCURRENCES',keyword,src.count(keyword))
+          PY
