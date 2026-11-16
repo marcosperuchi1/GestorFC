@@ -81,6 +81,7 @@ CSS = r'''
  border:1px solid #4a9f62;background:#102b1b;color:#f0fff4;
  box-shadow:0 12px 38px rgba(0,0,0,.5);font:13px/1.5 system-ui,Segoe UI,sans-serif}
 #futbr-desktop-update-18339[hidden]{display:none!important}
+body.futbr-update-installing18339::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2147482999;pointer-events:auto}
 #futbr-desktop-update-18339 .title{font-size:17px;font-weight:750;margin:0 0 6px}
 #futbr-desktop-update-18339 .message{margin:5px 0 13px;opacity:.91}
 #futbr-desktop-update-18339 .status{min-height:18px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -124,6 +125,7 @@ JS = r'''
    const go=root.querySelector('[data-v18339-install]');
    const later=root.querySelector('[data-v18339-later]');
    go.disabled=later.disabled=true;
+   document.body.classList.add('futbr-update-installing18339');
    function status(s){root.querySelector('.status').textContent=s;}
    try{
     if(typeof window.GestorFC?.prepareSignedUpdate18339!=='function')
@@ -136,6 +138,7 @@ JS = r'''
    }catch(error){
     status('Não foi possível atualizar: '+String(error?.message||error));
     go.disabled=later.disabled=false;
+    document.body.classList.remove('futbr-update-installing18339');
     installing=false;
    }
   });
