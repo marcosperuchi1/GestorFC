@@ -1,0 +1,39 @@
+name: Smoke mobile pages 18.336 squad/table/tactics
+on:
+  push:
+    branches: [mobile/android-18336-pages]
+    paths:
+      - '.github/workflows/smoke-mobile-pages-18336.yml'
+      - '.github/scripts/apply_mobile_internal_pages_18336.py'
+      - '.github/scripts/test_mobile_internal_18336.py'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar Chromium e Playwright
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+      - name: Gerar fixture das interfaces reais e validar todas as telas
+        run: |
+          python - <<'PY'
+          import runpy
+          from pathlib import Path
+          a=runpy.run_path('.github/scripts/apply_mobile_responsive_18335.py')
+          b=runpy.run_path('.github/scripts/apply_mobile_internal_pages_18336.py')
+          root=Path('/tmp/futbr-mobile-18336')
+          (root/'src').mkdir(parents=True,exist_ok=True)
+          html='<!doctype html><html><head></head><body>'
+          html+='<!-- FUTBR_UNEMPLOYED_RESUME_18334_BEGIN -->'
+          html+=a['STYLE']+a['SCRIPT']+b['CSS']+b['JS']
+          html+='</body></html>'
+          (root/'src'/'index.html').write_text(html,encoding='utf-8')
+          PY
+          python .github/scripts/test_mobile_internal_18336.py /tmp/futbr-mobile-18336
