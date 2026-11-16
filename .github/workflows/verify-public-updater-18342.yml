@@ -1,7 +1,7 @@
 name: Verificar rota publica do atualizador FutBR 18.342
 on:
   push:
-    branches: [feature/desktop-18342-auto-updates]
+    branches: [feature/desktop-18342-welcome-national-preview]
     paths: ['.github/workflows/verify-public-updater-18342.yml']
   workflow_dispatch:
 permissions:
