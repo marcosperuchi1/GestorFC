@@ -1,0 +1,59 @@
+name: Inspecionar base inicial e busca de artilheiros 18.340
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/inspect-18340-data-search.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar script compactado da base
+        run: |
+          python3 - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          parts=sorted(Path('.github/scripts').glob('consolidate_initial_database.py.gz.b64.part*'))
+          raw=b''.join(p.read_bytes() for p in parts)
+          output=gzip.decompress(base64.b64decode(raw))
+          Path('/tmp/consolidate_initial_database.py').write_bytes(output)
+          print('CONSOLIDATOR_LENGTH',len(output))
+          src=output.decode('utf-8')
+          lines=src.splitlines()
+          import re
+          patterns=re.compile(r'rosters|json\.|dump|write|pack|gzip|base64|player|coach|national|html|include|read_text',re.I)
+          for i,line in enumerate(lines):
+              if patterns.search(line) and (line.lstrip().startswith(('def ','#','path ','target ','base ','roster ','payload ','data ','players ','coaches ')) or 'write_' in line or 'json.dump' in line or 'gzip.' in line or 'read_' in line):
+                  print('CONSOLIDATOR',i+1,line[:210])
+          PY
+      - name: Baixar codigo fonte da base testada
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+          test -s /tmp/futbr-source/src/index.html
+      - name: Inspecionar gatilhos de entrada, rankings e nomes de dados
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('/tmp/futbr-source/src/index.html').read_text(encoding='utf-8')
+          print('SOURCE_SIZE',len(source))
+          keywords=['Roberto Firmino','Matt Baddie','Matt Badie','Hekari United','v641-score-query','score-query','scorerFilter.query','score-query','score-search','data-v641-score-query','data-v3="score-query"']
+          for needle in keywords:
+              matches=list(re.finditer(re.escape(needle),source,re.I))
+              print('NEEDLE',repr(needle),'COUNT',len(matches))
+              for m in matches[:5]:
+                  print('CONTEXT_BEGIN',needle,'POSITION',m.start())
+                  print(source[max(0,m.start()-650):min(len(source),m.start()+950)].replace('\r',' '))
+                  print('CONTEXT_END')
+          names=['rosters.v310.bin','players.json','coach','playerId','natCode','score-query']
+          paths=list(Path('/tmp/futbr-source').rglob('*'))
+          print('SOURCE_FILES',len(paths),'SAMPLE',[(str(p.relative_to('/tmp/futbr-source')),p.stat().st_size) for p in paths if p.is_file() and ('roster' in p.name.lower() or 'json' in p.name.lower())][:35])
+          PY
