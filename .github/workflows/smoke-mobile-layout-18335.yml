@@ -1,0 +1,37 @@
+name: Smoke mobile 18.335 touch layout
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/android-18334-responsive]
+    paths: ['.github/workflows/smoke-mobile-layout-18335.yml']
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar Chromium do Playwright
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+      - name: Testar CSS Android sem reconstruir motor de jogo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import runpy
+          patch=runpy.run_path('.github/scripts/apply_mobile_responsive_18335.py')
+          folder=Path('/tmp/futbr-mobile-smoke')
+          (folder/'src').mkdir(parents=True,exist_ok=True)
+          text='<html><head></head><body><div id="app"></div>'
+          text+='<!-- FUTBR_UNEMPLOYED_RESUME_18334_BEGIN'
+          text+=' const waiting=v18334ShouldWait()'
+          text+=' FUTBR_SCOUT_RESPONSIVE_18331 -->'
+          text+=patch['STYLE']+patch['SCRIPT']+'</body></html>'
+          (folder/'src'/'index.html').write_text(text,encoding='utf-8')
+          PY
+          python .github/scripts/test_mobile_layout_18335.py /tmp/futbr-mobile-smoke
