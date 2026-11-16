@@ -1,0 +1,40 @@
+name: Inspecionar tecnicos e compactacao 18.340 sem checkout
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/inspect-18340-fast.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Consultar apenas scripts e artefato validado, sem clonar binarios grandes
+        run: |
+          mkdir -p /tmp/futbr-base /tmp/futbr-source
+          gh api "repos/marcosperuchi1/GestorFC/contents/.github/scripts/consolidate_initial_database.py.gz.b64.part1?ref=feature/desktop-18339-auto-updates" --jq .content | base64 -d > /tmp/futbr-base/part1
+          gh api "repos/marcosperuchi1/GestorFC/contents/.github/scripts/consolidate_initial_database.py.gz.b64.part2?ref=feature/desktop-18339-auto-updates" --jq .content | base64 -d > /tmp/futbr-base/part2
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+      - name: Mostrar exatamente formato do roster, tecnicos e nacionalidades
+        run: |
+          python3 - <<'PY'
+          import gzip,base64,re,json
+          from pathlib import Path
+          raw=(Path('/tmp/futbr-base/part1').read_bytes()+Path('/tmp/futbr-base/part2').read_bytes())
+          code=gzip.decompress(base64.b64decode(raw)).decode()
+          lines=code.splitlines()
+          for a,b in [(1,115),(140,267)]:
+              print("SOURCE_LINES",a,b)
+              for i in range(a-1,b):print(f"{i+1}: {lines[i]}")
+          html=Path('/tmp/futbr-source/src/index.html').read_text(encoding='utf-8')
+          for needle in ('Matt','Badd','Badie','Badiee','Firmino','Hekari','coaches:','coaches=','coach','v641ScoreQuery','v96ScheduleScorerSearch','rosterCache','V310_ROSTER_INDEX'):
+              hits=list(re.finditer(re.escape(needle),html,re.I))
+              print('HTML_MATCH',needle,len(hits))
+              for m in hits[:4]:
+                  print('HTML_WINDOW',needle,repr(html[max(0,m.start()-140):m.start()+250]))
+          PY
