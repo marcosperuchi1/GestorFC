@@ -39,8 +39,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FutBR-18339-CHAVES-PRIVADAS-CADASTRAR-E-EXCLUIR
-          path: |
-            ${{ runner.temp }}/futbr-secrets/futbr-manager.key
-            __TEMP__/futbr-secrets/futbr-manager.key.pub
+          path: ${{ runner.temp }}/futbr-secrets/
           if-no-files-found: error
           retention-days: 1
