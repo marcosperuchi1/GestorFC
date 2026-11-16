@@ -141,8 +141,10 @@ def main():
     # Strong invariants: snapshots remain sharded, atomic, and retain all history.
     for marker in ('await commitManifest(manifest,old,meta)','v538CareerArchive','v555CareerArchive',
                    'scorerArchive','internationalHistory','v735NationalArchive','allTimeStats',
-                   'player_career_totals','v18310VacationRows','v18181RawWriteMany'):
+                   'v18310VacationRows','v18181RawWriteMany'):
         if marker not in src:raise RuntimeError('History or checkpoint invariant missing: '+marker)
+    if 'player_career_totals' not in (project/'src-tauri/src/lib.rs').read_text(encoding='utf-8'):
+        raise RuntimeError('Native SQLite player_career_totals table missing')
     path.write_text(src,encoding='utf-8')
     result={
       'ok':True,'version':VERSION,'phase':'save-exit and memory safety',
