@@ -1,0 +1,61 @@
+name: Diagnostico botao proposta 18.334
+on:
+  push:
+    branches: [diagnose-unemployed-18334]
+    paths: ['.github/workflows/diagnose-unemployed-18334.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Analisar botao e guarda de desempregado no fonte
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          if not parts:raise RuntimeError('No source parts')
+          path=Path('source.zip')
+          with path.open('wb') as dst:
+            for part in parts:
+              with part.open('rb') as src:
+                while True:
+                  chunk=src.read(1048576)
+                  if not chunk:break
+                  dst.write(chunk)
+          with zipfile.ZipFile(path) as z:
+            candidates=[x for x in z.namelist() if x.endswith('/src/index.html')]
+            print('INDEX FILES',candidates)
+            if not candidates:raise RuntimeError('No index source')
+            raw=z.read(candidates[0]).decode('utf-8','replace')
+          print('SOURCE',len(raw),'chars',raw.count('\\n')+1,'lines')
+          patterns=[
+            'Assuma um clube ou uma seleção', 'Assuma um clube ou uma selecao',
+            'Até o fim / proposta','Até o fim/proposta','Ate o fim / proposta',
+            'v89RunJobWait','v89PaintJobWait','v89JobWait','v89HasNationalJob',
+            'v89StartJobWait','v89RunJobWait()', 'jobWait', 'v636PendingCoachOffers',
+            'Avançar jornada','Avançar Jornada','v53StartSimulation',
+            'userEmployed', 'hasNationalJob', 'btnAdvance', 'v89'
+          ]
+          for term in patterns:
+            matches=list(re.finditer(re.escape(term),raw,re.I))
+            print('===== TERM',term,'HITS',len(matches))
+            n=4 if term in ('userEmployed','v89','v53StartSimulation') else 10
+            for m in matches[:n]:
+              a=max(0,m.start()-600);b=min(len(raw),m.end()+900)
+              print('LINE',raw.count('\\n',0,m.start())+1,'OFFSET',m.start())
+              print(repr(raw[a:b]))
+          for term in ('async function v89RunJobWait(){','function v89PaintJobWait','function v89HasNationalJob','function v555UpdateChrome','function v636PendingCoachOffers'):
+            i=raw.find(term)
+            if i>=0:
+              print('===== FUNCTION',term,'LINE',raw.count('\\n',0,i)+1)
+              print(raw[i:i+5000])
+          PY
