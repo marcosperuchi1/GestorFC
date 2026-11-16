@@ -49,7 +49,7 @@ def main() -> None:
         digest + "  " + INSTALLER_NAME + "\n", encoding="ascii")
     report = {
         "ok": True, "version": VERSION, "signed": True,
-        "feed": FEED_URL, "asset": file_url,
+        "feed": (os.environ.get("FUTBR_UPDATE_FEED_URL") or FEED_URL).strip(), "asset": file_url,
         "signatureEmbeddedInManifest": True, "sha256": digest,
         "publishAfterAllChecks": True,
     }
