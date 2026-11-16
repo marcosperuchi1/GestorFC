@@ -1,0 +1,52 @@
+name: Inspect unmodified Windows save and season engine 18.338
+on:
+  push:
+    branches: [perf-windows-18338]
+    paths:
+      - '.github/workflows/inspect-raw-save-18338.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and reconstruct original source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,hashlib
+          root=Path('.')
+          parts=sorted(root.glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts
+          import tempfile
+          tmp=Path('/tmp/futbr-raw')
+          tmp.mkdir(exist_ok=True)
+          path=tmp/'src.zip'
+          with path.open('wb') as f:
+           for x in parts:
+            with x.open('rb') as h:
+             while True:
+              b=h.read(1<<20)
+              if not b:break
+              f.write(b)
+          expected=(root/'FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt').read_text().split()[0]
+          with path.open('rb') as f:
+           sha=hashlib.file_digest(f,'sha256').hexdigest()
+          assert sha==expected,(sha,expected)
+          with zipfile.ZipFile(path) as z:
+           names=[n for n in z.namelist() if n.endswith('/src/index.html') or n.endswith('/src-tauri/src/lib.rs')]
+           print(names)
+           for n in names:
+            target=tmp/Path(n).name
+            target.write_bytes(z.read(n))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18338-Raw-Save-Source
+          path: |
+            /tmp/futbr-raw/index.html
+            /tmp/futbr-raw/lib.rs
+          if-no-files-found: error
+          retention-days: 1
