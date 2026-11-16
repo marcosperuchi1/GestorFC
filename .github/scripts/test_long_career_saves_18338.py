@@ -16,7 +16,7 @@ def main():
         raise SystemExit('usage: test_long_career_saves_18338.py <project-dir>')
     root=Path(sys.argv[1]).resolve()
     s=(root/'src/index.html').read_text(encoding='utf-8')
-    body=fragment(s,'/* FUTBR_LONG_CAREER_SAVE_18338_BEGIN','/* FUTBR_LONG_CAREER_SAVE_18338_END */')+'/* FUTBR_LONG_CAREER_SAVE_18338_END */'
+    body=fragment(s,'/* FUTBR_LONG_CAREER_SAVE_18338_BEGIN','async function archiveCurrent(')
     write=fragment(s,'async function writeCollection(token,key,value,limit){','async function saveSharded(s,mode=')
     release=fragment(s,'function v18338FreeTransientBeforeSave(){','  const basePersist=persist;')
     anchors=[
