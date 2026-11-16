@@ -1,0 +1,74 @@
+name: Verificar rota publica do atualizador FutBR 18.340
+on:
+  push:
+    branches: [feature/desktop-18340-auto-updates]
+    paths: ['.github/workflows/verify-public-updater-18340.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-public-updater-verification-18340
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verificar JSON oficial e downloads atraves do Cloudflare
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+          import sys
+
+          urls = [
+            "https://download.futbrmanager.com.br/updates/latest.json",
+            "https://futbrmanager.com.br/updates/latest.json",
+          ]
+          valid = {}
+          for url in urls:
+              try:
+                  req=urllib.request.Request(url, headers={
+                      "User-Agent":"FutBR-Updater-Public-Route-Verification/18.340",
+                      "Cache-Control":"no-cache",
+                      "Accept":"application/json",
+                  })
+                  with urllib.request.urlopen(req,timeout=20) as resp:
+                      data=resp.read(16384)
+                      ctype=resp.headers.get("Content-Type","")
+                      manifest=json.loads(data)
+                      platform=manifest.get("platforms",{}).get("windows-x86_64",{})
+                      ok=(manifest.get("version")=="18.340.0"
+                          and bool(platform.get("signature"))
+                          and platform.get("url")=="https://futbrmanager.com.br/updates/FutBR-Manager-18.340-Windows.exe")
+                      print("MANIFEST",json.dumps({
+                          "origin":url,"http":resp.status,"final":resp.geturl(),
+                          "content_type":ctype,"version":manifest.get("version"),
+                          "signature_present":bool(platform.get("signature")),
+                          "valid":ok,
+                      }))
+                      valid[url]=ok
+              except Exception as err:
+                  print("MANIFEST_ERROR",url,type(err).__name__,str(err)[:220])
+                  valid[url]=False
+          exe_url="https://futbrmanager.com.br/updates/FutBR-Manager-18.340-Windows.exe"
+          exe_ok=False
+          try:
+              req=urllib.request.Request(exe_url,method="HEAD",headers={
+                  "User-Agent":"FutBR-Updater-Public-Route-Verification/18.340"})
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                  size=int(resp.headers.get("Content-Length",0))
+                  exe_ok=resp.status==200 and size>40_000_000
+                  print("INSTALLER",json.dumps({
+                      "http":resp.status,"final":resp.geturl(),
+                      "content_type":resp.headers.get("Content-Type"),
+                      "bytes":size,"valid":exe_ok}))
+          except Exception as err:
+              print("INSTALLER_ERROR",type(err).__name__,str(err)[:220])
+          if not all(valid.values()) or not exe_ok:
+              print("::error::O dominio principal ainda nao entrega todos os arquivos do atualizador como esperado.")
+              sys.exit(1)
+          print("SUCCESS: FutBR updater endpoint and signed Windows installer respond correctly via the production domain.")
+          PY
