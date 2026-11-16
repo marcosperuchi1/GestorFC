@@ -37,7 +37,7 @@ jobs:
           for line in sig_plain.splitlines():
               try:z=base64.b64decode(line,validate=True)
               except:continue
-              if len(z)==74:signature_candidates.append(z)
+              if len(z)>=74:signature_candidates.append(z)
           if len(signature_candidates)!=1:raise RuntimeError('Cannot decode existing Minisign signature')
           matches=raw[2:10]==signature_candidates[0][2:10]
           print('PUBLIC_DERIVATION_MATCHES_ACTIVE_PRIVATE_SIGNING_KEY='+str(matches).lower())
