@@ -202,16 +202,22 @@ function v18322ChampionsRows(s,filter=null){
  return [...records.values()].filter(x=>Number(x.year)>0)
   .sort((a,b)=>Number(b.year)-Number(a.year)||String(a.competition).localeCompare(String(b.competition),'pt-BR'));
 }
-function v18322InitClubFilters(){
- if(v18322ClubFilterState===state)return;
+function v18322InitClubFilters(force=false){
+ // Reopen from the live table: never reuse a filter from another tournament.
+ // During history browsing, preserve manually selected filters across renders.
+ if(!force&&v18322ClubFilterState===state)return;
  const mode=String(v54CompetitionMode||'league');
  const country=mode==='international'?'international':
   (typeof selectedCountry==='function'?selectedCountry():E.human(state)?.country)||'all';
+ const division=mode==='league'?
+  String(typeof selectedDivision==='function'?selectedDivision():E.human(state)?.division||1):'all';
  v18322ClubFilters.country=country;
  v18322ClubFilters.kind=mode==='cup'?'cup':mode==='international'?'international':'league';
- v18322ClubFilters.division=mode==='league'?
-  String(typeof selectedDivision==='function'?selectedDivision():E.human(state)?.division||1):'all';
- v18322ClubFilters.competition=mode==='international'?String(v4Competition||'all'):'all';
+ v18322ClubFilters.division=division;
+ // Archive IDs, not display names, are the canonical competition identifiers.
+ v18322ClubFilters.competition=mode==='international'?String(v4Competition||'all'):
+  mode==='cup'&&country!=='all'?'cup:'+country:
+  mode==='league'&&country!=='all'&&division!=='all'?'league:'+country+':'+division:'all';
  v18322ClubFilters.year='all';
  v18322VisibleLimit=120;
  v18322ClubFilterState=state;
@@ -387,7 +393,7 @@ transferActivityPage=function(){return v18322BaseTransfersPage();};
 const v18322BaseAction=act;
 act=function(el){
  const action=el?.dataset?.action;
- if(action==='v18322-toggle-clubs'){if(el.dataset.mode==='history')v18322InitClubFilters();v18322ClubOpen=el.dataset.mode==='history';render();return;}
+ if(action==='v18322-toggle-clubs'){if(el.dataset.mode==='history')v18322InitClubFilters(true);v18322ClubOpen=el.dataset.mode==='history';render();return;}
  if(action==='v18322-more'){v18322VisibleLimit+=120;render();return;}
  if(action==='v18324-open-retirements'){v18324RetirementOpen=!v18324RetirementOpen;view='squad';render();return;}
  if(action==='v18322-toggle-national'){v18322NationalOpen=el.dataset.mode==='history';render();return;}
