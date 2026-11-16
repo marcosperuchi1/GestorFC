@@ -20,10 +20,14 @@ def main():
     db_rows=db.decode_asset(blob,index)
     al=[c for c in world['clubs'] if norm(c.get('name')) in ('al sadd','al sadd sc','al sadd sports club') and str(c.get('country')).lower()=='qat']
     he=[c for c in world['clubs'] if norm(c.get('name'))=='hekari united' and str(c.get('country')).lower()=='png']
-    if len(al)!=1 or len(he)!=1:raise RuntimeError('Al Sadd / Hekari not found in actual consolidated database')
-    firmino=[p for p in db_rows[al[0]['id']]['players'] if norm(p.get('name'))=='roberto firmino']
-    if len(firmino)!=1 or firmino[0].get('natCode')!='BRA':
-        raise RuntimeError('Roberto Firmino is not Brazilian in packaged base')
+    if not al or len(he)!=1:
+        raise RuntimeError('Al Sadd / Hekari not found in actual consolidated database')
+    # The catalog has two Al Sadd teams. Select the one whose roster actually
+    # contains Roberto Firmino; never assume a globally unique display name.
+    firmino_matches=[(c,p) for c in al for p in db_rows.get(str(c['id']),{}).get('players',[])
+                     if norm(p.get('name'))=='roberto firmino']
+    if len(firmino_matches)!=1 or firmino_matches[0][1].get('natCode')!='BRA':
+        raise RuntimeError('Roberto Firmino is not Brazilian in the proper Al Sadd packaged roster')
     coach=db_rows[he[0]['id']].get('coach')
     if not isinstance(coach,dict) or not norm(coach.get('name')).startswith('matt badi') or coach.get('natCode')!='USA':
         raise RuntimeError('Matt Badiee not registered as USA coach at Hekari')
