@@ -71,7 +71,7 @@ async function test(){
  state.v1903CareerId='other-career';await call();assert.equal(writes,4,'Career identity must be protected');
  state.seasonDone=true;await call();assert.equal(writes,5,'Season closure must be committed');
  ctx.v168DeferredRolloverSave=true;await call();assert.equal(writes,6,'Unpersisted rollover must never be skipped');
- ctx.v168DeferredRolloverSave=false;
+ assert.equal(ctx.v168DeferredRolloverSave,false,'Deferred marker must be cleared once its save is durable');
  const stable=JSON.stringify(checkpoint);
  state.day++;broken=true;
  await assert.rejects(call(),/não corresponde à carreira|salvamento/i);
