@@ -176,6 +176,9 @@ def main() -> None:
     project = Path(sys.argv[1]).resolve()
     pubkey = os.environ.get("FUTBR_UPDATER_PUBLIC_KEY", "").strip().replace("\\n", "\n")
     private_key = os.environ.get("TAURI_SIGNING_PRIVATE_KEY", "").strip()
+    feed = (os.environ.get("FUTBR_UPDATE_FEED_URL") or FEED).strip()
+    if not feed.startswith("https://"):
+        raise RuntimeError("Updater feed must be HTTPS")
     if not (pubkey and private_key):
         raise RuntimeError(
             "Para compilar o autoatualizador assinado, configure a variable "
@@ -190,7 +193,7 @@ def main() -> None:
     cfg.setdefault("bundle", {})["createUpdaterArtifacts"] = True
     cfg.setdefault("plugins", {})["updater"] = {
         "pubkey": pubkey,
-        "endpoints": [FEED],
+        "endpoints": [feed],
         "windows": {"installMode": "passive"},
     }
     cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -230,7 +233,7 @@ def main() -> None:
     html_file.write_text(html, encoding="utf-8")
     report = {
         "ok": True, "version": VERSION,
-        "feed": FEED, "signedUpdater": True,
+        "feed": feed, "signedUpdater": True,
         "currentCareerSavedBeforeInstall": True, "careerHistoryPreserved": True,
         "checksNewVersionsAtStartup": True, "explicitUserConsent": True,
         "doesNotRunDuringVacation": True, "privateKeyStoredInRepository": False,
