@@ -1,0 +1,57 @@
+name: Inspect FutBR mobile internal pages 18.336
+on:
+  push:
+    branches: [mobile/android-18336-pages]
+    paths: ['.github/workflows/inspect-mobile-pages-18336.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identificar seletores reais de telas e menu
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re,collections
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts, 'source zip missing'
+          with Path('/tmp/mobile-source.zip').open('wb') as out:
+            for p in parts:
+              with p.open('rb') as f:
+                while (c:=f.read(1024*1024)):out.write(c)
+          with zipfile.ZipFile('/tmp/mobile-source.zip') as z:
+            paths=[p for p in z.namelist() if p.endswith('/src/index.html')]
+            assert len(paths)==1
+            src=z.read(paths[0]).decode('utf-8','replace')
+          print('SOURCE_LENGTH',len(src),flush=True)
+          keys=[
+            'function squadPage','squadPage=function','squadPage = function',
+            'function v555PageHTML','function v556NavHTML','v555PageHTML',
+            'v555UpdatePage', 'function rosterPage','function transfersPage',
+            'function tacticsPage', 'function dashboardPage',
+            'function competitionsPage', 'function scoutPage',
+            'function renderSquad','function renderWelcome',
+            'const NAV=', 'NAV=[', 'view===\\'squad\\'', 'view==="squad"',
+            'data-view="squad"','class="squad','class="player',
+            'class="roster','class="table-scroll','class="table-wrap',
+            'class="table-responsive','class="squad-table',
+            'elenco', 'Elenco', '.squad',
+          ]
+          for term in keys:
+            hits=[m.start() for m in re.finditer(re.escape(term),src)]
+            print('###',term,'count',len(hits),flush=True)
+            picks=hits[:1]+hits[-4:]
+            for pos in sorted(set(picks)):
+              segment=src[max(0,pos-250):pos+1050].replace('\\n',' ')
+              print('AT',pos,segment[:1250],flush=True)
+          print('=== BASIC CSS REGION',flush=True)
+          for selector in ['.main-wrap{','.main{','.sidebar{','.page{','.nav{','.squad{','.squad-','.roster-','.player-','.table-scroll{','.table-wrap{','.v555-']:
+            hits=[m.start() for m in re.finditer(re.escape(selector),src)]
+            print('STYLE',selector,'count',len(hits),flush=True)
+            for pos in hits[-3:]:
+              print(src[max(0,pos-90):pos+480].replace('\\n',' ')[:570],flush=True)
+          PY
