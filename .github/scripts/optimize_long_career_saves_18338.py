@@ -93,7 +93,7 @@ def main():
     for marker in ('FUTBR_UNEMPLOYED_RESUME_18334_BEGIN','FUTBR_MANUAL_ADVANCE_18326_START','function v18183DbWriteMany','async function saveSharded'):
         if marker not in src:raise RuntimeError('Missing validated Windows baseline: '+marker)
     begin=src.find("async function ensureSaved(){")
-    finish=src.find("\\nasync function archiveCurrent(",begin)
+    finish=src.find("\nasync function archiveCurrent(",begin)
     if begin<0 or finish<0 or src.count("async function ensureSaved(){")!=1:
         raise RuntimeError('18.338 named save / exit function not found')
     legacy=src[begin:finish]
