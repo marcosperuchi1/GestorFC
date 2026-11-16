@@ -73,3 +73,5 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/scout-18331-tests.json
           if-no-files-found: error
           retention-days: 7
+
+# 18.334 checkpoint-first recovery; preserves existing save without unnecessary writes.
