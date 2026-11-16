@@ -34,9 +34,16 @@ async function v18334RecoverDismissal(){
  const task=(async()=>{
   try{
    // The 18.112 safeguard is mandatory: never run another round on an old checkpoint.
-   await persist(false);
-   await v52FlushSave();
-   const audit=await window.GestorFC?.v171?.storageAudit?.();
+   let audit=await window.GestorFC?.v171?.storageAudit?.();
+   if(!audit||Number(audit.year)!==year||Number(audit.day)!==day){
+    // Allow an in-flight checkpoint promotion to flush before initiating any new save.
+    await v52FlushSave();
+    audit=await window.GestorFC?.v171?.storageAudit?.();
+   }
+   if(!audit||Number(audit.year)!==year||Number(audit.day)!==day){
+    await persist(false);await v52FlushSave();
+    audit=await window.GestorFC?.v171?.storageAudit?.();
+   }
    if(!audit||Number(audit.year)!==year||Number(audit.day)!==day)return false;
    if(audit.careerId&&careerId&&String(audit.careerId)!==careerId)return false;
    if(state!==s||Number(state.year)!==year||Number(state.day)!==day||
