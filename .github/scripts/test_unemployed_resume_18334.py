@@ -68,8 +68,8 @@ async function v52FlushSave(){flushCalls++;}
  assert.equal(v18112Dismissal.ready,true);
  assert.equal(v53Sim.syncing,false,'Stale sync flag must be released after audit');
  assert.equal(button.disabled,false,'2031 proposal button must be enabled');
- assert.equal(persistCalls,1);
- assert.equal(flushCalls,1);
+ assert.equal(persistCalls,0,'Already-saved checkpoint should not be rewritten');
+ assert.equal(flushCalls,0,'Already-confirmed checkpoint requires no extra flush');
  assert.ok(auditCalls>=1);
  assert.equal(state.vacation.active,false);
  assert.equal(state.vacation.paused,true);
