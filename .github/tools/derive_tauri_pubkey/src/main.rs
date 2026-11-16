@@ -11,7 +11,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let keyline=public_text.lines().find(|line| line.starts_with("RW")).ok_or("Invalid Minisign public key")?;
         let public=PublicKey::from_base64(keyline)?;
         let signature_text=fs::read_to_string(&args[4])?;
-        let signature=SignatureBox::from_string(&signature_text)?;
+        // Tauri's updater .sig has had both native Minisign text and an
+        // additional base64 wrapper across packaging versions.
+        let signature=if let Ok(parsed)=SignatureBox::from_string(&signature_text) {
+            parsed
+        } else {
+            let decoded=STANDARD.decode(signature_text.trim())?;
+            SignatureBox::from_string(&String::from_utf8(decoded)?)?
+        };
         minisign::verify(&public,&signature,fs::File::open(&args[3])?,true,false,false)?;
         println!("CRYPTOGRAPHIC_INSTALLER_SIGNATURE_VERIFIED=true");
         return Ok(());
