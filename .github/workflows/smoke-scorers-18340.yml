@@ -1,0 +1,28 @@
+name: Smoke busca explicita de Artilheiros 18.340
+on:
+  push:
+    branches: [feature/desktop-18339-auto-updates]
+    paths: ['.github/workflows/smoke-scorers-18340.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Baixar codigo validado e correcao sem clonar o repositório
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/futbr-18340 /tmp/futbr-18340/scripts
+          gh run download 43906782197 -R marcosperuchi1/GestorFC -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-18340
+          for file in fix_scorers_submit_18340.py test_scorers_submit_18340.py; do
+            gh api "repos/marcosperuchi1/GestorFC/contents/.github/scripts/$file?ref=feature/desktop-18339-auto-updates" --jq .content | base64 -d > "/tmp/futbr-18340/scripts/$file"
+          done
+      - name: Executar testes reais de input, Enter e botão Pesquisar
+        run: |
+          python3 /tmp/futbr-18340/scripts/fix_scorers_submit_18340.py /tmp/futbr-18340
+          python3 /tmp/futbr-18340/scripts/test_scorers_submit_18340.py /tmp/futbr-18340
