@@ -28,7 +28,7 @@ def main() -> None:
     installer = target / INSTALLER_NAME
     shutil.copy2(source, installer)
     (target / (INSTALLER_NAME + ".sig")).write_text(sig + "\n", encoding="utf-8")
-    base = os.environ.get("FUTBR_UPDATE_ASSET_BASE_URL", "https://futbrmanager.com.br/updates").strip().rstrip("/")
+    base = (os.environ.get("FUTBR_UPDATE_ASSET_BASE_URL") or "https://futbrmanager.com.br/updates").strip().rstrip("/")
     if not base.startswith("https://"):
         raise RuntimeError("Updates must be published over HTTPS")
     file_url = base + "/" + INSTALLER_NAME
