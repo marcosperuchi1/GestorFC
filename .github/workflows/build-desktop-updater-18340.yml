@@ -138,3 +138,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'R2 publish failed, download from artifact instead.' }
 
 # Complete 18.340 release: preserve signed updater key, save integrity and release to R2.
+# Build candidate 18.340.0: Firmino BRA, Matt Badiee USA, explicit scorer search only.
