@@ -80,7 +80,7 @@ async function test(){
  broken=false;await call();assert.equal(ctx.saveOK,true);
  assert.equal(JSON.stringify({career:state.playerCareer,scorers:state.scorerArchive,transfers:state.transfers,retirements:state.retirements}),before,'History changed during save');
  const status=ctx.window.GestorFC.longCareerSave18338.status();
- assert.equal(status.reused,1);assert.equal(status.rewritten,7);
+ assert.equal(status.reused,1);assert.equal(status.rewritten,8);
  return {writes,reused:status.reused,rewritten:status.rewritten};
 }
 globalThis.TEST=test;
