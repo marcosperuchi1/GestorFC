@@ -35,7 +35,7 @@ jobs:
             'function tacticsPage', 'function dashboardPage',
             'function competitionsPage', 'function scoutPage',
             'function renderSquad','function renderWelcome',
-            'const NAV=', 'NAV=[', 'view===\\'squad\\'', 'view==="squad"',
+            'const NAV=', 'NAV=[', "view==='squad'", 'view==="squad"',
             'data-view="squad"','class="squad','class="player',
             'class="roster','class="table-scroll','class="table-wrap',
             'class="table-responsive','class="squad-table',
