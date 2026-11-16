@@ -1,0 +1,32 @@
+name: Smoke criptografico Minisign usando artefato publico anterior
+on:
+  push:
+    branches: [feature/desktop-18341-updater-signature-repair]
+    paths: ['.github/workflows/smoke-minisign-r2-18341.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cryptographic-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derivar pubkey da chave privada que realmente assina
+        run: cargo run --release --quiet --manifest-path .github/tools/derive_tauri_pubkey/Cargo.toml -- /tmp/futbr-updater-real-public.b64
+      - name: Obter instalador e assinatura assinados e publicados em 18.340
+        run: |
+          python3 - <<'PY'
+          import urllib.request,pathlib
+          prefix='https://download.futbrmanager.com.br/updates/FutBR-Manager-18.340-Windows.exe'
+          for suffix in ('','.sig'):
+              with urllib.request.urlopen(urllib.request.Request(prefix+suffix,headers={'User-Agent':'FutBR-key-diagnostic/1.0'}),timeout=90) as response:
+                  content=response.read()
+              pathlib.Path('/tmp/futbr-18340-test.exe'+suffix).write_bytes(content)
+              print('DOWNLOADED_SIGNATURE_FILE' if suffix else 'DOWNLOADED_EXE',len(content))
+          PY
+      - name: Validar assinatura criptografica com Minisign contra download 18.340
+        run: cargo run --release --quiet --manifest-path .github/tools/derive_tauri_pubkey/Cargo.toml -- verify /tmp/futbr-updater-real-public.b64 /tmp/futbr-18340-test.exe /tmp/futbr-18340-test.exe.sig
