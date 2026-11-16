@@ -19,6 +19,7 @@ jobs:
       FUTBR_UPDATER_PUBLIC_KEY: ${{ vars.FUTBR_UPDATER_PUBLIC_KEY }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      FUTBR_UPDATE_FEED_URL: ${{ vars.FUTBR_UPDATE_FEED_URL }}
       FUTBR_UPDATE_ASSET_BASE_URL: ${{ vars.FUTBR_UPDATE_ASSET_BASE_URL }}
       R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
@@ -121,3 +122,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Cannot install boto3' }
           python .github/scripts/publish_signed_update_r2_18339.py "$env:FUTBR_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'R2 publish failed, download from artifact instead.' }
+
+# 18.339: startup version checks, contextual championships, save-safe signed NSIS updates.
