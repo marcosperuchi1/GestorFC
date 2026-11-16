@@ -2,6 +2,25 @@
 
 A versão 18.339 introduz o atualizador **assinado do Tauri 2**. Quem já instalou 18.338 ou anterior deverá instalar 18.339 manualmente uma única vez; os próximos instaladores poderão ser entregues pelo atualizador incorporado.
 
+## Caminho sem instalar Node.js ou ferramentas no Windows
+
+O workflow GitHub [Preparar chaves FutBR sem instalar programas](https://github.com/marcosperuchi1/GestorFC/actions/runs/43936300280) foi executado em 16/11/2026 e gerou as chaves usando o Tauri CLI oficial. Como o repositório é privado, o arquivo permanece restrito a quem pode acessar seus Actions. **Ele contém a chave privada em texto e expira em 24 horas** — baixe apenas em equipamento confiável, não compartilhe e remova o artifact após o cadastro.
+
+1. Abra o link acima e baixe o artifact `FutBR-18339-CHAVES-PRIVADAS-CADASTRAR-E-EXCLUIR` na seção *Artifacts*.
+2. Extraia o arquivo ZIP. Abra `futbr-manager.key` no Bloco de Notas, copie o conteúdo integral e cadastre em **Settings → Secrets and variables → Actions → Secrets → New repository secret** com o nome `TAURI_SIGNING_PRIVATE_KEY`.
+3. Abra `futbr-manager.key.pub`, copie o conteúdo integral e cadastre em **Settings → Secrets and variables → Actions → Variables → New repository variable** com o nome `FUTBR_UPDATER_PUBLIC_KEY`.
+4. Este par foi gerado **sem senha** para simplificar o setup. Portanto **não configure** `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (ou deixe-o vazio).
+5. Guarde uma cópia segura do arquivo privado fora do GitHub e apague a cópia temporária do computador depois de verificar o backup. Jamais compartilhe o conteúdo pelo chat.
+6. Execute [o workflow Windows 18.339](https://github.com/marcosperuchi1/GestorFC/actions/workflows/build-desktop-updater-18339.yml), escolhendo a branch `feature/desktop-18339-auto-updates`.
+
+A criação sem senha é exclusiva deste procedimento de inicialização. O arquivo só deve existir em local seguro e no repositório como *secret criptografado*. Caso os arquivos expirem, execute manualmente o gerador em **Actions → Preparar chaves FutBR sem instalar programas → Run workflow**, mas **não gere novas chaves depois de distribuir uma versão assinada**, pois elas deixariam de ser compatíveis com versões já instaladas.
+
+## Alterações inclusas no pacote 18.339
+
+O pipeline 18.339 inclui a consulta contextual do Histórico de Campeões e a correção da aba **Carreira** dos atletas: linhas artificiais de clubes anteriores à transferência são removidas, sem modificar o histórico gravado ou as estatísticas genuínas. O workflow [Smoke 18.339 — carreira dos jogadores](https://github.com/marcosperuchi1/GestorFC/actions/runs/43936511836) concluiu com sucesso sobre o código real do jogo e validou o caso Internacional 2026/2027 sem partidas, além da preservação de Flamengo e Uruguai.
+
+---
+
 ## 1. Gerar e proteger a chave de assinatura (uma vez)
 
 O plugin Tauri updater **recusa atualizações sem assinatura válida**. A chave privada nunca deve entrar no GitHub como arquivo, aparecer nos logs, nem ser enviada pelo chat. Guarde uma cópia offline segura: perder essa chave impossibilita atualizar instalações já distribuídas com sua chave pública correspondente.
