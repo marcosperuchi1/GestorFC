@@ -18,6 +18,7 @@ def main():
     s=(root/'src/index.html').read_text(encoding='utf-8')
     body=fragment(s,'/* FUTBR_LONG_CAREER_SAVE_18338_BEGIN','async function archiveCurrent(')
     write=fragment(s,'async function writeCollection(token,key,value,limit){','async function saveSharded(s,mode=')
+    vacation=fragment(s,'function v18310VacationRows(m){','function v18310ReleaseOldVacationState(){')
     release=fragment(s,'function v18338FreeTransientBeforeSave(){','  const basePersist=persist;')
     anchors=[
       "const target=key==='players'?(Number(state?.year)>=2029?2:4)",
@@ -29,6 +30,8 @@ def main():
       "v5CrestsOut();v18338FreeTransientBeforeSave();const result=await saveSharded(current,mode)",
       "await commitManifest(manifest,old,meta)",
       "v18310VacationRows(m)",
+      "return {length:packed.length,*[Symbol.iterator]()",
+      "pending.length<(Number(world.year)>=2029?4:8)",
       "v538CareerArchive","v555CareerArchive","scorerArchive",
       "allTimeStats","internationalHistory","v735NationalArchive",
     ]
@@ -127,6 +130,30 @@ async function chunkTest(){
   retainedPlayerExtras:true,retainedScorerArchive:true};
 }
 """
+    vacation_harness=r"""
+const assert=require('node:assert/strict');
+const v18191uUnpackPlayer=r=>({id:r[0],name:r[1],goals:r[2],assist:r[3],career:{clubs:r[4]}});
+"""
+    vacation_tests=r"""
+function vacationTest(){
+ const input=Array.from({length:900},(_,i)=>['p'+i,'Jogador '+i,i%22,i%9,['t'+(i%13)]]);
+ const bytes=new TextEncoder().encode(JSON.stringify(input)).buffer;
+ const packet={format:'player-packed-buffer-v1',bytes};
+ const rows=v18310VacationRows(packet);
+ assert.equal(packet.bytes,null,'Packet buffer must be freed before installation');
+ assert.equal(rows.length,900);
+ assert.equal(Array.isArray(rows),false,'Do not allocate second unpacked array');
+ const decoded=[];
+ for(const [id,p] of rows)decoded.push([id,p.name,p.goals,p.assist,p.career.clubs]);
+ assert.equal(JSON.stringify(decoded),JSON.stringify(input),'Vacation transfer is lossless');
+ const legacy=[['p1',{id:'p1',name:'Legacy',assists:9}]];
+ assert.equal(v18310VacationRows({rows:legacy}),legacy,'Legacy vacation packets unchanged');
+ const plain={format:'json-buffer',bytes:new TextEncoder().encode(JSON.stringify(legacy)).buffer};
+ assert.equal(JSON.stringify(v18310VacationRows(plain)),JSON.stringify(legacy));
+ assert.equal(plain.bytes,null);
+ return {players:900,iterative:true,lossless:true,legacyCompatible:true};
+}
+"""
     release_harness=r"""
 const G={v168:{stop:()=>{},purge:()=>{}}};
 const v53Sim={active:false,starting:false,syncing:false,patching:false};
@@ -159,13 +186,19 @@ function releaseTest(){
  {chunk_tests}
  return chunkTest();
  }})();
+ const vacation=(function(){
+ {vacation_harness}
+ {vacation}
+ {vacation_tests}
+ return vacationTest();
+ })();
  const release=(function(){{
  {release_harness}
  {release}
  {release_tests}
  return releaseTest();
  }})();
- console.log(JSON.stringify({{'ok':true,'version':'18.338','case':'synthetic-2031 (not actual user save)',save,chunk,release}}));
+ console.log(JSON.stringify({{'ok':true,'version':'18.338','case':'synthetic-2031 (not actual user save)',save,chunk,vacation,release}}));
 }})().catch(e=>{{console.error(e);process.exit(1)}});
 """
     test=root/'test-long-career-saves-18338.cjs'
