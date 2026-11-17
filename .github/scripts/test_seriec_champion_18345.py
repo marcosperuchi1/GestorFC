@@ -116,12 +116,12 @@ assert.equal(s.v18322Champions[0].runner,a);
 assert.equal(s.v98LeagueTitleHistory[0].champion,b);
 // Aggregate tied: winner comes ONLY from second-leg penalty resolution.
 first.result={home:1,away:0};
-second.result={home:0,away:1,pens:[4,5]};
+second.result={home:1,away:0,pens:[4,5]};
 assert.equal(v18345SerieCWinner(s),b);
-second.result={home:0,away:1};
+second.result={home:1,away:0};
 C.finalTie.winner=null;
 assert.equal(v18345SerieCWinner(s),null,'no champion before decisive penalties');
-second.result={home:0,away:1,qualifier:a};
+second.result={home:1,away:0,qualifier:a};
 assert.equal(v18345SerieCWinner(s),a);
 second.result=null;
 assert.equal(v18345SerieCWinner(s),null);
