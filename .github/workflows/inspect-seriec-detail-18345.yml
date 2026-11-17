@@ -22,7 +22,7 @@ jobs:
            s=z.read(name).decode('utf-8')
           for label,a,b in [
             ('C_INITIALIZE_&_FINAL',65450100,65465900),
-            ('C_REPAIR_V99',71298500,71307000),
+            ('C_REPAIR_V99',71296000,71307000),
             ('V98_TITLES',70172200,70179800),
             ('COMPLETE_SEASON',65463900,65466800),
             ('BRA_C_CUP_UI',65994200,66000500),
