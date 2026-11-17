@@ -1,0 +1,44 @@
+name: Inspect new-career selection and coaching isolation 18.344
+on:
+  push:
+    branches: [fix/desktop-18344-career-isolation]
+    paths: ['.github/workflows/inspect-career-isolation-18344.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download validated game HTML
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+          test -s /tmp/futbr-source/src/index.html
+      - name: Inspect real career construction and national conversion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('/tmp/futbr-source/src/index.html').read_text(encoding='utf-8')
+          print('SOURCE_LENGTH',len(src))
+          patterns=[
+           'function v643ConvertNewCareerToNational', 'function v643PrepareNationalCareer',
+           'v643ConvertNewCareerToNational(', 'v643PrepareNationalCareer(',
+           "v643StartType:'national'", 'v643StartType', 'function v641NormalizeCoach',
+           'function v641Register', 'function v641', 'userCoachId', 'managerHistory',
+           'coachHistory', 'function createCareer', 'function v4Create', 'function v128',
+           "case 'new-career'", "a==='new-career'", "a === 'new-career'"
+          ]
+          for term in patterns:
+           hits=[x.start() for x in re.finditer(re.escape(term),src)]
+           print('TERM',repr(term),'COUNT',len(hits))
+           for p in hits[-4:]:
+            print('BEGIN',repr(term),p)
+            print(src[max(0,p-900):p+(12500 if term=='function v643ConvertNewCareerToNational' else 5500)])
+            print('END',repr(term),p)
+          PY
