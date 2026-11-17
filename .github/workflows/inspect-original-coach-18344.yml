@@ -1,0 +1,27 @@
+name: Inspect original coach return helpers 18.344
+on:
+  push:
+    branches: [fix/desktop-18344-career-isolation]
+    paths: ['.github/workflows/inspect-original-coach-18344.yml']
+permissions: {contents: read, actions: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p /tmp/s
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/s
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/s/src/index.html').read_text()
+          for pattern in ['function startCoachJob(', 'function v3CreateCareer(options', 'const v217','const baseCreate=E.createCareer;E.createCareer=function(options={}']:
+           m=list(re.finditer(re.escape(pattern),s))
+           print('TERM',pattern,len(m))
+           for x in m[-1:]:
+            p=x.start()
+            print(s[p:p+7500])
+          PY
