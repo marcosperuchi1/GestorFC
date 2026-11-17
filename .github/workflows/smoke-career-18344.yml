@@ -1,0 +1,26 @@
+name: Smoke 18.344 - independent club and national careers
+on:
+  push:
+    branches: [fix/desktop-18344-career-isolation]
+    paths: ['.github/workflows/smoke-career-18344.yml']
+  workflow_dispatch:
+permissions: {actions: read, contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Download verified original game runtime
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p /tmp/futbr
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr
+          test -s /tmp/futbr/src/index.html
+      - name: Patch national career origin and run actual conversion regression
+        run: |
+          python3 .github/scripts/fix_career_isolation_18344.py /tmp/futbr
+          python3 .github/scripts/test_career_isolation_18344.py /tmp/futbr
+          cat /tmp/futbr/career-isolation-18344-tests.json
