@@ -45,3 +45,5 @@ jobs:
             /tmp/futbr-save-18343/long-career-saves-18338-tests.json
           retention-days: 7
           if-no-files-found: error
+
+# Preserve legacy 18.338 tests before 18.343 replaces writer signature.
