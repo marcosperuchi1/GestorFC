@@ -154,3 +154,5 @@ jobs:
           }
 # 18.344 builds on verified 18.343 signed updater. New archive hashes are backward-compatible and never omit records.
 # Do not rotate the signing key or change the save store identifier.
+
+# Validated by smoke workflow 44001102481: original club coach and independent national history.
