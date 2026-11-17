@@ -1,0 +1,29 @@
+name: Verify public signed updater feed 18.345
+on:
+  push:
+    branches: [fix/desktop-18345-seriec-champion]
+    paths: ['.github/workflows/check-update-feed-18345.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm public updater route and version
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          url='https://futbrmanager.com.br/updates/latest.json'
+          try:
+           with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'FutBR-Release-Verify/1.0'}), timeout=18) as resp:
+            status=resp.status;ctype=resp.headers.get('content-type','')
+            raw=resp.read(120000)
+            print('HTTP',status,'CTYPE',ctype,'BYTES',len(raw))
+            x=json.loads(raw)
+            print('FEED_VERSION',x.get('version'))
+            for platform,val in (x.get('platforms') or {}).items():
+             print('PLATFORM',platform,'ASSET',val.get('url'),'SIGNED',bool(val.get('signature')))
+          except Exception as exc:
+           print('FEED_ERROR',type(exc).__name__,str(exc))
+           raise
+          PY
