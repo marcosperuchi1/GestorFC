@@ -24,3 +24,5 @@ jobs:
           python3 .github/scripts/fix_career_isolation_18344.py /tmp/futbr
           python3 .github/scripts/test_career_isolation_18344.py /tmp/futbr
           cat /tmp/futbr/career-isolation-18344-tests.json
+
+# Recheck career-ledger guard after exact source whitespace normalization.
