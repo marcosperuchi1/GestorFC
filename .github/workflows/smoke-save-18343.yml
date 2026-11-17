@@ -1,0 +1,47 @@
+name: Smoke 18.343 - saves longos sem perder historicos
+on:
+  push:
+    branches: [perf/desktop-18343-season-saves]
+    paths: ['.github/workflows/smoke-save-18343.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download pre-18.338 source and preserve baseline invariants
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-save-18343
+          gh run download 43906782197 -R marcosperuchi1/GestorFC -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-save-18343
+          test -s /tmp/futbr-save-18343/src/index.html
+          test -s /tmp/futbr-save-18343/src-tauri/src/lib.rs
+      - name: Apply tested 18.338 memory limits and 18.343 archival optimization
+        run: |
+          python .github/scripts/optimize_long_career_saves_18338.py /tmp/futbr-save-18343
+          python .github/scripts/optimize_season_saves_18343.py /tmp/futbr-save-18343
+      - name: Regression-test 2026 to 2029, native/UI snapshot reuse and atomic failures
+        run: |
+          python .github/scripts/test_long_career_saves_18338.py /tmp/futbr-save-18343
+          python .github/scripts/test_season_saves_18343.py /tmp/futbr-save-18343
+      - name: Save reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.343-Long-Career-Save-Synthetic-Tests
+          path: |
+            /tmp/futbr-save-18343/season-save-18343-tests.json
+            /tmp/futbr-save-18343/season-save-18343-install.json
+            /tmp/futbr-save-18343/long-career-saves-18338-tests.json
+          retention-days: 7
+          if-no-files-found: error
