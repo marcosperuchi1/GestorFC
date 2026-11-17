@@ -1,0 +1,29 @@
+name: Inspect initial coach assignment 18.344
+on:
+  push:
+    branches: [fix/desktop-18344-career-isolation]
+    paths: ['.github/workflows/inspect-initial-coach-18344.yml']
+permissions: {contents: read, actions: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir -p /tmp/source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/source
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/source/src/index.html').read_text(encoding='utf8')
+          for patt in ["const v","E.createCareer=function(options","E.createCareer=function(...","function v641AssignNationalCoach","function v310RosterRecord","function v548FullAccess","s.userCoachId="]:
+           ms=list(re.finditer(re.escape(patt),s))
+           print('TERM',patt,len(ms))
+           for m in ms[-7:]:
+            p=m.start()
+            excerpt=s[max(0,p-300):p+2100]
+            if patt=='const v':continue
+            print(excerpt.replace('\\n',' '))
+          PY
