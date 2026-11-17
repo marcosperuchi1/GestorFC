@@ -27,3 +27,5 @@ jobs:
            print('FEED_ERROR',type(exc).__name__,str(exc))
            raise
           PY
+
+# Post-release validation of published 18.345 signed update.
