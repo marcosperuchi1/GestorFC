@@ -40,6 +40,8 @@ Run-Python '.github/scripts/fix_unemployed_resume_18334.py'
 Run-Python '.github/scripts/test_unemployed_resume_18334.py'
 Run-Python '.github/scripts/optimize_long_career_saves_18338.py'
 Run-Python '.github/scripts/test_long_career_saves_18338.py'
+Run-Python '.github/scripts/optimize_season_saves_18343.py'
+Run-Python '.github/scripts/test_season_saves_18343.py'
 Run-Python '.github/scripts/fix_player_career_timeline_18339.py'
 Run-Python '.github/scripts/test_player_career_timeline_18339.py'
 Run-Python '.github/scripts/enable_desktop_updater_18339.py'
@@ -51,6 +53,7 @@ Run-Python '.github/scripts/set_desktop_version_18341.py'
 Run-Python '.github/scripts/fix_welcome_national_preview_18342.py'
 Run-Python '.github/scripts/test_welcome_national_preview_18342.py'
 Run-Python '.github/scripts/set_desktop_version_18342.py'
+Run-Python '.github/scripts/set_desktop_version_18343.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -101,6 +104,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'unemployed-resume-18334-tests.json' 'artifacts/unemployed-resume-18334-tests.json'
   Copy-Item 'long-career-saves-18338-install.json' 'artifacts/long-career-saves-18338-install.json'
   Copy-Item 'long-career-saves-18338-tests.json' 'artifacts/long-career-saves-18338-tests.json'
+  Copy-Item 'season-save-18343-install.json' 'artifacts/season-save-18343-install.json'
+  Copy-Item 'season-save-18343-tests.json' 'artifacts/season-save-18343-tests.json'
   Copy-Item 'desktop-updater-18339-install.json' 'artifacts/desktop-updater-18339-install.json'
   Copy-Item 'career-timeline-18339-install.json' 'artifacts/career-timeline-18339-install.json'
   Copy-Item 'career-timeline-18339-tests.json' 'artifacts/career-timeline-18339-tests.json'
@@ -113,6 +118,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'welcome-national-preview-18342-install.json' 'artifacts/welcome-national-preview-18342-install.json'
    Copy-Item 'welcome-national-preview-18342-tests.json' 'artifacts/welcome-national-preview-18342-tests.json'
    Copy-Item 'desktop-version-18342-install.json' 'artifacts/desktop-version-18342-install.json'
+  Copy-Item 'desktop-version-18343-install.json' 'artifacts/desktop-version-18343-install.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -136,6 +142,9 @@ if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18341
 if (-not $source.Contains("Run-Python '.github/scripts/fix_welcome_national_preview_18342.py'")) { throw 'Hotfix de preview da Selecao 18.342 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_welcome_national_preview_18342.py'")) { throw 'Regressao de preview da Selecao 18.342 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18342.py'")) { throw 'Versao Windows 18.342 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_saves_18343.py'")) { throw 'Otimização incremental de históricos da 18.343 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_season_saves_18343.py'")) { throw 'Teste de integridade de saves da 18.343 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18343.py'")) { throw 'Versao Windows 18.343 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
