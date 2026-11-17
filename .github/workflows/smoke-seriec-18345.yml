@@ -1,0 +1,32 @@
+name: Smoke 18.345 - Serie C final and title integrity
+on:
+  push:
+    branches: [fix/desktop-18345-seriec-champion]
+    paths: ['.github/workflows/smoke-seriec-18345.yml']
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Reconstruct game source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          archive=Path('/tmp/engine.zip')
+          with archive.open('wb') as out:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as src:
+             while data:=src.read(1024*1024):out.write(data)
+          with zipfile.ZipFile(archive) as z:z.extractall('/tmp/futbr')
+          assert Path('/tmp/futbr/FutBR_Manager_Desktop_RC1/src/index.html').is_file()
+          PY
+      - name: Apply real engine patch and execute playoff regression
+        run: |
+          python3 .github/scripts/fix_seriec_champion_18345.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          python3 .github/scripts/test_seriec_champion_18345.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          cat /tmp/futbr/FutBR_Manager_Desktop_RC1/serie-c-champion-18345-tests.json
