@@ -1,0 +1,38 @@
+name: Test FutBR website support
+on:
+  push:
+    branches: [site/support-center-20261117]
+    paths:
+      - 'site-support/**'
+      - '.github/scripts/test_site_support.py'
+      - '.github/workflows/test-site-support.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install chromium
+      - name: Validate browser script and behavior
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          c=Path('site-support/suporte.html').read_text(encoding='utf8')
+          assert '<html lang="pt-BR">' in c
+          assert 'sb_publishable_' in c and 'service_role' not in c
+          assert 'support_tickets' in c and 'support_messages' in c
+          js=re.search(r'<script id="futbr-support-js">([\s\S]*?)</script>',c).group(1)
+          Path('/tmp/support-check.js').write_text(js)
+          PY
+          node --check /tmp/support-check.js
+          python .github/scripts/test_site_support.py
