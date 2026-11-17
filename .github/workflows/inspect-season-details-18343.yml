@@ -1,0 +1,58 @@
+name: Inspect saved manifests and cleanup hot path 18.343
+on:
+  push:
+    branches: [perf/desktop-18343-season-saves]
+    paths: ['.github/workflows/inspect-season-details-18343.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified 18.338 source for unchanged save routines
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+      - name: Extract full code for save and historical-archive hot paths
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('/tmp/futbr-source/src/index.html').read_text(encoding='utf-8')
+          names=['async function saveSharded','async function writeCollection','async function cleanupManifest','function cleanupManifest','async function save(s)','async function v171DecodeManifest','async function v18194HydrateManifest','async function v53Flush','async function v93CleanupCheckpoint']
+          def matched_function(i):
+              p=s.find('{',i)
+              if p<0:return ''
+              level=0;quote=None;esc=False
+              for j in range(p,len(s)):
+                  c=s[j]
+                  if quote:
+                      if esc:esc=False
+                      elif c=='\\':esc=True
+                      elif c==quote:quote=None
+                  else:
+                      if c in "'\`\"":quote=c
+                      elif c=='{':level+=1
+                      elif c=='}':
+                          level-=1
+                          if level==0:return s[i:j+1]
+              return s[i:i+10000]
+          for name in names:
+              finds=[m.start() for m in re.finditer(re.escape(name),s)]
+              print('FUNCTION',name,'COUNT',len(finds))
+              for p in finds[:2]:
+                  excerpt=matched_function(p)
+                  print('BEGIN_FUNC',name,'LENGTH',len(excerpt))
+                  print(excerpt[:16000])
+                  print('END_FUNC')
+          for term in ['async function save(s){','function v171DropManifest','async function v18310WorkerDeleteMany','function v18338FreeTransientBeforeSave','const SHARDS=','const V171_FORMAT=']:
+              matches=[m.start() for m in re.finditer(re.escape(term),s)]
+              print('OTHER',term,len(matches))
+              for p in matches[:1]:print(s[p:p+8000])
+          PY
