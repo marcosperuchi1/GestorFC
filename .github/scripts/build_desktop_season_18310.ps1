@@ -54,6 +54,9 @@ Run-Python '.github/scripts/fix_welcome_national_preview_18342.py'
 Run-Python '.github/scripts/test_welcome_national_preview_18342.py'
 Run-Python '.github/scripts/set_desktop_version_18342.py'
 Run-Python '.github/scripts/set_desktop_version_18343.py'
+Run-Python '.github/scripts/fix_career_isolation_18344.py'
+Run-Python '.github/scripts/test_career_isolation_18344.py'
+Run-Python '.github/scripts/set_desktop_version_18344.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -119,6 +122,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'welcome-national-preview-18342-tests.json' 'artifacts/welcome-national-preview-18342-tests.json'
    Copy-Item 'desktop-version-18342-install.json' 'artifacts/desktop-version-18342-install.json'
   Copy-Item 'desktop-version-18343-install.json' 'artifacts/desktop-version-18343-install.json'
+  Copy-Item 'career-isolation-18344-install.json' 'artifacts/career-isolation-18344-install.json'
+  Copy-Item 'career-isolation-18344-tests.json' 'artifacts/career-isolation-18344-tests.json'
+  Copy-Item 'desktop-version-18344-install.json' 'artifacts/desktop-version-18344-install.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -145,6 +151,8 @@ if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18342
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_saves_18343.py'")) { throw 'Otimização incremental de históricos da 18.343 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_season_saves_18343.py'")) { throw 'Teste de integridade de saves da 18.343 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18343.py'")) { throw 'Versao Windows 18.343 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_career_isolation_18344.py'")) { throw 'Hotfix 18.344 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_career_isolation_18344.py'")) { throw 'Regressao de isolamento 18.344 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
