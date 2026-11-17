@@ -49,7 +49,8 @@ def main():
       const v548FullAccess=()=>true,v640EnsureState=()=>root,v641NormalizeCoach=c=>c,
         v643EnsureNationalStarterDepth=()=>{},v640Eligible=()=>
           Array.from({length:22},(_,i)=>({pos:i<3?'GOL':'ATA'})),
-        v640AutoRoster=()=>[],v640BestXI=()=>[];\n      let v640NationalViewCode=null;
+        v640AutoRoster=()=>[],v640BestXI=()=>[];
+      let v640NationalViewCode=null;
     """
     test=r"""
       v643ConvertNewCareerToNational(s,'BRA');
