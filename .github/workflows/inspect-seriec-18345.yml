@@ -1,0 +1,42 @@
+name: Inspect Serie C champion sources 18.345
+on:
+  push:
+    branches: [fix/desktop-18345-seriec-champion]
+    paths: ['.github/workflows/inspect-seriec-18345.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze native competition and records
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          p=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          print('PARTS',len(p))
+          with open('/tmp/engine.zip','wb') as out:
+           for part in p:
+            with part.open('rb') as src:
+             while data:=src.read(1024*1024):out.write(data)
+          with zipfile.ZipFile('/tmp/engine.zip') as z:
+           name=next(x for x in z.namelist() if x.endswith('/src/index.html'))
+           s=z.read(name).decode('utf-8')
+          print('RAW_SOURCE_BYTES',len(s),'SRC',name)
+          for term in ['serieC','braLower','Serie C','Série C','champion','titleLedger633','v18322ChampionsRows','3ª divisão']:
+           hits=list(re.finditer(re.escape(term),s,re.I))
+           print('TERM',repr(term),'COUNT',len(hits))
+           if term in ('serieC','braLower','titleLedger633'):
+            for m in hits[-75:]:
+             a=max(0,m.start()-250);e=min(len(s),m.end()+320)
+             print('HIT',m.start(),repr(s[a:e].replace('\n',' ')))
+          # function-level context for Serie C controller and champion
+          patterns=['function v6','function v5','function v18']
+          fns=list(re.finditer(r'function\s+([a-zA-Z][A-Za-z0-9_]*)\s*\(',s))
+          for m in fns:
+           snippet=s[m.start():m.start()+6500]
+           if 'serieC' in snippet and (re.search(r'champion|campeao|winner|final',snippet,re.I)):
+            print('FUNCTION',m.group(1),'AT',m.start(),repr(snippet[:2700].replace('\n',' ')))
+          PY
