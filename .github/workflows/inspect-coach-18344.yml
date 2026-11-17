@@ -1,0 +1,33 @@
+name: Inspect coach replacement and career ledger 18.344
+on:
+  push:
+    branches: [fix/desktop-18344-career-isolation]
+    paths: ['.github/workflows/inspect-coach-18344.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/futbr/src/index.html').read_text(encoding='utf-8')
+          terms=['E.createCareer=function','createCareer:function','function createCareer(options','function v641AssignNationalCoach','const shadow=','let shadow=','function v217','function v643ConvertNewCareerToNational']
+          for term in terms:
+           m=list(re.finditer(re.escape(term),s))
+           print('TERM',term,'COUNT',len(m))
+           for x in m[-3:]:
+            p=x.start()
+            print('POSITION',p)
+            print(s[max(0,p-1500):min(len(s),p+10000)])
+            print('END')
+          PY
