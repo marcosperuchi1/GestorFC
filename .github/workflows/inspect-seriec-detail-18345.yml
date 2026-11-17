@@ -1,0 +1,31 @@
+name: Inspect Serie C final stage and award code 18.345
+on:
+  push:
+    branches: [fix/desktop-18345-seriec-champion]
+    paths: ['.github/workflows/inspect-seriec-detail-18345.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with open('/tmp/engine.zip','wb') as out:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as src:
+             while data:=src.read(1024*1024):out.write(data)
+          with zipfile.ZipFile('/tmp/engine.zip') as z:
+           name=next(x for x in z.namelist() if x.endswith('/src/index.html'))
+           s=z.read(name).decode('utf-8')
+          for label,a,b in [
+            ('C_INITIALIZE_&_FINAL',65450100,65465900),
+            ('C_REPAIR_V99',71298500,71307000),
+            ('V98_TITLES',70172200,70179800),
+            ('COMPLETE_SEASON',65463900,65466800),
+            ('BRA_C_CUP_UI',65994200,66000500),
+            ('OTHER_TITLES',65420000,65424200)]:
+           print('\n======= '+label+' =======\n'+s[a:b])
+          PY
