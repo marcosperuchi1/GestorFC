@@ -1,0 +1,152 @@
+name: FutBR Windows 18.343 - saves rapidos entre temporadas
+on:
+  push:
+    branches: [perf/desktop-18343-season-saves]
+    paths: ['.github/workflows/build-desktop-updater-18343.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-desktop-18343-signed-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      FUTBR_UPDATE_FEED_URL: ${{ vars.FUTBR_UPDATE_FEED_URL }}
+      FUTBR_UPDATE_ASSET_BASE_URL: ${{ vars.FUTBR_UPDATE_ASSET_BASE_URL }}
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout 18.343
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test security and preserve previous game improvements
+        shell: pwsh
+        run: |
+          python -m py_compile .github/scripts/optimize_season_saves_18343.py .github/scripts/test_season_saves_18343.py .github/scripts/fix_welcome_national_preview_18342.py .github/scripts/test_welcome_national_preview_18342.py .github/scripts/verify_desktop_updater_signature_18343.py .github/scripts/set_desktop_version_18343.py .github/scripts/make_desktop_update_release_18343.py .github/scripts/publish_signed_update_r2_18343.py .github/scripts/fix_initial_nationalities_18340.py .github/scripts/test_initial_nationalities_18340.py .github/scripts/fix_scorers_submit_18340.py .github/scripts/test_scorers_submit_18340.py
+          if ($LASTEXITCODE -ne 0) { throw 'Python syntax error in signed update repair.' }
+          python .github/scripts/test_desktop_updater_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy updater behavior regression.' }
+          python .github/scripts/test_competition_history_context_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'History regression.' }
+      - name: Fail closed unless signing private key is configured
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'The original Tauri signing key is missing; refusing to generate untrusted updates.'
+          }
+      - name: Rust Windows
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Derive and lock public key from the original signing private key
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = Join-Path $env:RUNNER_TEMP 'futbr-updater-public-18343.b64'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- $path
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $path)) { throw 'Cannot derive public key from existing private signer.' }
+          $pub = (Get-Content $path -Raw).Trim()
+          if ([string]::IsNullOrWhiteSpace($pub)) { throw 'Derived public key is empty.' }
+          "FUTBR_UPDATER_PUBLIC_KEY=$pub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FUTBR_DERIVED_PUBKEY_FILE=$path" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host 'Matching Tauri updater public key derived in memory; private key remains secret.'
+      - name: Browser regression prerequisites
+        shell: pwsh
+        run: |
+          python -m pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed' }
+      - name: Single Windows build - all past fixes plus corrected update trust
+        shell: pwsh
+        run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Package signed candidate for restricted artifact retention
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/make_desktop_update_release_18343.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Missing signed 18.343 NSIS candidate.' }
+      - name: Upload restricted installer candidate before independent cryptographic verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.343-PRIVATE-CANDIDATE-DO-NOT-DISTRIBUTE
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.343-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.343-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Cryptographically verify installer and gate publication
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/verify_desktop_updater_signature_18343.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Public key does not match installer or release signature.' }
+          $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          $installer = Join-Path $art 'FutBR-Manager-18.343-Windows.exe'
+          $sig = Join-Path $art 'FutBR-Manager-18.343-Windows.exe.sig'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- verify "$env:FUTBR_DERIVED_PUBKEY_FILE" "$installer" "$sig"
+          if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Cryptographic Minisign verification of Windows installer failed.' }
+          $nationalities = Get-Content (Join-Path $art 'initial-nationalities-18340-tests.json') -Raw | ConvertFrom-Json
+          $search = Get-Content (Join-Path $art 'scorers-submit-18340-tests.json') -Raw | ConvertFrom-Json
+          $save = Get-Content (Join-Path $art 'long-career-saves-18338-tests.json') -Raw | ConvertFrom-Json
+          $history = Get-Content (Join-Path $art 'champions-retirement-18322-tests.json') -Raw | ConvertFrom-Json
+          $version = Get-Content (Join-Path $art 'desktop-version-18343-install.json') -Raw | ConvertFrom-Json
+          $welcome = Get-Content (Join-Path $art 'welcome-national-preview-18342-tests.json') -Raw | ConvertFrom-Json
+          $seasonSave = Get-Content (Join-Path $art 'season-save-18343-tests.json') -Raw | ConvertFrom-Json
+          if (-not $nationalities.ok -or $nationalities.firminoNatCode -ne 'BRA' -or $nationalities.coachNatCode -ne 'USA' -or -not $search.ok -or -not $search.scorers.searchByButton -or -not $search.scorers.searchByEnter -or $search.scorers.searchDuringTyping -or -not $save.ok -or -not $history.ok -or $version.version -ne '18.343.0' -or -not $welcome.ok -or -not $welcome.clubToNationalRendersNational -or -not $welcome.nationChangedWithoutStaleClub -or -not $welcome.returnToClubRestoresPreviouslySelectedClub -or -not $seasonSave.ok -or -not $seasonSave.ui.unchangedChunksReused -or -not $seasonSave.ui.changedHistoryRewritten -or -not $seasonSave.ui.previousSnapshotRemainsRecoverable -or -not $seasonSave.worker.allRowsPersist) {
+            throw 'Game data, search or historical career test failed.'
+          }
+          Write-Host 'PASS: signature, legacy careers, 2026-2029 historical archives, SHA256 reuse, atomic rollback and national-start preview.'
+      - name: Upload verified signed installer and integrity reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.343-Windows-Fast-Season-Saves
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.343-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.343-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/updater-18343-signature-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18343-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/welcome-national-preview-18342-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/welcome-national-preview-18342-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-save-18343-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-save-18343-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-update-release-18343.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/initial-nationalities-18340-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scorers-submit-18340-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/champions-retirement-18322-tests.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish signed 18.343 after complete verification only
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID) -or [string]::IsNullOrWhiteSpace($env:R2_BUCKET) -or [string]::IsNullOrWhiteSpace($env:R2_ACCESS_KEY_ID) -or [string]::IsNullOrWhiteSpace($env:R2_SECRET_ACCESS_KEY)) {
+            Write-Host '::notice::R2 credentials unavailable. Signed installer remains available from GitHub artifact.'
+          } else {
+            python -m pip install boto3
+            if ($LASTEXITCODE -ne 0) { throw 'boto3 installation failed' }
+            python .github/scripts/publish_signed_update_r2_18343.py "$env:FUTBR_PROJECT"
+            if ($LASTEXITCODE -ne 0) { throw 'Publication failed. 18.343 manifest was not updated.' }
+          }
+# 18.343 builds on verified 18.342 signed updater. New archive hashes are backward-compatible and never omit records.
+# Do not rotate the signing key or change the save store identifier.
