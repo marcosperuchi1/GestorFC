@@ -79,14 +79,14 @@ def main():
     )
     html=replace_exact(
       html,
-      "function remember(s){\n   const {c,ledger}=stateSources(s);",
-      "function remember(s){\n   guardCareer(s);\n   const {c,ledger}=stateSources(s);",
+      "function remember(s){",
+      "function remember(s){guardCareer(s);",
       "career shadow remember guard"
     )
     html=replace_exact(
       html,
-      "function repair(s=state){\n   if(restoring||!s?.coaches?.[s.userCoachId])return false;restoring=true;",
-      "function repair(s=state){\n   guardCareer(s);\n   if(restoring||!s?.coaches?.[s.userCoachId])return false;restoring=true;",
+      "function repair(s=state){",
+      "function repair(s=state){guardCareer(s);",
       "career shadow repair guard"
     )
     html=replace_exact(
