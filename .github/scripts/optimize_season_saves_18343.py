@@ -33,6 +33,8 @@ async function v18343Fingerprint(rows){
   text=JSON.stringify(rows,(key,value)=>{
    // Not all structured-clone values have a faithful JSON representation.
    // Fail closed: no hash-based reuse on unsupported historical structures.
+   if(typeof value==='undefined'||(typeof value==='number'&&!Number.isFinite(value)))
+    throw Error('non-JSON archive scalar');
    if(value&&typeof value==='object'&&
       (value instanceof ArrayBuffer||ArrayBuffer.isView(value)||
        value instanceof Map||value instanceof Set))
