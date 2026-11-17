@@ -26,3 +26,5 @@ jobs:
           cat /tmp/futbr/career-isolation-18344-tests.json
 
 # Recheck career-ledger guard after exact source whitespace normalization.
+
+# Executable Node fixture newline corrected.
