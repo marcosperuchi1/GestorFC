@@ -1,0 +1,51 @@
+name: Perf diagnose long-career persistence 18.343
+on:
+  push:
+    branches: [perf/desktop-18343-season-saves]
+    paths: ['.github/workflows/inspect-season-save-18343.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get validated archived game HTML
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/futbr-source
+          gh run download 43906782197 -n FutBR-Windows-18338-Performance-Source -D /tmp/futbr-source
+          test -s /tmp/futbr-source/src/index.html
+      - name: Print source routines and growth-related hot paths
+        run: |
+          python3 - <<'PY'
+          import re,os
+          from pathlib import Path
+          s=Path('/tmp/futbr-source/src/index.html').read_text(encoding='utf-8')
+          patterns=[
+             'async function saveSharded','async function writeCollection','async function persist',
+             'persist=function','async function v52FlushSave',
+             'async function commitManifest','async function v171DecodeManifest',
+             'async function v18183DbWriteMany','async function v18181RawWriteMany',
+             'function v18191mEncodePlayerChunk','async function v18191mEncodePlayerChunk',
+             'function nextSeason','async function nextSeason',
+             'v168DeferredRolloverSave','v52SavePromise',
+             'async function history_store_season','async function v538CareerStore',
+             'async function v18310PackVacationRows','streamVacationWorld125']
+          def compact_excerpt(pos,length=4000):
+              return s[max(0,pos-100):min(len(s),pos+length)].replace('\r','')
+          print('SOURCE_BYTES',len(s))
+          for term in patterns:
+              hits=[m.start() for m in re.finditer(re.escape(term),s)]
+              print('TERM',repr(term),'COUNT',len(hits),'POSITIONS',hits[:12])
+              for idx in hits[:2]:
+                  snippet=compact_excerpt(idx,4200)
+                  if len(snippet)>4200:snippet=snippet[:4200]
+                  print('BEGIN_EXCERPT',term,idx)
+                  print(snippet)
+                  print('END_EXCERPT')
+          PY
