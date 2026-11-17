@@ -16,8 +16,8 @@ def main():
       "s.v217CareerLedger={version:1,jobs:[],rows:[],updatedYear:s.year,updatedDay:s.day}",
       "let shadowCareerId=null;",
       "function guardCareer(s){",
-      "function remember(s){\n   guardCareer(s);",
-      "function repair(s=state){\n   guardCareer(s);",
+      "function remember(s){guardCareer(s);",
+      "function repair(s=state){guardCareer(s);",
       "if(options?.v643StartType!=='national')try{remember(s);repair(s);}"
     ]
     for mark in required:
