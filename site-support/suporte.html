@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071c16">
+<meta name="description" content="Abra chamados, envie sugestões e acompanhe respostas do suporte FutBR Manager.">
+<title>Central de Suporte | FutBR Manager</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,"Segoe UI",sans-serif;--bg:#071b16;--panel:#102c23;--panel2:#16382b;--line:#315443;--text:#edfff1;--mute:#a5c0ae;--brand:#7ee1a4;--danger:#ffc0bd}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 0%,#1c4633,transparent 45%),var(--bg);color:var(--text)}
+a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}button,input,select,textarea{font:inherit}button{cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}.wrap{max-width:1160px;padding:0 18px;margin:0 auto}
+header{position:sticky;top:0;z-index:10;background:#071b16ed;border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:18px;min-height:68px}
+.logo{font-size:19px;font-weight:850;color:var(--text)}.logo span{display:inline-grid;place-items:center;color:var(--brand);border:2px solid #c1f3d0;width:29px;height:34px;border-radius:5px 5px 12px 12px;margin-right:10px;font-size:16px}
+header nav{display:flex;gap:20px;font-size:13px}.hero{padding:41px 0 28px}.eyebrow{font-size:12px;color:var(--brand);text-transform:uppercase;letter-spacing:.14em;font-weight:820}
+h1{font-size:clamp(28px,4.7vw,44px);line-height:1.15;letter-spacing:-.04em;margin:9px 0 12px}h2{font-size:20px;letter-spacing:-.02em;margin:0 0 9px}h3{font-size:15px;margin:0}
+.intro{max-width:710px;color:var(--mute);line-height:1.58;margin:0}.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.tag{font-size:11px;font-weight:800;padding:6px 10px;border:1px solid #477358;border-radius:100px;color:#c1f6d4;background:#163c2c}
+.card{border:1px solid var(--line);border-radius:15px;background:linear-gradient(150deg,#113127,#0b241c)}
+.login{max-width:500px;padding:25px;margin:0 0 50px}.muted{color:var(--mute)}.small{font-size:12px}.field{display:grid;gap:6px;margin-bottom:13px}
+label{font-size:12px;font-weight:750;color:#d6f5e0}
+input,select,textarea{min-height:43px;min-width:0;width:100%;border:1px solid #416650;border-radius:9px;background:#071c16;color:var(--text);padding:10px 12px;outline:none}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+textarea{resize:vertical;min-height:100px;line-height:1.45}input::placeholder,textarea::placeholder{color:#88a596}
+select{color-scheme:dark}
+.btn{background:#163c2c;border:1px solid #416a4e;border-radius:10px;padding:10px 15px;min-height:42px;color:var(--text);font-size:13px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.btn:hover:not(:disabled){background:#20513a;border-color:var(--brand)}
+.btn-primary{background:var(--brand);color:#0b2918;border-color:var(--brand)}.btn-primary:hover:not(:disabled){background:#a2f0bf;color:#0b2918}
+.buttons{display:flex;flex-wrap:wrap;align-items:center;gap:9px}.error{font-size:12px;color:var(--danger);min-height:18px}
+.workspace-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.workspace-head p{margin:0;font-size:12px;color:var(--mute)}
+.workspace{display:grid;grid-template-columns:minmax(260px,345px) minmax(0,1fr);gap:15px;align-items:start;margin-bottom:48px}
+.queue,.ticket-detail{min-width:0;overflow:hidden}.queue-head{padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.filters{display:flex;gap:7px;padding:11px;border-bottom:1px solid var(--line)}.filters input{flex:1}.filters select{width:122px}
+#tickets{max-height:65vh;overflow-y:auto}.ticket-button{display:block;text-align:left;width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);padding:12px 14px;color:var(--text)}
+.ticket-button:hover,.ticket-button[aria-pressed="true"]{background:#1a3e30}.ticket-head{display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:11px;color:var(--mute)}
+.ticket-title{font-weight:800;font-size:13px;margin:5px 0;overflow-wrap:anywhere}.ticket-foot{font-size:11px;color:var(--mute);overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--line);background:#25483b;color:#c4f2d3;font-weight:760;white-space:nowrap}
+.badge[data-status="open"]{background:#263e62;border-color:#4d6c92;color:#c2deff}
+.badge[data-status="in_progress"]{background:#1b5247;border-color:#348c74;color:#b5fff0}
+.badge[data-status="waiting_user"]{background:#554322;border-color:#90763e;color:#f9e1ad}
+.badge[data-status="resolved"]{background:#214c34;border-color:#3b8754;color:#b4ffd0}
+.badge[data-status="closed"]{background:#3c4144;border-color:#727b79;color:#d2d6d5}
+#details{padding:19px;min-height:380px}.empty{padding:40px 16px;color:var(--mute);text-align:center;font-size:13px}.empty strong{display:block;color:var(--text);font-size:17px;margin-bottom:5px}
+.detail-top{display:flex;justify-content:space-between;gap:9px;align-items:start}.detail-top h2{overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:7px;font-size:12px;color:var(--mute);margin:8px 0}
+.description{padding:14px;background:#0a221a;border:1px solid var(--line);border-radius:9px;margin:17px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+.thread{display:grid;gap:10px;margin-top:22px}.thread-title{font-weight:800;font-size:12px;text-transform:uppercase;color:var(--mute);letter-spacing:.06em}
+.message{background:#0e2b22;border:1px solid var(--line);padding:12px 14px;border-radius:11px}.message.staff{background:#19412e;border-color:#478e5b}
+.message-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:7px}.message-body{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}
+.reply{border-top:1px solid var(--line);padding-top:16px;margin-top:18px}
+.staff-panel{display:flex;gap:9px;flex-wrap:wrap;align-items:end;padding:12px;background:#0b261b;border-radius:10px;border:1px solid #497857;margin:18px 0}
+.staff-panel .field{flex:1;min-width:120px;margin:0}.staff-panel .btn{flex:none}
+.how{max-width:890px;padding:22px;margin:0 0 40px}.how p{line-height:1.6;margin-bottom:0}
+footer{border-top:1px solid var(--line);font-size:12px;color:var(--mute);padding:25px 0 35px}
+dialog{color:var(--text);background:#123025;border:1px solid #4a825d;border-radius:18px;width:min(620px,calc(100% - 20px));max-height:90vh;overflow-y:auto;padding:0;box-shadow:0 26px 100px #000a}
+dialog::backdrop{background:#04150fdd}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px;border-bottom:1px solid var(--line)}
+.modal-body{padding:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid .field{margin:0}.wide{grid-column:1/-1}
+#notice{position:fixed;bottom:21px;left:50%;transform:translateX(-50%);z-index:30;background:#1c4532;border:1px solid var(--brand);color:var(--text);font-size:13px;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px #0009;max-width:90vw}
+#notice[hidden],[hidden]{display:none!important}
+@media(max-width:780px){.wrap{padding:0 13px}header .wrap{min-height:61px}.logo{font-size:15px}header nav{gap:10px}.hero{padding:29px 0 20px}.workspace{grid-template-columns:minmax(0,1fr)}#tickets{max-height:300px}#details{padding:14px}.grid{grid-template-columns:1fr}.wide{grid-column:1}.modal-body{padding:14px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="https://futbrmanager.com.br/" class="logo"><span aria-hidden="true">F</span>FutBR Manager</a><nav aria-label="Menu"><a href="https://futbrmanager.com.br/">Início</a><a href="#como-funciona">Como funciona</a></nav></div></header>
+<main class="wrap">
+<section class="hero"><div class="eyebrow">Central do treinador</div><h1>Suporte e feedback</h1><p class="intro">Dúvidas, erros, sugestões ou dificuldades com o Premium? Nossa equipe quer ouvir você. Abra seu chamado, acompanhe o andamento e receba respostas na própria página.</p><div class="tags"><span class="tag">Erros e bugs</span><span class="tag">Ideias e sugestões</span><span class="tag">Acompanhamento</span></div></section>
+<section id="authBox" class="login card"><h2>Entrar no suporte</h2><p class="muted small">Use o mesmo e-mail e senha do FutBR Manager. Você verá apenas os seus chamados.</p>
+<form id="loginForm"><div class="field"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" required placeholder="voce@email.com"></div><div class="field"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="Sua senha"></div><div class="buttons" style="justify-content:space-between"><button class="btn btn-primary" id="loginBtn" type="submit">Entrar</button><a class="small" href="https://futbrmanager.com.br/">Criar conta no site</a></div><p id="loginError" class="error" role="alert"></p></form></section>
+<section id="app" hidden aria-label="Central de chamados">
+<div class="workspace-head"><div><h2 id="workspaceTitle">Meus chamados</h2><p id="accountLabel"></p></div><div class="buttons"><button class="btn" id="refreshBtn">Atualizar</button><button class="btn btn-primary" id="newBtn">+ Novo chamado</button><button class="btn" id="logoutBtn">Sair</button></div></div>
+<div class="workspace"><aside class="queue card" aria-label="Chamados"><div class="queue-head"><h3 id="queueTitle">Meus chamados</h3><span class="badge" id="count">0</span></div><div class="filters"><input id="search" aria-label="Buscar chamados" placeholder="Buscar número ou assunto"><select id="filter" aria-label="Filtrar status"><option value="">Todos</option><option value="open">Aberto</option><option value="in_progress">Em análise</option><option value="waiting_user">Aguardando jogador</option><option value="resolved">Resolvido</option><option value="closed">Encerrado</option></select></div><div id="tickets"><p class="empty">Carregando chamados...</p></div></aside>
+<section class="ticket-detail card" aria-label="Detalhes do chamado"><div id="details"><div class="empty"><strong>Selecione um chamado</strong>Você poderá ler e responder à equipe aqui.</div></div></section></div>
+</section>
+<section class="how card" id="como-funciona"><h2>Como funciona?</h2><p class="muted small">Entre com sua conta, escolha o assunto e descreva o ocorrido ou sua sugestão. Cada chamado recebe um número, um status e um espaço para respostas. Você poderá adicionar informações até o encerramento. Não inclua senhas, chaves de acesso ou dados de pagamento sensíveis.</p></section>
+</main>
+<dialog id="modal" aria-labelledby="modalTitle"><div class="modal-head"><h2 id="modalTitle">Abrir chamado</h2><button type="button" id="closeModal" class="btn">Fechar</button></div><form id="newForm" class="modal-body"><div class="grid">
+<div class="field"><label for="category">Tipo de solicitação</label><select id="category"><option value="bug">Erro / Bug</option><option value="feedback">Sugestão / Feedback</option><option value="question">Dúvida</option><option value="billing">Pagamento / Premium</option><option value="other">Outro assunto</option></select></div>
+<div class="field"><label for="platform">Plataforma</label><select id="platform"><option value="windows">Windows</option><option value="android">Android</option><option value="website">Site</option><option value="other">Outro</option></select></div>
+<div class="field wide"><label for="subject">Assunto</label><input id="subject" required minlength="6" maxlength="120" placeholder="Ex.: Jogo travou ao iniciar a temporada"></div>
+<div class="field wide"><label for="description">Descreva o problema, dúvida ou sugestão</label><textarea id="description" rows="6" required minlength="15" maxlength="5000" placeholder="O que aconteceu? Como reproduzir o erro? O que gostaria de melhorar?"></textarea></div>
+<div class="field wide"><label for="version">Versão do jogo (opcional)</label><input id="version" maxlength="50" placeholder="Ex.: 18.342"></div>
+</div><p class="muted small">Sua mensagem ficará visível apenas para você e a equipe de suporte.</p><p class="error" id="newError" role="alert"></p><div class="buttons" style="justify-content:flex-end"><button class="btn" id="cancelBtn" type="button">Cancelar</button><button class="btn btn-primary" id="createBtn" type="submit">Enviar chamado</button></div></form></dialog>
+<div id="notice" role="status" aria-live="polite" hidden></div>
+<footer><div class="wrap">© 2026 FutBR Manager · <a href="https://futbrmanager.com.br/">Voltar ao site</a></div></footer>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js"></script>
+<script id="futbr-support-js">
+(function(){
+'use strict';
+var URL='https://ticwckvvxswturovwlqu.supabase.co';
+var KEY='sb_publishable_tGhqX7Jozn1cfO-Odj1mkQ__6xJ2ZqZ';
+var db=null;
+var state={user:null,isStaff:false,tickets:[],selected:null,busy:false};
+var STATUS={open:'Aberto',in_progress:'Em análise',waiting_user:'Aguardando jogador',resolved:'Resolvido',closed:'Encerrado'};
+var CAT={bug:'Erro / Bug',feedback:'Sugestão',question:'Dúvida',billing:'Pagamento / Premium',other:'Outro'};
+var PLAT={windows:'Windows',android:'Android',website:'Site',other:'Outro'};
+function el(x){return document.getElementById(x);}
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function date(x){try{return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(x));}catch(_){return '';}}
+function status(s){return '<span class="badge" data-status="'+e(s)+'">'+e(STATUS[s]||s)+'</span>';}
+function error(x){return (x&&x.message)||'Tente novamente.';}
+function flash(message){var n=el('notice');n.textContent=message;n.hidden=false;clearTimeout(flash.timer);flash.timer=setTimeout(function(){n.hidden=true;},5000);}
+function busy(v){state.busy=v;['loginBtn','createBtn','refreshBtn','newBtn'].forEach(function(x){el(x).disabled=v;});}
+function show(){
+  el('authBox').hidden=!!state.user;el('app').hidden=!state.user;
+  if(!state.user)return;
+  el('accountLabel').textContent=state.user.email||'';
+  el('workspaceTitle').textContent=state.isStaff?'Painel da equipe de suporte':'Meus chamados';
+  el('queueTitle').textContent=state.isStaff?'Fila de chamados':'Meus chamados';
+}
+async function sync(){
+  if(!db)return;
+  var r=await db.auth.getUser(),user=r.data&&r.data.user;
+  if(!user){state.user=null;state.isStaff=false;state.tickets=[];state.selected=null;show();return;}
+  if(state.user&&state.user.id===user.id)return;
+  state.user=user;state.selected=null;
+  var a=await db.from('support_staff').select('role').eq('user_id',user.id).maybeSingle();
+  state.isStaff=!!(a.data&&a.data.role);
+  show();await refresh();
+}
+async function refresh(){
+  if(!db||!state.user)return;
+  var previous=state.selected&&state.selected.id;
+  var r=await db.from('support_tickets').select('*').order('last_activity_at',{ascending:false}).limit(300);
+  if(r.error){flash('Falha ao carregar chamados: '+error(r.error));return;}
+  state.tickets=r.data||[];
+  state.selected=state.tickets.find(function(t){return t.id===previous;})||null;
+  drawList();
+  if(state.selected)await openTicket(state.selected.id);else emptyDetails();
+}
+function drawList(){
+  var search=el('search').value.trim().toLowerCase(),filter=el('filter').value;
+  var a=state.tickets.filter(function(t){
+    return (!filter||t.status===filter)&&(!search||(t.subject||'').toLowerCase().includes(search)||String(t.ticket_no).includes(search)||(state.isStaff&&(t.contact_email||'').toLowerCase().includes(search)));
+  });
+  var list=el('tickets');list.innerHTML='';el('count').textContent=String(a.length);
+  if(!a.length){list.innerHTML='<p class="empty">Nenhum chamado encontrado. Clique em <strong>+ Novo chamado</strong> para começar.</p>';return;}
+  a.forEach(function(t){
+    var b=document.createElement('button');b.type='button';b.className='ticket-button';b.dataset.ticket=t.id;
+    b.setAttribute('aria-pressed',String(!!state.selected&&state.selected.id===t.id));
+    b.innerHTML='<div class="ticket-head"><span>#'+e(t.ticket_no)+' · '+e(CAT[t.category]||t.category)+'</span>'+status(t.status)+'</div>'+
+      '<div class="ticket-title">'+e(t.subject)+'</div><div class="ticket-foot">'+(state.isStaff?e(t.contact_email)+' · ':'')+date(t.last_activity_at)+'</div>';
+    list.appendChild(b);
+  });
+}
+function emptyDetails(){el('details').innerHTML='<div class="empty"><strong>Selecione um chamado</strong>Você poderá ler e responder à equipe aqui.</div>';}
+async function openTicket(id){
+  var t=state.tickets.find(function(t){return t.id===id;});if(!t)return;
+  state.selected=t;drawList();el('details').innerHTML='<p class="muted small">Carregando conversa...</p>';
+  var r=await db.from('support_messages').select('id,author_id,body,is_staff,created_at').eq('ticket_id',id).order('created_at',{ascending:true}).limit(200);
+  if(r.error){flash('Não foi possível carregar mensagens: '+error(r.error));return;}
+  if(!state.selected||state.selected.id!==id)return;
+  drawDetails(t,r.data||[]);
+}
+function drawDetails(t,msgs){
+  var h='<div class="detail-top"><div><div class="eyebrow">Chamado #'+e(t.ticket_no)+'</div><h2>'+e(t.subject)+'</h2></div>'+status(t.status)+'</div>';
+  h+='<div class="meta"><span>'+e(CAT[t.category]||t.category)+'</span><span>·</span><span>'+e(PLAT[t.platform]||t.platform)+'</span>';
+  if(t.game_version)h+='<span>· Versão '+e(t.game_version)+'</span>';
+  h+='<span>· '+date(t.created_at)+'</span></div>';
+  if(state.isStaff)h+='<p class="muted small">Jogador: '+e(t.contact_email)+'</p>';
+  h+='<div class="description">'+e(t.description)+'</div><div class="thread"><div class="thread-title">Conversa e respostas</div>';
+  if(!msgs.length)h+='<p class="muted small">Ainda não há respostas neste chamado.</p>';
+  msgs.forEach(function(m){
+    h+='<article class="message'+(m.is_staff?' staff':'')+'"><div class="message-head"><strong>'+(m.is_staff?'Equipe FutBR Manager':m.author_id===state.user.id?'Você':'Jogador')+'</strong><span class="muted">'+date(m.created_at)+'</span></div><div class="message-body">'+e(m.body)+'</div></article>';
+  });
+  h+='</div>';
+  if(state.isStaff){
+    h+='<form class="staff-panel" id="staffForm"><div class="field"><label for="adminStatus">Status</label><select id="adminStatus">';
+    Object.keys(STATUS).forEach(function(s){h+='<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+STATUS[s]+'</option>';});
+    h+='</select></div><div class="field"><label for="adminPriority">Prioridade</label><select id="adminPriority"><option value="normal"'+(t.priority==='normal'?' selected':'')+'>Normal</option><option value="high"'+(t.priority==='high'?' selected':'')+'>Alta</option></select></div><button type="submit" class="btn btn-primary">Salvar status</button></form>';
+  }
+  if(t.status!=='closed')h+='<form id="replyForm" class="reply"><div class="field"><label for="replyText">'+(state.isStaff?'Responder ao jogador':'Enviar mensagem adicional')+'</label><textarea id="replyText" required minlength="2" maxlength="4000" placeholder="Escreva sua resposta..."></textarea></div><p class="error" id="replyError"></p><div class="buttons" style="justify-content:flex-end"><button type="submit" class="btn btn-primary">Enviar mensagem</button></div></form>';
+  else h+='<p class="muted small">Chamado encerrado. A equipe poderá reabri-lo, caso necessário.</p>';
+  el('details').innerHTML=h;
+  if(el('staffForm'))el('staffForm').addEventListener('submit',saveStatus);
+  if(el('replyForm'))el('replyForm').addEventListener('submit',reply);
+}
+async function reply(evt){
+  evt.preventDefault();if(state.busy||!state.selected)return;
+  var text=el('replyText').value.trim(),id=state.selected.id;
+  if(text.length<2){el('replyError').textContent='Escreva uma mensagem maior.';return;}
+  state.busy=true;
+  var r=await db.from('support_messages').insert({ticket_id:id,author_id:state.user.id,body:text});
+  state.busy=false;
+  if(r.error){el('replyError').textContent=error(r.error);return;}
+  flash('Mensagem enviada.');await refresh();
+}
+async function saveStatus(evt){
+  evt.preventDefault();if(state.busy||!state.isStaff||!state.selected)return;
+  var id=state.selected.id;state.busy=true;
+  var r=await db.from('support_tickets').update({status:el('adminStatus').value,priority:el('adminPriority').value}).eq('id',id).select('id');
+  state.busy=false;
+  if(r.error){flash('Falha na atualização: '+error(r.error));return;}
+  flash('Status atualizado.');await refresh();
+}
+async function createTicket(evt){
+  evt.preventDefault();if(state.busy||!state.user)return;
+  var subject=el('subject').value.trim(),description=el('description').value.trim();
+  if(subject.length<6||description.length<15){el('newError').textContent='Escreva um assunto e uma descrição mais detalhados.';return;}
+  busy(true);el('newError').textContent='';
+  var r=await db.from('support_tickets').insert({
+    user_id:state.user.id,category:el('category').value,platform:el('platform').value,
+    subject:subject,description:description,game_version:el('version').value.trim()
+  }).select('id').single();
+  busy(false);
+  if(r.error){el('newError').textContent=error(r.error);return;}
+  el('modal').close();el('newForm').reset();flash('Chamado registrado com sucesso!');
+  await refresh();if(r.data&&r.data.id)await openTicket(r.data.id);
+}
+async function login(evt){
+  evt.preventDefault();if(state.busy||!db)return;
+  busy(true);el('loginError').textContent='';
+  var r=await db.auth.signInWithPassword({email:el('email').value.trim(),password:el('password').value});
+  busy(false);
+  if(r.error){el('loginError').textContent=error(r.error);return;}
+  el('password').value='';state.user=null;await sync();
+}
+function bind(){
+  el('loginForm').addEventListener('submit',login);
+  el('logoutBtn').addEventListener('click',async function(){if(db)await db.auth.signOut();state.user=null;state.isStaff=false;state.tickets=[];state.selected=null;show();emptyDetails();});
+  el('newBtn').addEventListener('click',function(){el('modal').showModal();el('subject').focus();});
+  el('closeModal').addEventListener('click',function(){el('modal').close();});
+  el('cancelBtn').addEventListener('click',function(){el('modal').close();});
+  el('newForm').addEventListener('submit',createTicket);
+  el('refreshBtn').addEventListener('click',refresh);
+  el('search').addEventListener('input',drawList);
+  el('filter').addEventListener('change',drawList);
+  el('tickets').addEventListener('click',function(ev){var b=ev.target.closest('[data-ticket]');if(b)openTicket(b.dataset.ticket);});
+}
+function init(){
+  if(!window.supabase||!window.supabase.createClient){el('loginError').textContent='Não foi possível carregar o login. Atualize a página.';return;}
+  db=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  db.auth.onAuthStateChange(function(){setTimeout(sync,0);});
+  sync();
+}
+bind();window.addEventListener('load',init);
+})();
+</script>
+</body>
+</html>
