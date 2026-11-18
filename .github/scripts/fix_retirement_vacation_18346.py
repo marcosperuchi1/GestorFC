@@ -53,6 +53,13 @@ function shouldAutoRetire549(s,p,m={},chance=retirementChance549(s,p,m),roll=nul
     html=replace_once(html,old,new,'v4 retirement chance early gate')
     old="protectedByUser=!!(s.userEmployed&&clubBefore===s.user);v91UpdateMarketReputation(p);"
     new="protectedByUser=!!(s.userEmployed&&clubBefore===s.user&&!("+DELEGATED+"));v91UpdateMarketReputation(p);"
+    if old not in html:
+        import re
+        start=html.find('function v91ResetPlayers(s,oldYear)')
+        snippet=html[max(0,start):start+2300] if start>=0 else ''
+        print('V91_18346_DIAG',repr(snippet[:2300]))
+        for match in list(re.finditer('protectedByUser',html))[-5:]:
+            print('GUARD_18346_DIAG',match.start(),repr(html[max(0,match.start()-130):match.start()+290]))
     html=replace_once(html,old,new,'v91 retirement protected club')
     old="if(!manual&&p.squad!=='youth'&&!protectedByUser&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
     new="if(!manual&&p.squad!=='youth'&&(!protectedByUser||Number(p.age)>=(p.pos==='GOL'?47:45))&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
