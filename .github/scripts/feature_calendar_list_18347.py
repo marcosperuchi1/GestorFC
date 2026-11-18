@@ -221,6 +221,8 @@ def main():
     source=project/'src/index.html'
     html=source.read_text(encoding='utf-8')
     if MARK in html:raise RuntimeError('18.347 already installed')
+    # Remove obsolete navigation instructions, but keep the underlying archival event.
+    html=html.replace('Consulte Elenco > Gerenciar aposentadorias.', 'Registros preservados na carreira.')
     anchor="window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';\n})();\n</script>"
     if html.count(anchor)!=1:raise RuntimeError('Main game IIFE anchor missing: cannot install calendar safely')
     html=html.replace(anchor,JS+'\n'+anchor,1)
