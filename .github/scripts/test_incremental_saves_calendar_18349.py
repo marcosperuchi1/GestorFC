@@ -185,7 +185,9 @@ def main():
       'scrollbarCss':'.v18347-calendar.v18349-all .v18347-list' in html and 'overflow-y:auto' in html,
       'previousCalendarPreserved':'FUTBR_CALENDAR_NAV_VERSION_18348' in html,
       'atomicSavePreserved':'await commitManifest(manifest,old,meta)' in html,
-      'seasonsPreserved':'FUTBR_LONG_CAREER_SAVE_18338_BEGIN' in html}
+      'seasonsPreserved':'FUTBR_LONG_CAREER_SAVE_18338_BEGIN' in html,
+      'installedEditionEqualsSignedVersion':"const EDITION='18.349.0';" in html and
+       "window.GestorFC.version='18.349.0';window.GestorFC.visualVersion='18.349.0';" in html}
     if not all(checks.values()):raise RuntimeError('Missing regression invariant: '+repr(checks))
     ui_start='async function writeCollection(token,key,value,limit,previous=null){'
     worker_start='async function save(s){'
