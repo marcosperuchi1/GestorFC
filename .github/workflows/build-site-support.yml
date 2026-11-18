@@ -1,0 +1,46 @@
+name: Build updated FutBR website (support and legal)
+on:
+  push:
+    branches: [site/support-center-20261117]
+    paths:
+      - 'site-support/build_site.py'
+      - 'site-support/suporte.html'
+      - '.github/workflows/build-site-support.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build site bundle from unchanged production files
+        run: python site-support/build_site.py
+      - name: Validate JS and complete artifact
+        run: |
+          node --check site-support/dist/deploy/app.js
+          node --check site-support/dist/deploy/config.js
+          node --check site-support/dist/deploy/homologacao.js
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          p=Path('site-support/dist/FutBR_Manager_SITE_Com_Suporte_Termos_Privacidade.zip')
+          with ZipFile(p) as z:
+            names=set(z.namelist())
+            assert {'index.html','suporte.html','app.js','config.js','styles.css','homologacao.html','homologacao.js','assets/futbr-logo.png'}==names
+            assert 'Documento preliminar' not in z.read('app.js').decode('utf-8')
+            assert b'gameDownloadUrl' in z.read('config.js')
+            assert b'support_tickets' in z.read('suporte.html')
+          PY
+      - name: Upload complete Cloudflare Pages deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-SITE-Suporte-Legais-Pronto-Cloudflare
+          path: |
+            site-support/dist/FutBR_Manager_SITE_Com_Suporte_Termos_Privacidade.zip
+            site-support/dist/manifest.json
+          retention-days: 14
