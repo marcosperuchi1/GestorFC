@@ -1,0 +1,43 @@
+name: Inspect retirement decision and vacation market delegation 18.346
+on:
+  push:
+    branches: [fix/desktop-18346-retirement-vacation]
+    paths: ['.github/workflows/inspect-retirement-details-18346.yml']
+permissions: {contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          with open('/tmp/raw.zip','wb') as dest:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as src:
+             while data:=src.read(1024*1024):dest.write(data)
+          with zipfile.ZipFile('/tmp/raw.zip') as z:
+           html=z.read(next(p for p in z.namelist() if p.endswith('/src/index.html'))).decode('utf-8')
+          def printat(name,position,left=800,right=3500):
+           print('\n=== '+name+' AT '+str(position)+' ===\n'+html[max(0,position-left):position+right].replace('\n','\n'))
+          for name,needle,left,right in [
+           ('RESET_PLAYERS','function v91ResetPlayers(s,oldYear)',1300,9300),
+           ('RETIRE_CHANCE','retirementChance549',1700,3400),
+           ('AUTO_RETIRE','shouldAutoRetire549',1500,3400),
+           ('DECISION_AUDIT','function v627RetirementAudit()',700,3300),
+           ('PLAYER_REPLENISH','stable-player-population-fast-rollover',300,8700),
+           ('V579_MANUAL_SEASON','const v579BaseNextSeason=E.nextSeason',900,3200),
+           ('VACATION_V557','vacationPage=function(){',700,4400),
+           ('VACATION_MARKET','v586BaseVacationStepAsync',900,1300)
+          ]:
+           p=html.find(needle)
+           if p>=0:printat(name,p,left,right)
+           else:print('MISSING',name)
+          for needle in ['retirementChance549=','shouldAutoRetire549=','function retirementChance549','function shouldAutoRetire549','v91ResetPlayers(s','v91NextSeason','delegateTransfers','delegateMarket','vacationDelegat','transferDelegat','delegated','delegate','autoMarket','autoTransfer']:
+           positions=[m.start() for m in re.finditer(re.escape(needle),html,re.I)]
+           print('\nTERM',repr(needle),'TOTAL',len(positions))
+           for p in positions[-20:]:
+            print('AT',p,repr(html[max(0,p-270):p+500].replace('\n',' ')))
+          PY
