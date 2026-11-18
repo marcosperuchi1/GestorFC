@@ -30,6 +30,11 @@ def main():
     if "p.clubId===s.user||chance<=0" in html:raise RuntimeError('old user-club retirement veto remains')
     if "protectedByUser=!!(s.userEmployed&&clubBefore===s.user);" in html:
         raise RuntimeError('old v91 retirement gate remains')
+    rollover_body=section(html,'function v91ResetPlayers(s,oldYear)','function v91PromoteAgedYouth(s,t,freeSet){')
+    if 'v18346DelegatedRetirement(s)' in rollover_body:
+        raise RuntimeError('v91 rollover must not call a retirement helper defined inside a separate engine closure')
+    if 's.vacation.startYear' not in rollover_body:
+        raise RuntimeError('v91 delegation check must be evaluated in the rollover lexical scope')
     code = "\n".join([
        section(html,'function retirementChance549(s,p,m={})','function v549AutomaticResult('),
        section(html,'function v91RetirementSnapshot(p){','function v91PromoteAgedYouth(s,t,freeSet){')
