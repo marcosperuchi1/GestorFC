@@ -5,7 +5,6 @@ from pathlib import Path
 
 MARK='FUTBR_CALENDAR_LIST_18347'
 JS=r"""
-<script id="futbr-calendar-list-18347">
 /* FUTBR_CALENDAR_LIST_18347 */
 (function(){
  'use strict';
@@ -153,7 +152,7 @@ JS=r"""
   window.GestorFC.calendarList18347={version:'18.347',fixtures:()=>fixtures(state),page:calendarPage18347};
  }
 })();
-</script>
+/* FUTBR_CALENDAR_LIST_18347_END */
 """
 CSS=r"""
 <style id="futbr-calendar-list-18347-style">
@@ -222,9 +221,12 @@ def main():
     source=project/'src/index.html'
     html=source.read_text(encoding='utf-8')
     if MARK in html:raise RuntimeError('18.347 already installed')
+    anchor="window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';\n})();\n</script>"
+    if html.count(anchor)!=1:raise RuntimeError('Main game IIFE anchor missing: cannot install calendar safely')
+    html=html.replace(anchor,JS+'\n'+anchor,1)
     i=html.rfind('</body>')
     if i<0:raise RuntimeError('Closing body not found')
-    html=html[:i]+CSS+JS+html[i:]
+    html=html[:i]+CSS+html[i:]
     source.write_text(html,encoding='utf-8')
     report={'ok':True,'version':'18.347',
       'compactListInsteadOfCards':True,'calendarMainNavigation':True,
