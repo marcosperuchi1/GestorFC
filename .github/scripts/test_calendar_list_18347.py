@@ -8,10 +8,13 @@ def main():
     if len(sys.argv)!=2:raise SystemExit('usage: test_calendar_list_18347.py <project>')
     root=Path(sys.argv[1]).resolve()
     html=(root/'src/index.html').read_text(encoding='utf-8')
-    start="<script id=\"futbr-calendar-list-18347\">"
-    assert html.count(start)==1,'Dedicated calendar script must be installed only once'
+    start='/* FUTBR_CALENDAR_LIST_18347 */'
+    end='/* FUTBR_CALENDAR_LIST_18347_END */'
+    assert html.count(start)==1 and html.count(end)==1,'Calendar must load inside main game engine once'
     assert html.count("<style id=\"futbr-calendar-list-18347-style\">")==1
-    js=html.split(start,1)[1].split('</script>',1)[0]
+    js=html.split(start,1)[1].split(end,1)[0]
+    original_end="window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';"
+    assert html.index(start)<html.index(original_end),'Calendar must share game runtime closure'
     checks=[
       'FUTBR_CALENDAR_LIST_18347',
       "['calendar','calendar','Calendário de jogos']",
