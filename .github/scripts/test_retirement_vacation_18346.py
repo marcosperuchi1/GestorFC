@@ -44,7 +44,7 @@ const assert=require('node:assert/strict');
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const rng=s=>s.roll??.99;
 const E={
- clamp,rand:()=>0,overall:p=>Number(p.ovr)||70,
+ clamp,rand:()=>0,rng:s=>s.roll??.99,overall:p=>Number(p.ovr)||70,
  attributes:p=>({att:70,def:65}),copy:x=>JSON.parse(JSON.stringify(x||{})),
  team:(s,id)=>(s.teams||[]).find(t=>t.id===id)||null
 };
@@ -68,7 +68,7 @@ function save({delegate=true,active=false,completed=30,startYear=2026,year=2027,
   retirements:[{year:2025,id:'historic',name:'Historic Veteran'}]};
 }
 let s=save({delegate:false,completed:0,startYear:2025});
-const survivor=player('survivor',42,'user');
+const survivor=player('survivor',42,'user','ATA',8.0);
 assert.equal(shouldAutoRetire549(s,survivor,metrics,.995,0),false,'No delegation preserves human control');
 assert.equal(v18346DelegatedRetirement(s),false);
 s.players.survivor=survivor;
@@ -77,7 +77,7 @@ s.players.goalkeeper=player('goalkeeper',45,'user','GOL',7.9);
 s.players.youth=player('youth',48,'ai','ATA',5.8,{squad:'youth'});
 s.players.ai=player('ai',44,'ai');
 const nonDelegated=v91ResetPlayers(s,2026);
-assert(!nonDelegated.retired.has('survivor'),'Human still protected at 43');
+assert(!nonDelegated.retired.has('survivor'),'Outstanding non-delegated veteran must be able to continue at 43');
 assert(nonDelegated.retired.has('forced'),'At 45 field player must eventually retire without delegation');
 assert(nonDelegated.retired.has('ai'),'Other AI clubs remain eligible');
 assert(!nonDelegated.retired.has('goalkeeper'),'Top form goalkeeper can continue until 47');
