@@ -1,0 +1,44 @@
+name: Inspect v59 menu reorder and edition markup 18.348
+on:
+  push:
+    branches: [fix/desktop-18348-calendar-nav-version]
+    paths: ['.github/workflows/inspect-menu-version-18348.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          path=Path('/tmp/archive.zip')
+          with path.open('wb') as out:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as data:
+             while chunk:=data.read(1<<20):out.write(chunk)
+          with zipfile.ZipFile(path) as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8')
+          terms=[
+           'function v555ShellHTML','function v59ReorderMenu',
+           'v59ReorderMenu=function','function v59Nav','v59Menu',
+           'function v555EnsureShell','function v260FastRender',
+           'function v745WelcomeSyncEdition','v745WelcomeSyncEdition()',
+           "EDIÇÃO 7.44","EDIÇÃO ","Edição ","edição 7.44",
+           'function v548AuthHTML','function v548RenderAuth',
+           'function v548RenderWelcome','function renderWelcome',
+           '.edition-pill', 'pill-edition', 'brand-version',
+           'v59ReorderMenu(', 'document.title=', 'function v18322RetirementPage'
+          ]
+          for term in terms:
+           hits=list(re.finditer(re.escape(term),s,re.I))
+           print('TERM',repr(term),'COUNT',len(hits))
+           count=3 if term not in ['EDIÇÃO ','Edição ','document.title=','.edition-pill','pill-edition','brand-version'] else 4
+           for m in hits[-count:]:
+            pos=m.start()
+            before=180
+            after=12000 if term in ['function v555ShellHTML','function v59ReorderMenu','v59ReorderMenu=function','function v59Nav','v59Menu'] else 3200
+            print('HIT',repr(term),pos,repr(s[max(0,pos-before):min(len(s),pos+after)].replace('\n',' ')))
+          PY
