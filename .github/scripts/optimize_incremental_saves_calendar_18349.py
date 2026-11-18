@@ -94,6 +94,19 @@ def main():
        "/* "+MARK+" */\nconst v18343HistoricalKeys=new Set([",
        'real game and Worker save guards',2)
 
+    # The 18.348 UI patch installs its edition from the then-current Tauri
+    # version. Re-bind that single visible build marker after upgrading the
+    # actual signed Windows package to 18.349.
+    config=json.loads((root/'src-tauri/tauri.conf.json').read_text(encoding='utf-8'))
+    if config.get('version')!='18.349.0':
+        raise RuntimeError('The signed Tauri version must be 18.349.0 before UI edition sync')
+    src=once(src,"const EDITION='18.348.0';","const EDITION='18.349.0';",
+        'visible sidebar / login edition from actual signed build')
+    src=once(src,
+        "window.GestorFC.version='18.348.0';window.GestorFC.visualVersion='18.348.0';",
+        "window.GestorFC.version='18.349.0';window.GestorFC.visualVersion='18.349.0';",
+        'boot runtime footer edition matches signed build')
+
     for k in CORE_KEYS:
         if src.count("'"+k+"'")<2:raise RuntimeError('Collection key missing after safe incremental patch: '+k)
     for marker in ['async function saveSharded(s,mode=', 'async function save(s){',
@@ -120,7 +133,8 @@ def main():
       'historyAndStatisticsPreserved':True,
       'firstSaveFromLegacyManifestsFallsBackToFullWrite':True,
       'noSchemaOrSaveFormatMigration':True,
-      'savesExistingSnapshotsWithoutDeletingThem':True
+      'savesExistingSnapshotsWithoutDeletingThem':True,
+      'visibleEditionSynchronizedWithSignedVersion':True
     }
     (root/'incremental-saves-calendar-18349-install.json').write_text(
         json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
