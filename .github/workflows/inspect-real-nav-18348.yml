@@ -1,0 +1,42 @@
+name: Diagnose final sidebar and edition display 18.348
+on:
+  push:
+    branches: [fix/desktop-18348-calendar-nav-version]
+    paths: ['.github/workflows/inspect-real-nav-18348.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate current live menu and version components across source and patches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,zipfile
+          out=Path('/tmp/engine.zip')
+          with out.open('wb') as fo:
+           for p in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with p.open('rb') as fi:
+             while x:=fi.read(1024*1024):fo.write(x)
+          with zipfile.ZipFile(out) as z:
+           src=next(p for p in z.namelist() if p.endswith('/src/index.html'))
+           html=z.read(src).decode('utf8')
+          files=[('BASE',html)]+[(str(p),p.read_text('utf8',errors='replace')) for p in Path('.github/scripts').glob('*.py')]
+          needles=['7.44','7,44','Edição','edição','edition','Edi\\u00e7\\u00e3o','Português-BR','Português‑BR','Configurações','Olheiro','Visão Geral','Minha carreira','Calendário de jogos','function renderPage','function render(){','const NAV=','navMenu','navItems','menuItems','sidebar']
+          for label,content in files:
+           found={}
+           for n in needles:
+            matches=list(re.finditer(re.escape(n),content,re.I))
+            if matches:found[n]=matches
+           if not found:continue
+           if label!='BASE' and not any(k in found for k in ['7.44','Edição','edição','edition','Português-BR','Configurações','Olheiro','Visão Geral','Minha carreira','Calendário de jogos','sidebar']):
+            continue
+           print('FILE',label,'length',len(content),'COUNTS',','.join(f'{k}:{len(v)}' for k,v in found.items()))
+           for needle,ms in found.items():
+            limit=8 if needle in ['7.44','Edição','edição','edition','Português-BR','Configurações','Olheiro','Visão Geral','Minha carreira','Calendário de jogos'] else 2
+            for m in (ms[-limit:] if label=='BASE' else ms[:limit]):
+             p=m.start()
+             print('HIT',label,repr(needle),p,repr(content[max(0,p-500):p+1100]).replace('\\n','\\\\n'))
+          PY
