@@ -36,3 +36,5 @@ jobs:
           python3 .github/scripts/fix_calendar_nav_version_18348.py /tmp/futbr/FutBR_Manager_Desktop_RC1
           python3 .github/scripts/test_calendar_nav_version_18348.py /tmp/futbr/FutBR_Manager_Desktop_RC1
           cat /tmp/futbr/FutBR_Manager_Desktop_RC1/calendar-nav-version-18348-tests.json
+
+# Re-run with DOM mock handling the production full calendar-selector query.
