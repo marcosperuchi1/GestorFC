@@ -186,3 +186,5 @@ jobs:
 # Calendar injected into original game lexical closure; no isolated script accesses internal NAV.
 
 # Final smoke: 44212620495 validates in-scope navigation, compact fixture list and preserved historical data.
+
+# 18.349: distinguish 3 obligatory atomic manifest/meta writes from content-shard write counts.
