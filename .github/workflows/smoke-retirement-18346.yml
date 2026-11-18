@@ -1,0 +1,32 @@
+name: Smoke 18.346 - delegated vacation retirement regression
+on:
+  push:
+    branches: [fix/desktop-18346-retirement-vacation]
+    paths: ['.github/workflows/smoke-retirement-18346.yml']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Reconstruct the actual original game source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          p=Path('/tmp/futbr-retire.zip')
+          with p.open('wb') as dest:
+           for x in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with x.open('rb') as src:
+             while d:=src.read(1024*1024):dest.write(d)
+          with zipfile.ZipFile(p) as z:z.extractall('/tmp/futbr')
+          assert Path('/tmp/futbr/FutBR_Manager_Desktop_RC1/src/index.html').is_file()
+          PY
+      - name: Patch original engine and run 12-season retirement regression
+        run: |
+          python3 .github/scripts/fix_retirement_vacation_18346.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          python3 .github/scripts/test_retirement_vacation_18346.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          cat /tmp/futbr/FutBR_Manager_Desktop_RC1/retirement-vacation-18346-tests.json
