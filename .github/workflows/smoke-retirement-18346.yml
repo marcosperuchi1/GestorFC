@@ -25,6 +25,31 @@ jobs:
           with zipfile.ZipFile(p) as z:z.extractall('/tmp/futbr')
           assert Path('/tmp/futbr/FutBR_Manager_Desktop_RC1/src/index.html').is_file()
           PY
+      - name: Simulate prior optimized 18.345 retirement baseline
+        run: |
+          python3 - <<'PY'
+          import shutil
+          from pathlib import Path
+          src=Path('/tmp/futbr/FutBR_Manager_Desktop_RC1')
+          dst=Path('/tmp/futbr-optimized/FutBR_Manager_Desktop_RC1')
+          shutil.copytree(src,dst)
+          file=dst/'src/index.html'
+          h=file.read_text(encoding='utf-8')
+          def once(a,b):
+           global h
+           assert h.count(a)==1,(a[:100],h.count(a))
+           h=h.replace(a,b,1)
+          once("protectedByUser=!!(s.userEmployed&&clubBefore===s.user);v91UpdateMarketReputation(p);",
+               "protectedByUser=!!(s.userEmployed&&clubBefore===s.user&&Number(p.age)<39);v91UpdateMarketReputation(p);")
+          once("auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}",
+               "auto=clubBefore===s.user?(Number(p.age)>=40&&E.rng(s)<chance):!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}")
+          file.write_text(h,encoding='utf-8')
+          print('Optimized predecessor v91 baseline prepared')
+          PY
+      - name: Test optimized game path and 12-season retirement
+        run: |
+          python3 .github/scripts/fix_retirement_vacation_18346.py /tmp/futbr-optimized/FutBR_Manager_Desktop_RC1
+          python3 .github/scripts/test_retirement_vacation_18346.py /tmp/futbr-optimized/FutBR_Manager_Desktop_RC1
       - name: Patch original engine and run 12-season retirement regression
         run: |
           python3 .github/scripts/fix_retirement_vacation_18346.py /tmp/futbr/FutBR_Manager_Desktop_RC1
