@@ -176,3 +176,5 @@ jobs:
 # Verified both baseline and fully optimized retirement paths in smoke workflow 44207847668.
 
 # Calendar injected into original game lexical closure; no isolated script accesses internal NAV.
+
+# Final smoke: 44212620495 validates in-scope navigation, compact fixture list and preserved historical data.
