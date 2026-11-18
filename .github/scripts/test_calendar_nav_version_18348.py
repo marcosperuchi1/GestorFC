@@ -77,6 +77,7 @@ const document={
  createElement(tag){return tag==='button'?new Btn(''): {tagName:tag,children:[],setAttribute(){}};},
  querySelector(sel){
   if(sel==='.sidebar .nav')return nav;
+  if(sel==='.sidebar .nav button[data-view="calendar"]')return nav.querySelector('[data-view="calendar"]');
   if(sel==='.sidebar .sidebar-bottom')return bottom;
   if(sel==='.sidebar .v18348-build-version')return bottom.child;
   return null;
