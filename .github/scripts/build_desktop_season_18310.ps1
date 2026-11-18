@@ -66,6 +66,9 @@ Run-Python '.github/scripts/set_desktop_version_18346.py'
 Run-Python '.github/scripts/feature_calendar_list_18347.py'
 Run-Python '.github/scripts/test_calendar_list_18347.py'
 Run-Python '.github/scripts/set_desktop_version_18347.py'
+Run-Python '.github/scripts/set_desktop_version_18348.py'
+Run-Python '.github/scripts/fix_calendar_nav_version_18348.py'
+Run-Python '.github/scripts/test_calendar_nav_version_18348.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -143,6 +146,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'calendar-list-18347-install.json' 'artifacts/calendar-list-18347-install.json'
   Copy-Item 'calendar-list-18347-tests.json' 'artifacts/calendar-list-18347-tests.json'
   Copy-Item 'desktop-version-18347-install.json' 'artifacts/desktop-version-18347-install.json'
+  Copy-Item 'desktop-version-18348-install.json' 'artifacts/desktop-version-18348-install.json'
+  Copy-Item 'calendar-nav-version-18348-install.json' 'artifacts/calendar-nav-version-18348-install.json'
+  Copy-Item 'calendar-nav-version-18348-tests.json' 'artifacts/calendar-nav-version-18348-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -180,6 +186,9 @@ if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18346
 if (-not $source.Contains("Run-Python '.github/scripts/feature_calendar_list_18347.py'")) { throw 'Calendario em lista 18.347 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_calendar_list_18347.py'")) { throw 'Teste de calendario 18.347 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18347.py'")) { throw 'Versao assinada 18.347 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18348.py'")) { throw 'Versao assinada 18.348 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_calendar_nav_version_18348.py'")) { throw 'Menu calendario e versao visual 18.348 ausentes.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_calendar_nav_version_18348.py'")) { throw 'Teste da navegacao real 18.348 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
