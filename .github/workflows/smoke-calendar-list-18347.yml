@@ -30,3 +30,5 @@ jobs:
           python3 .github/scripts/feature_calendar_list_18347.py /tmp/futbr/FutBR_Manager_Desktop_RC1
           python3 .github/scripts/test_calendar_list_18347.py /tmp/futbr/FutBR_Manager_Desktop_RC1
           cat /tmp/futbr/FutBR_Manager_Desktop_RC1/calendar-list-18347-tests.json
+
+# Assert calendar is in the original game closure, with live nav and player state.
