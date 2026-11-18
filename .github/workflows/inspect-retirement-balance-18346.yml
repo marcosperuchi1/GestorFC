@@ -1,0 +1,34 @@
+name: Inspect retirement rate and turnover timing 18.346
+on:
+  push:
+    branches: [fix/desktop-18346-retirement-vacation]
+    paths: ['.github/workflows/inspect-retirement-balance-18346.yml']
+permissions: {contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with open('/tmp/base.zip','wb') as out:
+           for p in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with p.open('rb') as f:
+             while d:=f.read(1024*1024):out.write(d)
+          with zipfile.ZipFile('/tmp/base.zip') as z:
+           s=z.read(next(x for x in z.namelist() if x.endswith('/src/index.html'))).decode()
+          for name,first,last in [
+           ('RETIREMENT_CHANCE','function retirementChance549(', 'function v549AutomaticResult('),
+           ('V91_SEASON_CALL','function v91ResetPlayers(s,oldYear)', 'function v91PromoteAgedYouth('),
+           ('V91_NEXTSEASON','function v91NextSeason(', 'function v91NextSeason2('),
+           ('VACATION_START','function startVacation(s,days,delegate=false){', 'function vacationStep(s)'),
+           ('VACATION_ADVANCE','function vacationStep(s)', 'function stopVacation(')
+          ]:
+           a=s.find(first)
+           if a<0:print('MISSING',name);continue
+           b=s.find(last,a)
+           print('##### '+name+' ####')
+           print(s[a:min(b if b>=0 else a+5000,a+8000)])
+          PY
