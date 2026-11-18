@@ -32,3 +32,5 @@ jobs:
           cat /tmp/futbr/FutBR_Manager_Desktop_RC1/calendar-list-18347-tests.json
 
 # Assert calendar is in the original game closure, with live nav and player state.
+
+# Retest extracted embedded marker and behavior after main-IIFE injection.
