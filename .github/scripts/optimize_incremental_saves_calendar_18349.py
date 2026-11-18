@@ -65,7 +65,6 @@ def main():
         raise RuntimeError('18.347 calendar list missing')
 
     header="const v18343HistoricalKeys=new Set([\n"
-    updated=header+" '"+','.join([])+""
     updated=header+" 'players','teams','coaches','schedule','competitionStats','allTimeStats',\n"
     src=once(src,header,updated,'all live collection copy-on-write keys',2)
 
@@ -88,7 +87,9 @@ def main():
     old_list="\"<div class='v18347-list'>\"+body"
     new_list="\"<div class='v18347-list' tabindex='0' role='region' aria-label='Lista rolável de jogos da temporada'>\"+body"
     src=once(src,old_list,new_list,'keyboard-accessible internal game-list scrollbar')
-    src=once(src,'</body>',CSS+'</body>','append compact calendar viewport')
+    end=src.rfind('</body>')
+    if end<0:raise RuntimeError('Missing game closing body for calendar style')
+    src=src[:end]+CSS+src[end:]
     src=once(src,"const v18343HistoricalKeys=new Set([",
        "/* "+MARK+" */\nconst v18343HistoricalKeys=new Set([",
        'real game and Worker save guards',2)
