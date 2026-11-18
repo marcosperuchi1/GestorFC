@@ -174,3 +174,5 @@ jobs:
 # Diagnose legacy v91 guard after all prior runtime transformations.
 
 # Verified both baseline and fully optimized retirement paths in smoke workflow 44207847668.
+
+# Calendar injected into original game lexical closure; no isolated script accesses internal NAV.
