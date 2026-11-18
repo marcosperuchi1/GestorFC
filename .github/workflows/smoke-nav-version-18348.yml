@@ -1,0 +1,38 @@
+name: Smoke 18.348 - real calendar menu and installed version
+on:
+  push:
+    branches: [fix/desktop-18348-calendar-nav-version]
+    paths: ['.github/workflows/smoke-nav-version-18348.yml']
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Recover game source and reproduce installed 18.347 calendar
+        run: |
+          python3 - <<'PY'
+          import json,zipfile
+          from pathlib import Path
+          archive=Path('/tmp/engine.zip')
+          with archive.open('wb') as dest:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as src:
+             while chunk:=src.read(1024*1024):dest.write(chunk)
+          with zipfile.ZipFile(archive) as z:z.extractall('/tmp/futbr')
+          root=Path('/tmp/futbr/FutBR_Manager_Desktop_RC1')
+          assert root.joinpath('src/index.html').is_file()
+          path=root/'src-tauri/tauri.conf.json'
+          cfg=json.loads(path.read_text(encoding='utf-8-sig'))
+          cfg['version']='18.348.0'
+          path.write_text(json.dumps(cfg),encoding='utf-8')
+          PY
+          python3 .github/scripts/feature_calendar_list_18347.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+      - name: Apply fixed sidebar integration and test actual embedded runtime code
+        run: |
+          python3 .github/scripts/fix_calendar_nav_version_18348.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          python3 .github/scripts/test_calendar_nav_version_18348.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          cat /tmp/futbr/FutBR_Manager_Desktop_RC1/calendar-nav-version-18348-tests.json
