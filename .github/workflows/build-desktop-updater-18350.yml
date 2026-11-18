@@ -80,8 +80,15 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          python .github/scripts/make_desktop_update_release_18349.py "$env:FUTBR_PROJECT"
+          python .github/scripts/make_desktop_update_release_18350.py "$env:FUTBR_PROJECT"
           if ($LASTEXITCODE -ne 0) { throw 'Missing signed 18.350 NSIS candidate.' }
+          $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          foreach ($file in @('FutBR-Manager-18.350-Windows.exe','FutBR-Manager-18.350-Windows.exe.sig','latest.json','SHA256SUMS.txt')) {
+            if (-not (Test-Path (Join-Path $art $file))) { throw "Missing mandatory signed 18.350 release file: $file" }
+          }
+          $manifest = Get-Content (Join-Path $art 'latest.json') -Raw | ConvertFrom-Json
+          if ($manifest.version -ne '18.350.0') { throw 'Release manifest does not match the compiled 18.350 Windows version.' }
+
       - name: Upload restricted installer candidate before independent cryptographic verification
         uses: actions/upload-artifact@v4
         with:
