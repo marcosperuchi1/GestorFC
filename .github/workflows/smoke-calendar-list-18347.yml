@@ -1,0 +1,32 @@
+name: Smoke 18.347 - compact calendar list and retirements UI
+on:
+  push:
+    branches: [feat/desktop-18347-calendar-list]
+    paths: ['.github/workflows/smoke-calendar-list-18347.yml']
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Rebuild original game source for UI regression
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          archive=Path('/tmp/futbr-source.zip')
+          with archive.open('wb') as out:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as file:
+             while data:=file.read(1024*1024):out.write(data)
+          with zipfile.ZipFile(archive) as z:z.extractall('/tmp/futbr')
+          assert Path('/tmp/futbr/FutBR_Manager_Desktop_RC1/src/index.html').is_file()
+          PY
+      - name: Apply real calendar list and test screen behavior
+        run: |
+          python3 .github/scripts/feature_calendar_list_18347.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          python3 .github/scripts/test_calendar_list_18347.py /tmp/futbr/FutBR_Manager_Desktop_RC1
+          cat /tmp/futbr/FutBR_Manager_Desktop_RC1/calendar-list-18347-tests.json
