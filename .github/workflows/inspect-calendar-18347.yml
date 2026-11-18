@@ -1,0 +1,46 @@
+name: Inspect calendar and retirement UI 18.347
+on:
+  push:
+    branches: [feat/desktop-18347-calendar-list]
+    paths: ['.github/workflows/inspect-calendar-18347.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          archive=Path('/tmp/base.zip')
+          with archive.open('wb') as out:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as f:
+             while data:=f.read(1024*1024):out.write(data)
+          with zipfile.ZipFile(archive) as z:
+           name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           s=z.read(name).decode('utf-8')
+          print('HTML_LENGTH',len(s))
+          patterns=[
+            ('CALENDAR_FN',r'function\s+(?:calendar|schedule|fixtures|fixture|home|dashboard)\w*Page\s*\('),
+            ('CALENDAR_FUNC',r'(?:calendarPage|schedulePage|fixturesPage)\s*=\s*function'),
+            ('RETIRE',r'function\s+v18322RetirementPage\s*\('),
+            ('RENDER_NAV',r'function\s+render\s*\('),
+            ('NAV_VIEW',r"view==?=?['\"]calendar['\"]"),
+            ('NAV_TABLE',r"['\"]calendar['\"]\s*:\s*"),
+            ('UI_COMP',r'function\s+(?:v\d+\w*(?:Comp|Competition|Stage)\w*|compName|stageName)\s*\('),
+            ('LOGO_FN',r'function\s+\w*(?:Badge|Logo|Crest|Shield|Escudo)\w*\s*\(')
+          ]
+          for label,pat in patterns:
+           matches=list(re.finditer(pat,s,re.I))
+           print('COUNT',label,len(matches))
+           for m in matches[:8]:
+            p=m.start(); print('CONTEXT',label,p,repr(s[max(0,p-250):p+5000]))
+          for needle in ['Próxima partida','Próximo jogo','Calendário de jogos','Calendário','calendar-page','v54-calendar','fixture-page','v18324-open-retirements','data-action="calendar"','v579ManualRetire','v547PlayerCareerArchive','function v18322RetirementPage','function compLabel','function fixtureLabel','function stageLabel','function teamLogo']:
+           m=list(re.finditer(re.escape(needle),s,re.I))
+           print('TERM',needle,'COUNT',len(m))
+           for x in m[-4:]:
+            p=x.start();print('HIT',needle,p,repr(s[max(0,p-240):p+700]))
+          PY
