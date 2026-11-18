@@ -1,0 +1,42 @@
+name: Inspect active v555 chrome and visible edition 18.348
+on:
+  push:
+    branches: [fix/desktop-18348-calendar-nav-version]
+    paths: ['.github/workflows/inspect-actual-chrome-18348.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          a=Path('/tmp/src.zip')
+          with a.open('wb') as fo:
+           for p in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with p.open('rb') as fi:
+             while x:=fi.read(1<<20):fo.write(x)
+          with zipfile.ZipFile(a) as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf8')
+          for term in [
+           'function v555UpdateChrome(', 'v555UpdateChrome=function','function v555UpdateShell(',
+           'function v555Sidebar', 'v555NavItems', 'const v555Nav', 'v555Nav=',
+           'function v555UpdateNav', 'v555UpdateChrome(', 'dataset.v555Shell',
+           'Edição 7.44', 'EDIÇÃO 7.44', 'v555-version', 'brand-version',
+           'edition-pill', 'pill-edition', 'window.GestorFC.visualVersion',
+           'function v745WelcomeSyncEdition','v745WelcomeSyncEdition()',
+           "'settings'", "'scout'", "'competitions'",
+           'function v555BuildSidebar','v555Shell','v555SidebarMenu'
+          ]:
+           matches=list(re.finditer(re.escape(term),s,re.I))
+           print('TERM',repr(term),'COUNT',len(matches))
+           num=4 if term in ['function v555UpdateChrome(','v555UpdateChrome=function','v555Nav=','v555UpdateChrome(','v555-version','Edição 7.44','EDIÇÃO 7.44','window.GestorFC.visualVersion'] else 2
+           for m in matches[-num:]:
+            p=m.start()
+            before=500 if term not in ('function v555UpdateChrome(',) else 300
+            after=6500 if 'v555' in term or term in ['Edição 7.44','EDIÇÃO 7.44'] else 1300
+            print('LOC',repr(term),p,repr(s[max(0,p-before):p+after].replace('\n',' ')))
+          PY
