@@ -136,8 +136,10 @@ async function workerTest(){
  const s=game();await save(s);
  const first=clone(db.get(STORE)),num=first.collections.players.keys.length;
  assert.equal(num,9);
- const initial=writes.n;await save(s);
- assert.equal(writes.n,initial,'Unchanged worker state must produce zero new shards');
+ const initial=writes.n,beforeUnchanged={...writes.by};await save(s);
+ for(const collection of V171_SHARDS)
+  assert.equal((writes.by[collection]||0)-(beforeUnchanged[collection]||0),0,'Unchanged worker '+collection+' shard must not be rewritten');
+ assert.equal(writes.n-initial,3,'Worker must still atomically write previous checkpoint, manifest and metadata');
  s.day++;s.players.p3.goals++;s.schedule[70].fixtures[0].result={home:1,away:1};
  const prev=writes.by.players||0;
  await save(s);const changed=clone(db.get(STORE));
