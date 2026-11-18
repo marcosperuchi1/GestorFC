@@ -12,7 +12,7 @@ def main():
     end='/* FUTBR_CALENDAR_LIST_18347_END */'
     assert html.count(start)==1 and html.count(end)==1,'Calendar must load inside main game engine once'
     assert html.count("<style id=\"futbr-calendar-list-18347-style\">")==1
-    js=html.split(start,1)[1].split(end,1)[0]
+    js=start+'\n'+html.split(start,1)[1].split(end,1)[0]
     original_end="window.GestorFC.version='18.155';window.GestorFC.visualVersion='18.155';"
     assert html.index(start)<html.index(original_end),'Calendar must share game runtime closure'
     checks=[
