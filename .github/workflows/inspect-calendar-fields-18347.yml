@@ -1,0 +1,51 @@
+name: Inspect game calendar data model 18.347
+on:
+  push:
+    branches: [feat/desktop-18347-calendar-list]
+    paths: ['.github/workflows/inspect-calendar-fields-18347.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,zipfile
+          with open('/tmp/source.zip','wb') as output:
+           for chunk in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with chunk.open('rb') as inp:
+             while x:=inp.read(1024*1024):output.write(x)
+          with zipfile.ZipFile('/tmp/source.zip') as archive:
+           text=archive.read(next(n for n in archive.namelist() if n.endswith('/src/index.html'))).decode('utf-8')
+          terms={
+           "NAV_MENU":"const NAV=",
+           "FIRST_CALENDAR":"function calendarPage(){",
+           "COMP_PAGE_OVERRIDES":"competitionsPage=function(){",
+           "RENDER_PAGE":"function renderPage(){",
+           "LAST_COMP_TAB":"competitionTab==='calendar'",
+           "CURRENT_CALENDAR_MENU":"['calendar'",
+           "CREST_BADGE":"function badge(t,size='')",
+           "TEAM_BUTTON":"function teamButton(t)",
+           "COACH_NAME":"function coachName(t)",
+           "STAGE_OBJECT":"type:'league',",
+           "COMP_KEY":"'league:bra:1'",
+           "FIXTURE_COMP":"v661Brazil",
+           "FIXTURE_INTL":"v4Intl",
+           "NATIONAL_ROOT":"function v640EnsureState"
+          }
+          for label,term in terms.items():
+           found=list(re.finditer(re.escape(term),text))
+           print('TERM',label,'COUNT',len(found))
+           if label in ('NAV_MENU','RENDER_PAGE','LAST_COMP_TAB','COMP_PAGE_OVERRIDES','TEAM_BUTTON','COACH_NAME','CURRENT_CALENDAR_MENU'):
+            for m in found[-5:]:
+             a=m.start();print('HIT',label,a,repr(text[max(0,a-450):a+3400]))
+          # competition metadata from fixtures and dates
+          for term in ['fixture.competition','f.competition','f.compKey','f.competitionId','f.v661Brazil','f.v661Phase','d.label','f.v196','stage.label','E.team(state,f.home)','data-view="calendar"']:
+           ms=list(re.finditer(re.escape(term),text))
+           print('FIELD',term,'COUNT',len(ms))
+           for m in ms[-3:]:
+            a=m.start();print('EXAMPLE',term,a,repr(text[max(0,a-330):a+450]))
+          PY
