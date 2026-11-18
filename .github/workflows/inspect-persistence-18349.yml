@@ -1,0 +1,37 @@
+name: Inspect full save routes and calendar constraints 18.349
+on:
+  push:
+    branches: [perf/desktop-18349-calendar-scroll-incremental-save]
+    paths: ['.github/workflows/inspect-persistence-18349.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Examine actual save, archive and restore functions
+        run: |
+          python3 - <<'PY'
+          import zipfile,re
+          from pathlib import Path
+          path=Path('/tmp/source.zip')
+          with path.open('wb') as o:
+           for part in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with part.open('rb') as f:
+             while v:=f.read(1<<20):o.write(v)
+          with zipfile.ZipFile(path) as z:
+           html=z.read(next(p for p in z.namelist() if p.endswith('/src/index.html'))).decode('utf8')
+          targets=['async function archiveCurrent(', 'async function restoreArchive(', 'async function ensureSaved()','async function saveSharded(', 'async function v52FlushSave(', 'async function v18183DbWriteMany(', 'async function v18181RawWriteMany(', 'async function cloneArchive(', 'async function writeCollection(', 'async function save(s){', 'async function copyShards(', 'async function copySnapshot(', 'async function saveDialog(', 'async function v18191mEncodePlayerChunk(', 'async function v18191wEncodePlayerChunk(']
+          for t in targets:
+           matches=list(re.finditer(re.escape(t),html))
+           print('COUNT',t,len(matches))
+           for m in matches[-2:]:
+            i=m.start()
+            print('PART',t,i,repr(html[i:i+14500].replace('\n',' ')))
+          for needle in ['async function archiveCurrent(', "await archiveCurrent(", 'async function copyShard','v18183DbWriteMany(','v18181RawWriteMany(','v18343HistoricalKeys']:
+           hits=list(re.finditer(re.escape(needle),html))
+           print('MATCHES',needle,len(hits))
+           for m in hits[-4:]:
+            p=m.start();print('LOC',needle,p,repr(html[max(0,p-200):p+350]))
+          PY
