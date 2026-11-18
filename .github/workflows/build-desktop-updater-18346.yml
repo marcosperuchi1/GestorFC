@@ -164,3 +164,5 @@ jobs:
 # Do not rotate the signing key or change the save store identifier.
 
 # Preserves 18.345 Serie C final and previous saves; delegated retirement regression validated by smoke workflow 44206135292.
+
+# Worker scope safe: v91 evaluates the delegated retirement predicate locally at rollover.
