@@ -51,19 +51,18 @@ function shouldAutoRetire549(s,p,m={},chance=retirementChance549(s,p,m),roll=nul
     old="const retireChance=p.squad!=='youth'&&!protectedByUser?retirementChance549(s,p,seasonSnapshot):0;"
     new="const retireChance=p.squad!=='youth'&&(!protectedByUser||Number(p.age)>=(p.pos==='GOL'?47:45))?retirementChance549(s,p,seasonSnapshot):0;"
     html=replace_once(html,old,new,'v4 retirement chance early gate')
-    old="protectedByUser=!!(s.userEmployed&&clubBefore===s.user);v91UpdateMarketReputation(p);"
-    new="protectedByUser=!!(s.userEmployed&&clubBefore===s.user&&!("+DELEGATED+"));v91UpdateMarketReputation(p);"
-    if old not in html:
-        import re
-        start=html.find('function v91ResetPlayers(s,oldYear)')
-        snippet=html[max(0,start):start+2300] if start>=0 else ''
-        print('V91_18346_DIAG',repr(snippet[:2300]))
-        for match in list(re.finditer('protectedByUser',html))[-5:]:
-            print('GUARD_18346_DIAG',match.start(),repr(html[max(0,match.start()-130):match.start()+290]))
-    html=replace_once(html,old,new,'v91 retirement protected club')
-    old="if(!manual&&p.squad!=='youth'&&!protectedByUser&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
-    new="if(!manual&&p.squad!=='youth'&&(!protectedByUser||Number(p.age)>=(p.pos==='GOL'?47:45))&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
-    html=replace_once(html,old,new,'v91 active retirement gate')
+    raw_guard="protectedByUser=!!(s.userEmployed&&clubBefore===s.user);v91UpdateMarketReputation(p);"
+    optimized_guard="protectedByUser=!!(s.userEmployed&&clubBefore===s.user&&Number(p.age)<39);v91UpdateMarketReputation(p);"
+    active_guard=next((x for x in (optimized_guard,raw_guard) if x in html),None)
+    if not active_guard:raise RuntimeError('Unsupported v91 retirement protected club guard; stop safely')
+    guard="protectedByUser=!!(s.userEmployed&&clubBefore===s.user&&Number(p.age)<39&&!("+DELEGATED+"));v91UpdateMarketReputation(p);"
+    html=replace_once(html,active_guard,guard,'v91 retirement protected club')
+    raw_auto="if(!manual&&p.squad!=='youth'&&!protectedByUser&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
+    optimized_auto="if(!manual&&p.squad!=='youth'&&!protectedByUser&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=clubBefore===s.user?(Number(p.age)>=40&&E.rng(s)<chance):!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
+    active_auto=next((x for x in (optimized_auto,raw_auto) if x in html),None)
+    if not active_auto:raise RuntimeError('Unsupported v91 retirement evaluation; stop safely')
+    auto="if(!manual&&p.squad!=='youth'&&(!protectedByUser||Number(p.age)>=(p.pos==='GOL'?47:45))&&Number(p.age)>=35){try{const chance=E.retirementChance549?E.retirementChance549(s,p,snap):0;auto=(clubBefore===s.user&&s.userEmployed!==false&&!("+DELEGATED+")&&Number(p.age)<(p.pos==='GOL'?47:45))?(Number(p.age)>=40&&E.rng(s)<chance):!!(E.shouldAutoRetire549&&E.shouldAutoRetire549(s,p,snap,chance));}catch(e){auto=false;}}"
+    html=replace_once(html,active_auto,auto,'v91 annual retirement evaluation')
     # The general help page still says human-club players "never" auto retire.
     old="Jogadores do seu clube nunca são aposentados automaticamente. A partir dos 35 anos, abra a ficha do atleta e use <b>Aposentar ao fim da temporada</b>; a decisão pode ser cancelada antes da virada do ano."
     new="No seu clube, a IA também avalia aposentadorias durante férias com compras e vendas delegadas. Idade, desempenho e desgaste influenciam a decisão, e atletas em excelente fase podem continuar até mais tarde. A carreira tem limite de 45 anos para jogadores de linha e 47 para goleiros. A partir dos 35 anos, você também pode anunciar uma aposentadoria manualmente e cancelar antes da virada."
@@ -75,7 +74,7 @@ function shouldAutoRetire549(s,p,m={},chance=retirementChance549(s,p,m),roll=nul
     report={
       'ok':True,'version':VERSION,
       'delegateTransfersRetirementIntegrated':True,
-      'noDelegationKeepsHumanControlUntilCareerCeiling':True,
+      'humanClubNonDelegatedLegacyAge40RetirementPreserved':True,
       'aiAgePerformanceFatigueGoalkeeperBalancePreserved':True,
       'fieldPlayersAge45Ceiling':True,'goalkeepersAge47Ceiling':True,
       'otherAiTeamsRemainEligible':True,
