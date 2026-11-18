@@ -1,0 +1,43 @@
+name: Inspect retirement engine and vacation lifecycle 18.346
+on:
+  push:
+    branches: [fix/desktop-18346-retirement-vacation]
+    paths: ['.github/workflows/inspect-retirement-18346.yml']
+permissions: {contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with open('/tmp/base.zip','wb') as out:
+           for p in parts:
+            with p.open('rb') as inp:
+             while buf:=inp.read(1024*1024):out.write(buf)
+          with zipfile.ZipFile('/tmp/base.zip') as z:
+           name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           html=z.read(name).decode('utf-8')
+          print('HTML_BYTES',len(html))
+          terms=[
+           'v579ManualRetire','v579Process','v579Auto','v579Retire','retirements.push',
+           '.retirements','retirePlayer','retirePlayers','retirement','aposentad','aposentar',
+           'function aging','function agePlayers','function ageAll','p.age++','p.age+=',
+           'delegate','delegat','vacation','v53Vacation'
+          ]
+          for term in terms:
+           hits=list(re.finditer(re.escape(term),html,re.I))
+           print('COUNT',repr(term),len(hits))
+           if term in ('vacation','delegat','delegate'):continue
+           for m in hits[-55:]:
+            print('HIT',repr(term),'AT',m.start(),repr(html[max(0,m.start()-400):min(len(html),m.end()+550)].replace('\n',' ')))
+          print('MARKED_FUNCTIONS')
+          fns=list(re.finditer(r'(?:function\s+|(?:const|let)\s+)([A-Za-z_]\w*(?:[A-Za-z_]\w*)?)\s*(?:=|\()',html))
+          for match in fns:
+           if re.search('retir|ageplayer|ageall|v579|vacation|holiday',match.group(1),re.I):
+            print('FN',match.start(),match.group(1),repr(html[match.start():match.start()+1800].replace('\n',' ')))
+          PY
