@@ -168,3 +168,5 @@ jobs:
 # Worker scope safe: v91 evaluates the delegated retirement predicate locally at rollover.
 
 # Diagnose legacy v91 guard after all prior runtime transformations.
+
+# Verified both baseline and fully optimized retirement paths in smoke workflow 44207847668.
