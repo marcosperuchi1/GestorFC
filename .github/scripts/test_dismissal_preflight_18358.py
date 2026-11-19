@@ -31,6 +31,13 @@ def main():
     src=one(src,'async function v89RunJobWait(){',
             'async function v89RunJobWait(){\n v18356ReconcileRollover();',
             '18.356 original job-wait entry')
+    begin=src.index('async function v89RunJobWait(){')
+    end=src.index('const v89BaseCareerPage=careerPage;',begin)
+    block=src[begin:end]
+    block=one(block,"await v53StartSimulation('day');",
+      "await v53StartSimulation('dayfast');",
+      '18.327 turbo mode for unemployed manager')
+    src=src[:begin]+block+src[end:]
     src+='\n/* FUTBR_JOB_SAVE_EXIT_18355 */\n'
     src+="\nconst EDITION='18.356.0';\n"
     src+="window.GestorFC.version='18.356.0';window.GestorFC.visualVersion='18.356.0';\n"
