@@ -271,3 +271,5 @@ jobs:
 # Rebuild: updated 18.311 regression to recognize preserved vacation + 18.356 unemployed worker live-state routing.
 
 # 18.357: fail-closed after one existing vacation checkpoint; no secondary 200k player/history rewrite, and safe in-memory first job day fallback.
+
+# Trigger after passing 18.357 source preflight, checkpoint ordering, race protection and safe first unemployed day.\n
