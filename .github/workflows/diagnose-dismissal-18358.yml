@@ -1,0 +1,46 @@
+name: Diagnose real dismissal and job-wait controls 18.358
+on:
+  push:
+    branches: [fix/desktop-18358-dismissal-button-recovery]
+    paths: ['.github/workflows/diagnose-dismissal-18358.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report actual game source for dismissal and post-vacation guards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import io,zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+              f=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+              src=z.read(f).decode('utf-8-sig')
+          keys=[
+           ('JOBWAIT','async function v89RunJobWait(){','const v89BaseCareerPage=careerPage;',12000),
+           ('SEASONTRANSFER','function v18119CompleteSeasonTransfer(',None,2700),
+           ('SEASONTRANSFER2','function v18119BeginSeasonTransfer(',None,2700),
+           ('SEASONTRANSFER3','const v18119SeasonTransfer=',None,2700),
+           ('CHROME','const v18112BaseChrome=v555UpdateChrome;',None,3600),
+           ('SIMWRAPPER','const v18112BaseSimulation=v53StartSimulation;',None,4000),
+           ('STARTSIM','async function v53StartSimulation(mode,options={})',None,7000),
+           ('SAVERECV','function v53Saved(',None,2900),
+           ('DISMISSING','function v18112MarkDismissal(',None,2300),
+           ('ROOTSYNC','if(m.kind===\'vac-sync-end\')',None,1300),
+           ('VACRECV','if(m.kind===\'finished\'){',None,2500),
+          ]
+          for k,needle,end,maxsz in keys:
+              i=src.find(needle)
+              if i<0:
+                  print('NO',k,needle,flush=True)
+                  continue
+              j=src.find(end,i) if end else min(len(src),i+maxsz)
+              if j<0 or j-i>maxsz:j=i+maxsz
+              print('===',k,'===\n',src[i:j],flush=True)
+          for text in ['Aguardando a sincronização da demissão','v18119SeasonTransfer.active','v18119CompleteSeasonTransfer','v18334ScheduleRecovery','data-action="v89-job-wait"']:
+              print('OCCURRENCES',text,src.count(text),flush=True)
+          PY
