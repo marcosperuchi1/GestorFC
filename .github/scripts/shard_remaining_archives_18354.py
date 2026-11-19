@@ -33,7 +33,9 @@ def main():
     else r'\bV171_SHARDS\s*=\s*\[([^\]]*)\]')
   found=list(re.finditer(pattern,text,re.S))
   if len(found)!=1:
-   raise RuntimeError('18.354 '+label+': expected one sharded list, got '+str(len(found)))
+   at=text.find(key+'=')
+   near=text[max(0,at-150):at+450] if at>=0 else '<key missing>'
+   raise RuntimeError('18.354 '+label+': expected one sharded list, got '+str(len(found))+'; nearby: '+repr(near))
   match=found[0]
   values=re.findall(r"'([^']+)'",match.group(1))
   for essential in ['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','crestOverrides']:
