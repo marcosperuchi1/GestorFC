@@ -29,8 +29,8 @@ def main():
   if m not in s:raise RuntimeError('Required runtime not installed: '+m)
  import re
  def extend_list(text,key,label):
-  pattern=(r'\\bconst\\s+SHARDS\\s*=\\s*\\[([^\\]]*)\\]' if key=='SHARDS'
-    else r'\\bV171_SHARDS\\s*=\\s*\\[([^\\]]*)\\]')
+  pattern=(r'\bconst\s+SHARDS\s*=\s*\[([^\]]*)\]' if key=='SHARDS'
+    else r'\bV171_SHARDS\s*=\s*\[([^\]]*)\]')
   found=list(re.finditer(pattern,text,re.S))
   if len(found)!=1:
    raise RuntimeError('18.354 '+label+': expected one sharded list, got '+str(len(found)))
@@ -40,7 +40,7 @@ def main():
    if essential not in values:raise RuntimeError('Missing required '+label+' shard: '+essential)
   extended=values+[v for v in EXTRA if v not in values]
   stringified='['+','.join(repr(v) for v in extended)+']'
-  return text[:match.start()]+('/* '+MARK+' '+label+' */\\n')+text[match.start():match.start(1)-1]+stringified+text[match.end():]
+  return text[:match.start()]+('/* '+MARK+' '+label+' */\n')+text[match.start():match.start(1)-1]+stringified+text[match.end():]
  s=extend_list(s,'SHARDS','UI')
  s=extend_list(s,'V171_SHARDS','Worker')
  # Both writers already use v18343HistoricalKeys: all six keys were listed
