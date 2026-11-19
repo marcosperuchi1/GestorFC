@@ -1,0 +1,47 @@
+name: Audit Windows Out Of Memory 18.354 exact save paths
+on:
+  push:
+    branches: [perf/desktop-18354-stable-memory-save]
+    paths: ['.github/workflows/inspect-save-oom-18354.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current core source save and exit behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts,len(parts)
+          with open('/tmp/s.zip','wb') as out:
+           for p in parts:
+            with p.open('rb') as f:
+             while b:=f.read(1<<20):out.write(b)
+          with zipfile.ZipFile('/tmp/s.zip') as z:
+           source=z.read(next(p for p in z.namelist() if p.endswith('/src/index.html'))).decode('utf-8')
+          labels=[
+            'async function copyManifest(', 'async function doSave(', 'async function ensureSaved(',
+            'async function archiveCurrent(', 'async function exitGame(', 'async function v125Exit',
+            'async function syncActiveSaveToDisk(', 'async function v18183DbWriteMany(',
+            'function v18183DbWriteMany(', 'async function rawRead(', 'async function rawWrite(',
+            'async function v18181RawWriteMany(', 'function v52EncodeSnapshot(',
+            'async function v52EncodeSnapshot(', 'async function v93RawWrite(',
+            'async function promoteVacationCheckpoint(', 'function compactWorld(', 
+            'function v53Save','function v52FlushSave(', 'function copyManifest(', 'function v53WorkerMain('
+          ]
+          for q in labels:
+           hits=list(re.finditer(re.escape(q),source))
+           print('\n===',q,len(hits))
+           for m in hits[:2]:
+            text=source[m.start():m.start()+(8500 if q.startswith(('async function doSave','async function copyManifest','async function v18183','async function v18181')) else 4700)]
+            print(text)
+          for q in ('structuredClone(state)','structuredClone(s)','E.copy(state)','JSON.stringify(s)','E.pack(state)','Promise.all(','v18121NewSeasonPreparation','window.FutBRDesktop.syncActiveSave'):
+           matches=list(re.finditer(re.escape(q),source))
+           print('\nHITS',q,len(matches))
+           for x in matches[-4:]:
+            print(source[max(0,x.start()-200):x.start()+260].replace('\n',' '))
+          PY
