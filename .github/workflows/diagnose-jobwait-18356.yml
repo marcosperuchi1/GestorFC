@@ -1,0 +1,44 @@
+name: Diagnose 18.356 job-wait and new-season checkpoint
+on:
+  push:
+    branches: [fix/desktop-18356-jobwait-year-rollover]
+    paths: ['.github/workflows/diagnose-jobwait-18356.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect bundled source without modification
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          archive=b''.join(p.read_bytes() for p in parts)
+          with zipfile.ZipFile(io.BytesIO(archive)) as z:
+            name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+            src=z.read(name).decode('utf-8-sig')
+          print('SOURCE LENGTH',len(src),flush=True)
+          for label,term,before,after in [
+            ('DISMISS_INIT','const v18112Dismissal=',300,3500),
+            ('DISMISS_CHROME','const v18112BaseChrome=v555UpdateChrome;',300,6000),
+            ('DISMISS_OTHER','v18112Dismissal.pending=',500,2200),
+            ('FAST_WAIT','async function v89RunJobWait(){',200,4300),
+            ('FAST_CHROME','const v89BaseChrome=v555UpdateChrome;',200,1800),
+            ('BASE_SIM','async function v53StartSimulation(mode,options={}){',100,8200),
+            ('NEWSEASON_SIM','const v168BaseStartSimulation=v53StartSimulation;',200,7500),
+            ('MANUAL_ACTION','v18326AdvanceBusy',250,2600),
+            ('MANUAL_CHROME','const v18326BaseChrome',200,3500),
+            ('ON_NEXT_SEASON','const v18112BaseNextSeason=',200,4000),
+            ('COACH_OFFER','function v636GenerateCoachOffer(s,afterUserMatch=false){',100,1900),
+            ('SEASON_DEF','function nextSeason(s){',200,2300),
+          ]:
+            i=src.find(term)
+            print('\n===',label,i,'===',flush=True)
+            if i>=0:print(src[max(0,i-before):i+after],flush=True)
+          for term in ['v18112Dismissal.pending=','v18112Dismissal.ready=','v89RunJobWait','v18326AdvanceBusy=']:
+            import re
+            print('OCCURRENCES',term,len(list(re.finditer(re.escape(term),src))),flush=True)
+          PY
