@@ -32,7 +32,10 @@ MIRROR = r"""/* FUTBR_NATIVE_MIRROR_18354: low-peak, ordered, resumable SQLite m
    const token=String(manifest.token||''),revision=Number(manifest.revision||0);
    const markerKey=BASE+':mirror-18354';
    const marker=await native.read(markerKey).catch(()=>null);
-   const mirrored=await native.read(BASE).catch(()=>null);
+   // A pre-18.354 native BASE may contain an entire multi-year world.
+   // Never deserialize it merely to discover that it lacks our mirror marker.
+   const mirrored=marker?.completed===true
+    ?await native.read(BASE).catch(()=>null):null;
    const verified=marker?.completed===true&&marker.token===mirrored?.token&&
     Number(marker.revision)===Number(mirrored?.revision);
    const prior=new Set(verified?manifestKeys(mirrored):[]);
@@ -60,11 +63,12 @@ MIRROR = r"""/* FUTBR_NATIVE_MIRROR_18354: low-peak, ordered, resumable SQLite m
      throw Error('Checkpoint atualizado durante o espelhamento; tentativa posterior necessária.');
     const index=await localGet(INDEX);
     const meta=await localGet(BASE+':meta');
-    const previous=await localGet(BASE+':previous');
-    // One tiny atomic native SQL transaction; marker is written last.
+    // The primary IndexedDB keeps its atomic previous checkpoint. Re-sending
+    // a legacy :previous root (possibly hundreds of MB) over IPC is unsafe.
+    // Keep the native old backup untouched; never delete that safety copy.
+    // One small atomic native SQL transaction; marker is written last.
     const final=[{key:BASE,value:current},
       ...(meta===undefined?[]:[{key:BASE+':meta',value:meta}]),
-      ...(previous===undefined?[]:[{key:BASE+':previous',value:previous}]),
       ...(index===undefined?[]:[{key:INDEX,value:index}]),
       {key:markerKey,value:{version:1,completed:true,token,revision,
        total:keys.length,at:Date.now()}}];
