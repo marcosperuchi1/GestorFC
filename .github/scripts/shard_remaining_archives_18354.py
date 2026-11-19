@@ -51,12 +51,13 @@ def main():
   if s.count("'"+key+"'")<3:raise RuntimeError('Archive root key missing: '+key)
  limit_old=""" if(key==='scorerArchive')return 1;
  return previousLimit;"""
- limit_new=""" if(key==='scorerArchive')return 1;
- if(key==='history'||key==='internationalHistory'||key==='v735NationalArchive')return 12;
+ limit_new=""" if(key==='scorerArchive'||key==='v735NationalArchive')return 1;
+ if(key==='history'||key==='internationalHistory')return 12;
  if(key==='transfers'||key==='retirements')return 64;
  return previousLimit;"""
- s=once(s,limit_old,limit_new,'UI archive bounded limit')
- s=once(s,limit_old,limit_new,'Worker archive bounded limit')
+ if s.count(limit_old)!=2:
+  raise RuntimeError('18.354: expected exactly two historical bounded-limit helpers, got '+str(s.count(limit_old)))
+ s=s.replace(limit_old,limit_new)
  # Existing saves which left these archives in root are still decoded by
  # v171DecodeManifest (root spread, collections merged). The first new save
  # safely migrates the values into chunked collections without truncation.
