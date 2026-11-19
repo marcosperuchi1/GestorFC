@@ -22,6 +22,25 @@ jobs:
               src=z.read(path).decode('utf-8-sig')
           print('SRC',len(src),flush=True)
           for term,span,maxn in [
+            ('const baseAfter=G.v170',4500,3),
+            ('G.v170._afterWorkerSave=',5400,3),
+            ('_afterWorkerSave=function',5400,4),
+            ('v171PromoteVacationCheckpoint',2500,4),
+            ('async function v171',2300,5),
+            ('v53Sim.syncing=true',1800,6),
+            ('m.kind===\'finished\'',4900,3),
+            ('m.kind===\'vac-sync-end\'',2400,4),
+            ('function v93PromoteVacationCheckpoint',3700,3),
+            ('v93PromoteVacationCheckpoint(',2800,4),
+            ('async function rawRead(',1600,3),
+            ('const v18112BaseSimulation=v53StartSimulation;',3200,2),
+          ]:
+             pos=[m.start() for m in re.finditer(re.escape(term),src)]
+             print('FOCUS',repr(term),'COUNT',len(pos),flush=True)
+             for i in pos[-maxn:]:
+                 print('<<<',term,i,'>>>',flush=True)
+                 print(src[max(0,i-400):i+span],flush=True)
+          for term,span,maxn in [
             ('v18112MarkDismissal(',850,6),
             ('v18112Dismissal.pending=',360,8),
             ('v18112Dismissal.ready=',360,8),
