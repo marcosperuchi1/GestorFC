@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check installed user-level and system build tools
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "FUTBR-WIN tool inspection - READ ONLY"
           Write-Host "Runner: $env:RUNNER_NAME"
