@@ -109,8 +109,9 @@ assert.equal(historic.v18322Champions.find(r=>r.year===2027).runner,'a');
 v18322CollectSeason=()=>([{year:2028,kind:'league',country:'bra',division:3,
  competition:'league:bra:3',champion:'a',runner:null,scorers:[]}]);
 const oldScorers=s.v18322Champions[0].scorers;
+s.seasonDone=true;
 const captured=v18322CaptureSeason(s,2028);
-assert.equal(captured,1);
+assert.equal(captured,1,'Rollover capture is permitted only after season completion');
 assert.equal(s.v18322Champions[0].runner,'b');
 assert.deepEqual(s.v18322Champions[0].scorers,oldScorers);
 const fromCurrent=v18322ChampionsRows(s,{year:'all'});
