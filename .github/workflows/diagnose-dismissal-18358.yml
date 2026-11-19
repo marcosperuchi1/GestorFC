@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   inspect:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Report actual game source for dismissal and post-vacation guards
@@ -44,3 +44,5 @@ jobs:
           for text in ['Aguardando a sincronização da demissão','v18119SeasonTransfer.active','v18119CompleteSeasonTransfer','v18334ScheduleRecovery','data-action="v89-job-wait"']:
               print('OCCURRENCES',text,src.count(text),flush=True)
           PY
+
+# Retry on fixed-image hosted runner to inspect post-vacation finalization handlers.
