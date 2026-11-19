@@ -212,3 +212,5 @@ jobs:
 # 18.349: distinguish 3 obligatory atomic manifest/meta writes from content-shard write counts.
 
 # 18.349: validate the visible installed edition is exactly the signed updater version after all patches.
+
+# Re-run with corrected 18.352 Worker checkpoint decoding regression after first harness failure.
