@@ -47,6 +47,9 @@ function v18358CompleteOldOverlay(){
 }
 function v18358SafeJobButtons(){
  return v18358RecoveryDone&&v18358WorldReady()&&
+  !v53Creating&&
+  !(typeof v18121NewSeasonPreparation!=='undefined'&&v18121NewSeasonPreparation)&&
+  !(typeof v18326AdvanceBusy!=='undefined'&&v18326AdvanceBusy)&&
   !v89JobWait.active&&!state?.vacation?.active&&!state?.live;
 }
 window.GestorFC.dismissalButton18358={
