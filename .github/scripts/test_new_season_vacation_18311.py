@@ -19,7 +19,8 @@ def main():
         'previousSavePreserved:true',
         'liveStateNoPreSave:true',
         'vacationCheckpoint:true',
-        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=mode==='vacation'&&!!options?.liveStateNoPreSave;",
+        "const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=!!options?.liveStateNoPreSave&&",
+        "(mode==='vacation'||((mode==='day'||mode==='dayfast')&&",
         "if(!v18311LiveVacation&&state?.v1903CareerId&&!saveOK){",
         "const canLoadSaved=!v18311LiveVacation&&!!saveOK&&(mode==='day'||mode==='dayfast'||mode==='nationaljump'||mode==='nextmatch'||mode==='vacation');",
     ]
@@ -47,11 +48,13 @@ def main():
     if ws<0 or we<0:
         fail('wrapper 18.181 nao localizado')
     wrapper=html[ws:we]
-    fs=wrapper.find("if(v168DeferredRolloverSave&&state&&mode==='vacation'){")
+    fs=wrapper.find("if(v168DeferredRolloverSave&&state&&(mode==='vacation'||")
     legacy=wrapper.find('if(v168DeferredRolloverSave&&state){',fs+1)
     if fs<0 or legacy<0 or fs>legacy:
         fail('fast path de ferias nao precede fallback legado')
     fast=wrapper[fs:legacy]
+    if "mode==='vacation'" not in fast or "mode==='dayfast'" not in fast or "state.userEmployed===false" not in fast:
+        fail('18.356 live-state deve incluir ferias e desemprego, sem liberar tecnico empregado')
     if 'await v52FlushSave()' in fast:
         fail('fast path ainda bloqueia no save completo')
     if 'return await v168BaseStartSimulation(mode,options)' not in fast:
@@ -119,6 +122,7 @@ let v53StartSimulation=async(mode,options)=>{
         'previousCommittedSavePreserved':True,
         'raceWithActiveFullSave':race,
         'nonVacationFallbackPreserved':True,
+        'unemployedFirstDayUsesLiveState':True,
     }
     (root/'new-season-vacation-18311-tests.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False))
