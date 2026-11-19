@@ -127,13 +127,10 @@ def main():
     a=html.index('async function doSave(asCopy=false,exitAfter=false){')
     b=html.index('async function renameSlot(',a)
     segment=html[a:b]
-    segment=once(segment,
-      '   await writeIndex();\n   closeModal();',
-      """   await writeIndex();
-   // 18.354: trigger ONLY after a confirmed named save, not before.
-   try{document.dispatchEvent(new Event('futbr:save-confirmed'));}catch(e){}
-   closeModal();""",
-      'actual post-save event')
+    if segment.count('closeModal();')!=1 or segment.count('await writeIndex();')!=1 or segment.index('await writeIndex();')>segment.index('closeModal();'):
+        raise RuntimeError('Named save confirmation placement changed: cannot safely add post-commit event')
+    segment=segment.replace('closeModal();',
+      "try{document.dispatchEvent(new Event('futbr:save-confirmed'));}catch(e){}\n   closeModal();",1)
     html=html[:a]+segment+html[b:]
     # Close the app without running a second full mirror. The authoritative
     # IndexedDB checkpoint has already committed and is not discarded.
