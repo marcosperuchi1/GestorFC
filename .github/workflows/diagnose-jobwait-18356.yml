@@ -34,6 +34,11 @@ jobs:
             ('ON_NEXT_SEASON','const v18112BaseNextSeason=',200,4000),
             ('COACH_OFFER','function v636GenerateCoachOffer(s,afterUserMatch=false){',100,1900),
             ('SEASON_DEF','function nextSeason(s){',200,2300),
+            ('SIM_WORKER','async function simulate(message){',200,5900),
+            ('ROLLOVER_DEFER','function v168MarkDeferredSave(',300,2700),
+            ('ROLLOVER_PERSIST','const v168BasePersist=persist;',150,2200),
+            ('CHROME_BASE','function v555UpdateChrome(',200,3300),
+            ('WORKER_RESIDENT','useResident:',160,1600),
           ]:
             i=src.find(term)
             print('\n===',label,i,'===',flush=True)
