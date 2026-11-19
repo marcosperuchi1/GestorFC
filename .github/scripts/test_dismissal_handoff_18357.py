@@ -13,8 +13,8 @@ def main():
     assert 'FUTBR_DISMISSAL_HANDOFF_18357' in src
     assert "window.GestorFC.version='18.357.0';window.GestorFC.visualVersion='18.357.0';" in src
     assert src.count('/* FUTBR_DISMISSAL_HANDOFF_18357')==1
-    assert 'function v18334SafeToVerify(){\n return !v18357AwaitingPromotion&&' in src
-    assert "if(v18357AwaitingPromotion)return false;" in src
+    assert 'function v18334SafeToVerify(){\n return !v18357AwaitingPromotion&&!(v18112Dismissal.pending&&' in src
+    assert "if(v18357AwaitingPromotion||(v18112Dismissal.pending&&v53Sim?.mode==='vacation'))return false;" in src
     helper=section(src,'/* FUTBR_DISMISSAL_HANDOFF_18357','/* FUTBR_JOBWAIT_SEASON_RECOVERY_18356')
     inner=section(src,'const v18112BaseSimulation=v53StartSimulation;','/* FUTBR_UNEMPLOYED_RESUME_18334_BEGIN')
     outer=section(src,'const baseStart171=v53StartSimulation;','G.v171={version:V')
