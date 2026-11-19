@@ -94,6 +94,17 @@ historic.v98LeagueTitleHistory=[];
 historic.braLowerLast={year:2027,cChampion:'b',cRunnerUp:'a'};
 expanded=v18353EnrichSerieCRows(historic,plain);
 assert.equal(expanded[1].runner,'a','Recover runner from matching signed season summary');
+historic.v98LeagueTitleHistory=[
+ {year:2026,country:'bra',division:3,champion:'a'},
+ {year:2027,country:'bra',division:3,champion:'b'}];
+assert.equal(v18353BackfillHistoricalSerieC(historic),2,
+ 'Persist each recovered old scorer before the five-year archive eviction');
+assert.equal(v18353BackfillHistoricalSerieC(historic),0,'Historical backfill must be idempotent');
+historic.scorerArchive=[];
+assert.equal(historic.v18322Champions.find(r=>r.year===2026).scorers[0].name,'Artilheiro de 2026');
+assert.equal(historic.v18322Champions.find(r=>r.year===2027).scorers[0].name,'Artilheiro de 2027');
+assert.equal(historic.v18322Champions.find(r=>r.year===2027).runner,'a');
+
 // Preserve complete final data across the old next-season collection call.
 v18322CollectSeason=()=>([{year:2028,kind:'league',country:'bra',division:3,
  competition:'league:bra:3',champion:'a',runner:null,scorers:[]}]);
@@ -150,7 +161,7 @@ def main():
   'runnerAndChampRecordedImmediately':True,'seasonDoneNotRequired':True,
   'topScorerTiesPreserved':True,'singleLegDoesNotAward':True,
   'oldCurrentFinalRecovered':True,'legacy2026ScorerFromArchivedYear':True,
-  'legacy2027ScorerFromArchivedYear':True,'missingViceNotInvented':True,
+  'legacy2027ScorerFromArchivedYear':True,'archivedScorersSurviveArchiveEviction':True,'missingViceNotInvented':True,
   'verifiedStoredViceRecovered':True,
   'rolloverDoesNotEraseRunnerOrScorers':True,
   'workingUnder512MBNodeHeap':True,'saveFormatUnchanged':True}
