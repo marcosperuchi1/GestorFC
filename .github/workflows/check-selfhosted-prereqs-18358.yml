@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   inspect:
-    runs-on: [self-hosted, Windows, X64, futbr-windows]
+    runs-on: windows-latest
     timeout-minutes: 10
     steps:
       - name: Read-only tools check using cmd (no PowerShell scripts or admin)
