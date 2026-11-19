@@ -260,3 +260,5 @@ jobs:
 # 18.355 verification retry: preserve 18.354 reports, verify 18.355 coach/save tests and cryptographic installer signature.
 
 # 18.356: job search after final-day dismissal; never reuse previous-year Worker checkpoint; verified signed installer gate.
+
+# Rebuild: updated 18.311 regression to recognize preserved vacation + 18.356 unemployed worker live-state routing.
