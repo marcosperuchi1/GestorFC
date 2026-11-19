@@ -1,0 +1,29 @@
+name: Inspect 18.352 manifest decoder
+on:
+  push:
+    branches: [perf/desktop-18352-oomsafe-saves]
+    paths: ['.github/workflows/inspect-manifest-read-18352.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect UI and Worker save restoration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile,re
+          with open('/tmp/a.zip','wb') as o:
+           for p in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with p.open('rb') as f:
+             while b:=f.read(1<<20):o.write(b)
+          with zipfile.ZipFile('/tmp/a.zip') as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf8')
+          keys=['const SHARDS=','const V171_FORMAT','async function v171DecodeManifest','async function v171Decode','async function readCollection','async function loadSharded','async function loadSnapshot','async function restoreSharded','async function v171Load','function decode','async function hydrate','async function loadFrom','function v171','async function load(','async function get(','async function read(','async function cloneChunk(']
+          for k in keys:
+           found=list(re.finditer(re.escape(k),s))
+           print('====',k,len(found))
+           for m in found[-2:]:print(s[m.start():m.start()+4900])
+          PY
