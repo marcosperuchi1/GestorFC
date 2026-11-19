@@ -22,7 +22,7 @@ jobs:
           with zipfile.ZipFile('/tmp/futbr-source.zip') as z:
            html=z.read(next(x for x in z.namelist() if x.endswith('/src/index.html'))).decode('utf8')
           targets=[
-            'function v661RecordBrazilResult(s','function v661RecordBrazilResult(',
+            'function v661MakeLeagueFixture(','function v661MakeTieFixture(','function v661RecordBrazilResult(s','function v661RecordBrazilResult(',
             'function v661PreparePlan(','function v99RepairBrazilLowerChampions(s)',
             'function v94CompactScorerArchive(', 'function v94PackCurrentCareerArchive(',
             'function v94ChampionInfo()', 'function v661C','function v661Ensure',
