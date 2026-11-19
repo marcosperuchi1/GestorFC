@@ -2,7 +2,7 @@ name: FutBR Windows 18.358 - vacation dismissal job button recovery
 on:
   push:
     branches: [fix/desktop-18358-dismissal-button-recovery]
-    paths: ['.github/workflows/build-desktop-updater-18358.yml']
+    paths: ['.github/workflows/build-desktop-updater-18358.yml', '.github/scripts/*18358.py']
   workflow_dispatch:
 permissions:
   contents: read
