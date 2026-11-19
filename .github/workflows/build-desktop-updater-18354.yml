@@ -237,3 +237,5 @@ jobs:
 # Retry avoid unsafe native legacy BASE and previous checkpoint reads.
 
 # Retry robust compiled UI and Worker historical collection extension.
+
+# Retry correct two-closure history-limit patch for 18.354.
