@@ -1,0 +1,40 @@
+name: Diagnose 2033 OOM save paths 18.352
+on:
+  push:
+    branches: [perf/desktop-18352-oomsafe-saves]
+    paths: ['.github/workflows/inspect-oom-saves-18352.yml']
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect live sharded save, source codec, native writers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,zipfile,collections
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          assert parts
+          with open('/tmp/source.zip','wb') as o:
+           for p in parts:
+            with p.open('rb') as f:
+             while b:=f.read(1<<20):o.write(b)
+          with zipfile.ZipFile('/tmp/source.zip') as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8')
+           rs=z.read(next(n for n in z.namelist() if n.endswith('/src-tauri/src/lib.rs'))).decode('utf-8')
+          for q in ('function v53WorkerMain(){','async function save(s){','async function saveSharded(s,mode=','async function v52FlushSave','async function ensureSaved','async function doSave','async function copyManifest','async function v18183DbWriteMany','async function v18191mEncodePlayerChunk','async function v18191wEncodePlayerChunk','async function v18191wPackPlayer','async function v18191mPackPlayer','const SHARDS=','const V171_SHARDS=','function persist(','function v52EncodeSnapshot','async function rawRead(','async function rawDelete(','function v18183DbWriteMany','function v18191mEncodePlayerChunk'):
+           ms=list(re.finditer(re.escape(q),s))
+           print('=== HTML',q,'matches',len(ms))
+           for m in ms[-2:]:
+            at=m.start()
+            print(s[at:at+(7000 if q.startswith('async function save') else 4200)])
+          for q in ('fn kv_put_many','fn kv_put','fn kv_get','struct DesktopDb','struct KeyValueEntry','fn kv_delete','fn kv_get_many'):
+           ms=list(re.finditer(re.escape(q),rs))
+           print('=== RUST',q,'matches',len(ms))
+           for m in ms[-2:]:
+            at=m.start()
+            print(rs[at-450:at+4100])
+          print('HTML chars',len(s),'RUST chars',len(rs))
+          PY
