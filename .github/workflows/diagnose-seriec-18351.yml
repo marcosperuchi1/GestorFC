@@ -1,0 +1,52 @@
+name: Diagnose Brazil Serie C stages and history 18.351
+on:
+  push:
+    branches: [fix/desktop-18351-seriec-phases-champions-history]
+    paths: ['.github/workflows/diagnose-seriec-18351.yml']
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect real Brazilian competition engine and UI
+        run: |
+          python3 - <<'PY'
+          import re,zipfile
+          from pathlib import Path
+          with open('/tmp/source.zip','wb') as o:
+           for p in sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*')):
+            with p.open('rb') as f:
+             while d:=f.read(1<<20):o.write(d)
+          with zipfile.ZipFile('/tmp/source.zip') as z:
+           entry=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           src=z.read(entry).decode('utf-8')
+          print('SOURCE_LENGTH',len(src),'NAME',entry)
+          targets=[
+           'function v663SerieCPage','function v663StandingsHTML',
+           'function v663PhaseTabs','let v663BraCView','function v663BraPage',
+           'function v661PreparePlan','function v661EnsureCQuadrangular',
+           'function v661Plan','function v661LeagueStage','function v662SpreadSlots',
+           'function v661RecordBrazilResult','function v661FinalizeBrazilLower',
+           'function v99RepairBrazilLowerChampions','function v99TieWinner',
+           'function v99RepairLeagueCoachTitle',
+           'function v54Competition','function v54Lower','function v54League',
+           'function v663','const v663BaseCompetitionsPage',
+           'function v662RealignLoadedBrazilCalendar',
+           'function v662MaxLeagueRound'
+          ]
+          for t in targets:
+           at=src.find(t)
+           if at<0:
+            print('\nNOT_FOUND',t)
+            continue
+           print('\n===== '+t+' @'+str(at)+' =====')
+           end=min(len(src),at+4000)
+           print(src[at:end])
+          for t in ('v663BraCView=','v663BraCView','v663SerieCPage(C)','CAMPEÃ','Campeã','CAMPEÃO','Campeão','function v98LeagueChampionId'):
+           hits=[m.start() for m in re.finditer(re.escape(t),src)]
+           print('\nHITS',t,len(hits),hits[-24:])
+           for i in hits[-5:]:
+            print('  ',src[max(0,i-320):i+390].replace('\n',' '))
+          PY
