@@ -129,6 +129,9 @@ async function v53StartSimulation(mode){
  await v89RunJobWait();
  assert.equal(state.year,year+1);
  assert.equal(simDays,1);
+ // The actual game schedules the proposal modal 30 ms after clearing
+ // Turbo busy flags. Observe that callback rather than checking too early.
+ await new Promise(resolve=>setTimeout(resolve,80));
  assert.ok(modals>=1,'Received proposal opens the dialog');
  assert.equal(v89JobWait.active,false);
  // Also work when a user has been unemployed at season end without a
