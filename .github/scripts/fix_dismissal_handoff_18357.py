@@ -118,7 +118,7 @@ def main():
     # therefore guaranteed to observe an obsolete snapshot and rewrite the
     # whole historical game a second time.
     start=src.index("   if(mode==='vacation'&&v18112Dismissal.pending&&state?.userEmployed===false){")
-    end=src.index("   return result;",start)
+    end=src.index("return result;",start)
     old=src[start:end]
     for guard in ("await persist(false);await v52FlushSave();",
                   "v18112Dismissal.pending=false;v18112Dismissal.ready=true;",
