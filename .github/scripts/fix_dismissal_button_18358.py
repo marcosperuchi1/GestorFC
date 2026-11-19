@@ -52,6 +52,14 @@ function v18358SafeJobButtons(){
   !(typeof v18326AdvanceBusy!=='undefined'&&v18326AdvanceBusy)&&
   !v89JobWait.active&&!state?.vacation?.active&&!state?.live;
 }
+function v18358SeasonEndReady(){
+ return !!state&&state.userEmployed===false&&state.seasonDone&&
+  !state.v640National?.userTeam&&!v89JobWait.active&&!v18112Dismissal.pending&&
+  !v53Sim?.active&&!v53Sim?.finished&&!v53Sim?.starting&&
+  !v53Sim?.syncing&&!v53Sim?.patching&&!v53Creating&&!v125VacIncoming&&
+  !(typeof v18121NewSeasonPreparation!=='undefined'&&v18121NewSeasonPreparation)&&
+  !(typeof v18326AdvanceBusy!=='undefined'&&v18326AdvanceBusy);
+}
 window.GestorFC.dismissalButton18358={
  version:'18.358',postVacationWorkerSignalRequired:true,
  noForceCloseOfActiveWorker:true,usesExistingCheckpoints:true,
@@ -110,7 +118,7 @@ def main():
     src=once(src,"function v18334ShouldWait(){\n v18356ReconcileRollover();",
         """function v18334ShouldWait(){
  v18356ReconcileRollover();
- if(v18358SafeJobButtons()&&!v89JobWait.active)return false;""",
+ if((v18358SafeJobButtons()||v18358SeasonEndReady())&&!v89JobWait.active)return false;""",
         'unblock old dismissal UI guard on completed Worker')
     src=once(src,"function v18356NoRealWorker(){",
         """function v18356NoRealWorker(){
