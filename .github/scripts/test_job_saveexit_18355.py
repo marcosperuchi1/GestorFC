@@ -14,8 +14,10 @@ def main():
     save=section('async function ensureSaved(){','async function archiveCurrent(')
     assert 'roundsFree>=8' in job and 'else return [];' not in job
     assert 'yearsFree>0?' in offers and 'v636CreateCoachOffer' in offers
-    assert 'Promise.race' in save and '90000' in save and 'clearTimeout(timer)' in save
-    assert "Number(x.year)!==Number(state.year)" in save
+    assert 'Promise.race' in save and '90000' in save and 'clearTimeout(v18355Timer)' in save
+    assert 'if(!matches(x)||!saveOK||v52SaveDirty||v52SavePromise)' in save
+    assert "String(x.root?.v1903CareerId||'')===String(state.v1903CareerId||'')" in save
+    assert 'Number(x.year)===Number(state.year)' in save
     prelude=r"""
 const assert=require('assert');
 function team(s,id){return s.teams.find(t=>t.id===id)}
