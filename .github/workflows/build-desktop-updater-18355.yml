@@ -249,3 +249,5 @@ jobs:
 # 18.355 new regression: cross-season unemployed vacancy fallback and save watchdog.
 
 # Pre-build regression now checks updated 18.338 saver anchor; no guessed legacy patch.
+
+# 18.355 verification retry: preserve 18.354 reports, verify 18.355 coach/save tests and cryptographic installer signature.
