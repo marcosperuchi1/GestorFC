@@ -52,6 +52,19 @@ jobs:
             i=src.find(pattern)
             print("\\nTARGET",label,i,flush=True)
             if i>=0:print(src[i:i+span],flush=True)
+          for label,pattern,span in [
+            ('JOB_AVAILABLE','availableJobs(s)',1800),
+            ('AVAILABLE_DEF','availableJobs(',4200),
+            ('COACH_STATE','function v636CoachState(',3200),
+            ('COACH_UNEMPLOYED','unemployedSince',3500),
+            ('JOB_TAKE','takeJob(s,',3300),
+            ('PERSIST_DEF','persist=function(',2800),
+            ('SAVING_OVERRIDE','v52FlushSave=async',1800),
+            ('ACTUAL_SAVE','const basePersist=persist;',3100),
+          ]:
+            i=src.find(pattern)
+            print("\\nDETAIL",label,i,flush=True)
+            if i>=0:print(src[max(0,i-350):i+span],flush=True)
           fun=re.findall(r'\b(?:async )?function (v636\w+|v89\w+|v52\w+|v53\w+)\s*\(',src)
           print("FUNCTIONS",fun[:100])
           PY
