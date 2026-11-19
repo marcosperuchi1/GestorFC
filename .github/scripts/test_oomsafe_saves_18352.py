@@ -125,7 +125,8 @@ async function runWorker(){
  await save();const latest=db.get(STORE);
  assert.equal(latest.collections.v538CareerArchive.nested,'year-id-v1');
  assert.equal(JSON.stringify(decodeDb(db,latest,'v538CareerArchive')),JSON.stringify(a));
- const restored=await vm.runInNewContext('v171DecodeManifest(await read(STORE))',ctx);
+ ctx.latest=clone(db.get(STORE));
+ const restored=await vm.runInNewContext('v171DecodeManifest(latest)',ctx);
  assert.equal(JSON.stringify(restored.v538CareerArchive),JSON.stringify(a),'Worker restore lost history');
  const oldYear={'2026':{p1:{goals:3}},'2027':{p2:{goals:4}}};
  const legacy={format:V171_FORMAT,year:2028,root:{year:2028},collections:{
