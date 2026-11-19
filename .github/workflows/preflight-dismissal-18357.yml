@@ -1,0 +1,24 @@
+name: Preflight 18.357 dismissal sync and proposal button
+on:
+  push:
+    branches: [fix/desktop-18357-dismissal-handoff]
+    paths:
+      - .github/workflows/preflight-dismissal-18357.yml
+      - .github/scripts/fix_dismissal_handoff_18357.py
+      - .github/scripts/test_dismissal_handoff_18357.py
+      - .github/scripts/test_dismissal_preflight_18357.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify shipped-game source and real Worker/checkout handoff
+        run: |
+          python -m py_compile .github/scripts/fix_dismissal_handoff_18357.py .github/scripts/test_dismissal_handoff_18357.py .github/scripts/test_dismissal_preflight_18357.py
+          python .github/scripts/test_dismissal_preflight_18357.py
