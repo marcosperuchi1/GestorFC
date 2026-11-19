@@ -219,3 +219,5 @@ jobs:
 # 18.349: validate the visible installed edition is exactly the signed updater version after all patches.
 
 # Re-run with corrected 18.352 Worker checkpoint decoding regression after first harness failure.
+
+# Rerun after validating correct end-of-season rollover fixture in 18.353 podium regression.
