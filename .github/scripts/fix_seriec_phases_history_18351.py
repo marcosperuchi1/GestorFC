@@ -57,7 +57,7 @@ function v18345SerieCWinner(s){
 LEGACY = r"""
  // Restore historical Série C rows already stored in older career archives.
  // A first-stage leader for the current season must never be used as champion.
- const finishedCurrent=v18345SerieCWinner(s);
+ const finishedCurrent=window.GestorFC?.v18345SerieCWinner?.(s)||null;
  const historic=(year,id,source)=>{
   year=v18322N(year);
   if(!year||!id)return;
