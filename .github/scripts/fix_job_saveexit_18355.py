@@ -31,6 +31,18 @@ def main():
         if(adjacent.length)pool=adjacent;
         // If neither division has vacancies, keep the wider eligible pool.
        }""",'vacancy selection fallback')
+    block=one(block,
+      "let pool=s.teams.filter(t=>t.id!==s.user&&Number(t.base)<=Number(me.reputation||60)+10&&(!t.coachId||Number(t.fanPressure||0)>=42));",
+      """let pool=s.teams.filter(t=>t.id!==s.user&&Number(t.base)<=Number(me.reputation||60)+10&&(!t.coachId||Number(t.fanPressure||0)>=42));
+     // Long-term unemployment must not become permanent just because every
+     // club hired an interim coach. Boards may consider changing projects.
+     const since=me.unemployedSince,yearGap=Math.max(0,Number(s.year)-Number(since?.year??s.year));
+     const roundsFree=yearGap>0?Math.max(8,yearGap*38+Number(s.day||0)-Number(since?.day||0)):Math.max(0,Number(s.day||0)-Number(since?.day||0));
+     if(!pool.length&&roundsFree>=8){
+      pool=s.teams.filter(t=>t.id!==s.user&&Number(t.base)<=Number(me.reputation||60)+10&&
+       (!prevDiv||Math.abs(Number(t.division)-prevDiv)<=1));
+     }""",
+      'realistic long-term unemployment market fallback')
     src=src[:start]+block+src[end:]
     start=src.index('function v636GenerateCoachOffer(s,afterUserMatch=false){')
     end=src.index('function v636CoachOfferModal(',start)
@@ -41,7 +53,7 @@ def main():
   // not just the current season: a dismissal at year-end is not a new one.
   const yearsFree=Math.max(0,Number(s.year)-Number(since?.year??s.year));
   const seasonLength=Math.max(1,Number(s.schedule?.length)||38);
-  const daysFree=since?Math.max(0,yearsFree*seasonLength+day-Number(since.day||0)):Math.max(2,day);
+  const daysFree=since?(yearsFree>0?Math.max(2,yearsFree*seasonLength+day-Number(since.day||0)):Math.max(0,day-Number(since.day||0))):Math.max(2,day);
   if(daysFree<2)return 0;"""
     block=one(block,old,new,'cross-season elapsed unemployed rounds')
     src=src[:start]+block+src[end:]
