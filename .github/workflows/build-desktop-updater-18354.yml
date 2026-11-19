@@ -233,3 +233,5 @@ jobs:
 # Rebuilt using verified compound V171_SHARDS declaration in Worker.
 
 # Retry after exact scoped post-save event placement invariant (18.354).
+
+# Retry avoid unsafe native legacy BASE and previous checkpoint reads.
