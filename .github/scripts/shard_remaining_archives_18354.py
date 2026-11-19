@@ -29,8 +29,8 @@ def main():
   if m not in s:raise RuntimeError('Required runtime not installed: '+m)
  s=once(s,'const SHARDS='+OLD,'/* '+MARK+' UI */\nconst SHARDS='+NEW,
    'UI sharded root keys')
- s=once(s,'const V171_SHARDS='+OLD,
-   '/* '+MARK+' Worker */\nconst V171_SHARDS='+NEW,
+ s=once(s,'V171_SHARDS='+OLD,
+   '/* '+MARK+' Worker */\nV171_SHARDS='+NEW,
    'Worker sharded root keys')
  # Both writers already use v18343HistoricalKeys: all six keys were listed
  # there but none appeared in their actual collections! Enforce exact reuse.
@@ -48,7 +48,7 @@ def main():
  # v171DecodeManifest (root spread, collections merged). The first new save
  # safely migrates the values into chunked collections without truncation.
  for m in ["const s={...(x.root||{})}","s[key]=dst",
-           "const root={};","if(!shardSet.has(key))root[key]=value"]:
+           "root={},collections={}","if(!shardSet.has(key))root[key]=value"]:
   if m not in s:raise RuntimeError('Lossless legacy decoder invariant failed: '+m)
  file.write_text(s,encoding='utf-8')
  report={'ok':True,'version':VERSION,
