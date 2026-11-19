@@ -95,6 +95,9 @@ Run-Python '.github/scripts/test_job_saveexit_18355.py'
 Run-Python '.github/scripts/set_desktop_version_18356.py'
 Run-Python '.github/scripts/fix_jobwait_18356.py'
 Run-Python '.github/scripts/test_jobwait_18356.py'
+Run-Python '.github/scripts/set_desktop_version_18357.py'
+Run-Python '.github/scripts/fix_dismissal_handoff_18357.py'
+Run-Python '.github/scripts/test_dismissal_handoff_18357.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -200,6 +203,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-version-18356-install.json' 'artifacts/desktop-version-18356-install.json'
   Copy-Item 'jobwait-season-18356-install.json' 'artifacts/jobwait-season-18356-install.json'
   Copy-Item 'jobwait-season-18356-tests.json' 'artifacts/jobwait-season-18356-tests.json'
+  Copy-Item 'desktop-version-18357-install.json' 'artifacts/desktop-version-18357-install.json'
+  Copy-Item 'dismissal-handoff-18357-install.json' 'artifacts/dismissal-handoff-18357-install.json'
+  Copy-Item 'dismissal-handoff-18357-tests.json' 'artifacts/dismissal-handoff-18357-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -251,6 +257,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_native_save_mirror_1
 if (-not $source.Contains("Run-Python '.github/scripts/test_archive_root_shards_18354.py'")) { throw 'Teste dos arquivos historicos fragmentados 18.354 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_job_saveexit_18355.py'")) { throw 'Oferta e salvamento 18.355 ausentes.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_18356.py'")) { throw 'Retomada segura das propostas 18.356 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_handoff_18357.py'")) { throw 'A demissao 18.357 requer regressao sem salvamento duplicado.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
