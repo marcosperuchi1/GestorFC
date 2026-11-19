@@ -11,28 +11,27 @@ jobs:
     runs-on: [self-hosted, Windows, X64, futbr-windows]
     timeout-minutes: 10
     steps:
-      - name: Check installed user-level and system build tools
-        shell: powershell
+      - name: Read-only tools check using cmd (no PowerShell scripts or admin)
+        shell: cmd
         run: |
-          Write-Host "FUTBR-WIN tool inspection - READ ONLY"
-          Write-Host "Runner: $env:RUNNER_NAME"
-          foreach ($name in @('python','py','node','npm','cargo','rustc','cl','link','nmake','git','cmake','msbuild')) {
-            $tool = Get-Command $name -ErrorAction SilentlyContinue
-            if ($tool) { Write-Host ("FOUND: {0} = {1}" -f $name,$tool.Source) }
-            else { Write-Host ("NOT FOUND on PATH: {0}" -f $name) }
-          }
-          $pf86=[Environment]::GetFolderPath('ProgramFilesX86')
-          $vswhere=Join-Path $pf86 'Microsoft Visual Studio\Installer\vswhere.exe'
-          if (Test-Path $vswhere) {
-            Write-Host "FOUND: VSWHERE"
-            $vs=& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-            if ($LASTEXITCODE -ne 0 -or -not $vs) { Write-Host 'MSVC C++ tools: NOT PRESENT' }
-            else { Write-Host ("MSVC C++ tools: PRESENT in {0}" -f $vs) }
-          } else { Write-Host 'VSWHERE: NOT PRESENT (C++ toolchain may be missing)' }
-          $sdk=Join-Path $pf86 'Windows Kits\10\Lib'
-          if (Test-Path $sdk) {
-            Write-Host ("Windows SDK: PRESENT; versions {0}" -f ((Get-ChildItem $sdk -Directory | Select-Object -ExpandProperty Name) -join ','))
-          } else { Write-Host 'Windows SDK: NOT FOUND in the usual location' }
-          $wv=Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F1A2C6E1-ABF2-4C9D-9D91-78437D7FAD51}' -ErrorAction SilentlyContinue
-          Write-Host ("WebView2 machine registration: {0}" -f [bool]$wv)
-          Write-Host 'No software installed and no system settings changed.'
+          @echo off
+          echo FUTBR-WIN prerequisite inspection - NO ADMIN
+          echo Runner: %RUNNER_NAME%
+          where python 2>nul || echo PYTHON_NOT_FOUND
+          where py 2>nul || echo PY_LAUNCHER_NOT_FOUND
+          where node 2>nul || echo NODE_NOT_FOUND
+          where npm 2>nul || echo NPM_NOT_FOUND
+          where cargo 2>nul || echo CARGO_NOT_FOUND
+          where rustc 2>nul || echo RUST_NOT_FOUND
+          where cl 2>nul || echo CL_NOT_FOUND_ON_PATH
+          where git 2>nul || echo GIT_NOT_FOUND
+          where cmake 2>nul || echo CMAKE_NOT_FOUND
+          where msbuild 2>nul || echo MSBUILD_NOT_FOUND_ON_PATH
+          if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+            echo VSWHERE_FOUND
+            "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          ) else (
+            echo VSWHERE_NOT_FOUND
+          )
+          if exist "%ProgramFiles(x86)%\Windows Kits\10\Lib" (echo WINDOWS_SDK_FOUND) else (echo WINDOWS_SDK_NOT_FOUND)
+          echo Inspection complete. No installers started.
