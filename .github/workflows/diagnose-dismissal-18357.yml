@@ -1,0 +1,50 @@
+name: Diagnose 18.357 dismissal handoff and checkpoint transitions
+on:
+  push:
+    branches: [fix/desktop-18357-dismissal-handoff]
+    paths: ['.github/workflows/diagnose-dismissal-18357.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect only the original shipped game's critical dismissal transitions
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+              path=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+              src=z.read(path).decode('utf-8-sig')
+          print('SRC',len(src),flush=True)
+          for term,span,maxn in [
+            ('v18112MarkDismissal(',850,6),
+            ('v18112Dismissal.pending=',360,8),
+            ('v18112Dismissal.ready=',360,8),
+            ('v53Sim.syncing=false',650,15),
+            ('v53Sim.patching=false',650,15),
+            ('v53Sim.active=false',650,15),
+            ('v53Sim.finished=null',750,12),
+            ('v18117SyncSeq',350,5),
+            ("kind==='vac-sync-end'",2200,3),
+            ("'vac-sync-end'",850,8),
+            ("'vac-sync-start'",850,8),
+            ("'vac-sync-collection'",650,8),
+            ('storageAudit:',2000,5),
+            ('v171StorageAudit',2000,6),
+            ('v171.storageAudit',750,10),
+            ('async function v52FlushSave(',1200,2),
+            ('function v53Handle',1300,3),
+            ('v53Sim.finished?.resolve',1000,5),
+            ('v53Sim.finished?.reject',850,5)
+          ]:
+             positions=[m.start() for m in re.finditer(re.escape(term),src)]
+             print('\nSEARCH',repr(term),'COUNT',len(positions),flush=True)
+             for i in positions[:maxn]:
+                 print('\n<<<',term,'POSITION',i,'>>>',flush=True)
+                 print(src[max(0,i-250):i+span],flush=True)
+          PY
