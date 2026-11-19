@@ -44,9 +44,9 @@ jobs:
            print('\n===== '+t+' @'+str(at)+' =====')
            end=min(len(src),at+4000)
            print(src[at:end])
-          for t in ('v663BraCView=','v663BraCView','v663SerieCPage(C)','CAMPEÃ','Campeã','CAMPEÃO','Campeão','function v98LeagueChampionId'):
+          for t in ('v663BraCView=','v663BraCView','v663SerieCPage(C)','v94ChampionInfo','v94DecorateChampionDOM','v104-d-champion','v54Competition','v54CleanLeague','CAMPEÃ','Campeã','CAMPEÃO','Campeão','function v98LeagueChampionId'):
            hits=[m.start() for m in re.finditer(re.escape(t),src)]
            print('\nHITS',t,len(hits),hits[-24:])
-           for i in hits[-5:]:
-            print('  ',src[max(0,i-320):i+390].replace('\n',' '))
+           for i in hits[-8:]:
+            print('  ',src[max(0,i-650):i+850].replace('\n',' '))
           PY
