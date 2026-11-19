@@ -235,3 +235,5 @@ jobs:
 # Retry after exact scoped post-save event placement invariant (18.354).
 
 # Retry avoid unsafe native legacy BASE and previous checkpoint reads.
+
+# Retry robust compiled UI and Worker historical collection extension.
