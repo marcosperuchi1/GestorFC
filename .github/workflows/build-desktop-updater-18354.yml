@@ -231,3 +231,5 @@ jobs:
 # Rerun after validating correct end-of-season rollover fixture in 18.353 podium regression.
 
 # Rebuilt using verified compound V171_SHARDS declaration in Worker.
+
+# Retry after exact scoped post-save event placement invariant (18.354).
