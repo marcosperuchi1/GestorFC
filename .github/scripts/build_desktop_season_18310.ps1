@@ -89,6 +89,8 @@ Run-Python '.github/scripts/harden_native_save_mirror_18354.py'
 Run-Python '.github/scripts/shard_remaining_archives_18354.py'
 Run-Python '.github/scripts/test_native_save_mirror_18354.py'
 Run-Python '.github/scripts/test_archive_root_shards_18354.py'
+Run-Python '.github/scripts/set_desktop_version_18355.py'
+Run-Python '.github/scripts/fix_job_saveexit_18355.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -189,6 +191,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'native-save-mirror-18354-tests.json' 'artifacts/native-save-mirror-18354-tests.json'
   Copy-Item 'archive-root-shards-18354-install.json' 'artifacts/archive-root-shards-18354-install.json'
   Copy-Item 'archive-root-shards-18354-tests.json' 'artifacts/archive-root-shards-18354-tests.json'
+  Copy-Item 'desktop-version-18355-install.json' 'artifacts/desktop-version-18355-install.json'
+  Copy-Item 'job-save-exit-18355-tests.json' 'artifacts/job-save-exit-18355-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -238,6 +242,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_oomsafe_saves_18352.
 if (-not $source.Contains("Run-Python '.github/scripts/test_seriec_full_history_18353.py'")) { throw 'Teste do vice e artilharia imediatos da Serie C 18.353 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_native_save_mirror_18354.py'")) { throw 'Teste de seguranca do espelhamento incremental 18.354 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_archive_root_shards_18354.py'")) { throw 'Teste dos arquivos historicos fragmentados 18.354 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_job_saveexit_18355.py'")) { throw 'Oferta e salvamento 18.355 ausentes.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
