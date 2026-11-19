@@ -138,10 +138,10 @@ def main():
     # Legacy UI retry must not launch a competing save while the 17.1
     # checkpoint is being committed.
     src=one(src,"function v18334SafeToVerify(){\n return v18334EligibleForJobWait()",
-            "function v18334SafeToVerify(){\n return !v18357AwaitingPromotion&&v18334EligibleForJobWait()",
+            "function v18334SafeToVerify(){\n return !v18357AwaitingPromotion&&!(v18112Dismissal.pending&&v53Sim?.mode===\'vacation\')&&v18334EligibleForJobWait()",
             'disable legacy duplicate-save recovery while promoting')
     src=one(src,"async function v18334RecoverDismissal(){\n if(v18334RecoverPromise)",
-            "async function v18334RecoverDismissal(){\n if(v18357AwaitingPromotion)return false;\n if(v18334RecoverPromise)",
+            "async function v18334RecoverDismissal(){\n if(v18357AwaitingPromotion||(v18112Dismissal.pending&&v53Sim?.mode===\'vacation\'))return false;\n if(v18334RecoverPromise)",
             'keep legacy recovery from preempting promotion')
     src=one(src,'/* FUTBR_UNEMPLOYED_RESUME_18334_END */',
             '/* FUTBR_UNEMPLOYED_RESUME_18334_END */\n'+HELPER,
