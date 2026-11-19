@@ -1,0 +1,24 @@
+name: Preflight 18.356 unemployed job-wait recovery
+on:
+  push:
+    branches: [fix/desktop-18356-jobwait-year-rollover]
+    paths:
+      - .github/workflows/preflight-jobwait-18356.yml
+      - .github/scripts/fix_jobwait_18356.py
+      - .github/scripts/test_jobwait_18356.py
+      - .github/scripts/test_jobwait_preflight_18356.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify patch against packaged gameplay and simulate the screenshot
+        run: |
+          python -m py_compile .github/scripts/fix_jobwait_18356.py .github/scripts/test_jobwait_18356.py .github/scripts/test_jobwait_preflight_18356.py
+          python .github/scripts/test_jobwait_preflight_18356.py
