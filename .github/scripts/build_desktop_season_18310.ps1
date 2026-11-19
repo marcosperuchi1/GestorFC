@@ -75,6 +75,9 @@ Run-Python '.github/scripts/test_incremental_saves_calendar_18349.py'
 Run-Python '.github/scripts/set_desktop_version_18350.py'
 Run-Python '.github/scripts/fix_calendar_match_retirement_18350.py'
 Run-Python '.github/scripts/test_calendar_match_retirement_18350.py'
+Run-Python '.github/scripts/set_desktop_version_18351.py'
+Run-Python '.github/scripts/fix_seriec_phases_history_18351.py'
+Run-Python '.github/scripts/test_seriec_phases_history_18351.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -161,6 +164,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-version-18350-install.json' 'artifacts/desktop-version-18350-install.json'
   Copy-Item 'calendar-retirement-18350-install.json' 'artifacts/calendar-retirement-18350-install.json'
   Copy-Item 'calendar-retirement-18350-tests.json' 'artifacts/calendar-retirement-18350-tests.json'
+  Copy-Item 'desktop-version-18351-install.json' 'artifacts/desktop-version-18351-install.json'
+  Copy-Item 'serie-c-phases-history-18351-install.json' 'artifacts/serie-c-phases-history-18351-install.json'
+  Copy-Item 'serie-c-phases-history-18351-tests.json' 'artifacts/serie-c-phases-history-18351-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -205,6 +211,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18349
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_incremental_saves_calendar_18349.py'")) { throw 'Salvamento incremental seguro e calendario rolavel 18.349 ausentes.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_incremental_saves_calendar_18349.py'")) { throw 'Teste de integridade de salvamento 18.349 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_calendar_match_retirement_18350.py'")) { throw 'Gerenciador de aposentadorias e alinhamento do calendario 18.350 ausentes.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_seriec_phases_history_18351.py'")) { throw 'Testes das fases e campeoes da Serie C 18.351 ausentes.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
