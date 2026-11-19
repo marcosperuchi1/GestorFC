@@ -39,6 +39,19 @@ jobs:
             i=src.find(term)
             print("\n===",label,"POS",i,"===",flush=True)
             if i>=0:print(src[max(0,i-240):i+length],flush=True)
+          for label,pattern,span in [
+            ('OFFER_DEFINITION','function v636GenerateCoachOffer(',11000),
+            ('OFFER_CLEAN','function v636CleanCoachOffers(',3500),
+            ('OFFER_PENDING','function v636PendingCoachOffers(',3000),
+            ('UNEMPLOYED','function v636CoachState(',4500),
+            ('SIM_WORKER','async function v53StartSimulation(',4800),
+            ('SAVED_OVERRIDE','FUTBR_LONG_CAREER_SAVE_18338_BEGIN',5000),
+            ('NAMED_SAVE','async function doSave(asCopy=false,exitAfter=false)',3600),
+            ('SAVE_ENGINE','async function saveSharded(s,mode=',2300),
+          ]:
+            i=src.find(pattern)
+            print("\\nTARGET",label,i,flush=True)
+            if i>=0:print(src[i:i+span],flush=True)
           fun=re.findall(r'\b(?:async )?function (v636\w+|v89\w+|v52\w+|v53\w+)\s*\(',src)
           print("FUNCTIONS",fun[:100])
           PY
