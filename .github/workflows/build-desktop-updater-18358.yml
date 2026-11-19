@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: [self-hosted, Windows, X64, futbr-windows]
+    runs-on: windows-latest
     timeout-minutes: 120
     env:
       PYTHONIOENCODING: utf-8
