@@ -122,8 +122,58 @@ function v18353EnrichSerieCRows(s,rows){
    scorers:scorers?.length?scorers:[]};
  });
 }
+
+/* Preserve historic league top-scorer summaries BEFORE the 5-season
+   scorerArchive ring evicts old years. This stores at most the tied leaders,
+   not the historical player database: negligible impact on long save memory. */
+const v18353HistoricalBackfillSeen=new WeakMap();
+function v18353BackfillHistoricalSerieC(s){
+ if(!s||!Array.isArray(s.scorerArchive)||!s.scorerArchive.length)return 0;
+ const key='league:bra:3',yearNow=Number(s.year)||0;
+ const stamp=()=>[yearNow,s.scorerArchive.map(a=>Number(a?.year)||0).join(','),
+  (s.v18322Champions||[]).filter(r=>r?.competition===key)
+   .map(r=>String(r.year)+':'+String(r.champion)+':'+(r.scorers?.length||0)).join(',')].join('|');
+ const before=stamp();
+ if(v18353HistoricalBackfillSeen.get(s)===before)return 0;
+ s.v18322Champions=Array.isArray(s.v18322Champions)?s.v18322Champions:[];
+ let added=0;
+ for(const archive of s.scorerArchive){
+  const year=Number(archive?.year)||0;
+  if(!year||year>=yearNow)continue;
+  const scorers=v18353ArchiveScorers(s,year);
+  if(!scorers.length)continue;
+  let row=s.v18322Champions.find(r=>Number(r?.year)===year&&r.competition===key);
+  const legacy=(s.v98LeagueTitleHistory||[]).find(r=>Number(r?.year)===year&&
+    r?.country==='bra'&&Number(r?.division)===3&&r.champion);
+  const fallback=(!row&&!legacy?v18322LegacyRows(s,{
+   year:String(year),country:'bra',kind:'league',division:'3',competition:key
+  }).find(r=>r?.competition===key):null);
+  const champion=row?.champion||legacy?.champion||fallback?.champion||null;
+  if(!champion)continue;
+  const last=s.braLowerLast;
+  const fromLast=Number(last?.year)===year&&String(last?.cChampion)===String(champion)
+   ?last?.cRunnerUp:null;
+  const runner=row?.runner||legacy?.runner||fallback?.runner||fromLast||null;
+  const original=row?.scorers?.length?row.scorers:[];
+  if(original.length&&(!runner||row?.runner))continue;
+  const update={
+   year,kind:'league',country:'bra',division:3,competition:key,
+   champion:String(champion),championName:v18322ClubName(s,champion),
+   runner:runner?String(runner):null,runnerName:runner?v18322ClubName(s,runner):'',
+   scorers:original.length?original:scorers,
+   ...(row?.legacy||fallback?.legacy?{legacy:true}:null)
+  };
+  s.v18322Champions=[update,...s.v18322Champions.filter(r=>
+   !(Number(r?.year)===year&&r?.competition===key))];
+  added++;
+ }
+ v18353HistoricalBackfillSeen.set(s,stamp());
+ return added;
+}
+
 window.GestorFC=window.GestorFC||{};
 window.GestorFC.v18353CaptureFromVerifiedFinal=v18353CaptureFromVerifiedFinal;
+window.GestorFC.v18353BackfillHistoricalSerieC=v18353BackfillHistoricalSerieC;
 """
 
 def replace_once(source,old,new,label):
@@ -165,9 +215,14 @@ def main():
  a=html.index('function v99RepairBrazilLowerChampions(s)')
  b=html.index('// Career screen:',a)
  part=html[a:b]
- part=replace_once(part,'   return changed;\n  }',
-   "   if(typeof window!=='undefined'&&typeof window.GestorFC?.v18353CaptureFromVerifiedFinal==='function')\n    changed+=window.GestorFC.v18353CaptureFromVerifiedFinal(s)||0;\n   return changed;\n  }",
-   'UI complete saved final before title screen renders')
+ part=replace_once(part,'return changed;',
+   "if(typeof window!=='undefined'){\n"+
+   "    if(typeof window.GestorFC?.v18353CaptureFromVerifiedFinal==='function')\n"+
+   "      changed+=window.GestorFC.v18353CaptureFromVerifiedFinal(s)||0;\n"+
+   "    if(typeof window.GestorFC?.v18353BackfillHistoricalSerieC==='function')\n"+
+   "      changed+=window.GestorFC.v18353BackfillHistoricalSerieC(s)||0;\n"+
+   "   }\n   return changed;",
+   'UI complete saved final and archival goals before title screen renders')
  html=html[:a]+part+html[b:]
 
  # UI legacy completion only with season-specific evidence, never a guessed
@@ -217,6 +272,7 @@ def main():
   'oldAlreadyFinishedCurrentSeasonRecovered':True,
   'previousValidChampionsSnapshotRetainedAtRollover':True,
   'unchangedScorerArchiveRetention':True,
+  'historicTopScorersPersistBeyondFiveYearArchiveLimit':True,
   'noFakeRunnerUp':True,
   'noSaveFormatChange':True,
   'longCareerSaveGuard18352Preserved':True}
