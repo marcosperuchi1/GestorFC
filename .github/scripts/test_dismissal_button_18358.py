@@ -15,7 +15,7 @@ def main():
     assert 'function v18357NoPendingWorldTransfer(){\n if(v18358HandoffReady())return true;' in s
     assert 'if(v18358HandoffReady())v18358CompleteOldOverlay();' in s
     assert 'if(v18358SafeJobButtons())return true;' in s
-    assert 'if(v18358SafeJobButtons()&&!v89JobWait.active)return false;' in s
+    assert 'if((v18358SafeJobButtons()||v18358SeasonEndReady())&&!v89JobWait.active)return false;' in s
     assert "if(state&&!state.userEmployed&&!v89HasNationalJob()){" in s
     assert 'if(state.seasonDone){\n  try{await v53Prepare(\'next\');}' in s
     assert "const disabled='';" in s
@@ -131,6 +131,15 @@ async function v53StartSimulation(mode){
  assert.equal(simDays,1);
  assert.ok(modals>=1,'Received proposal opens the dialog');
  assert.equal(v89JobWait.active,false);
+ // Also work when a user has been unemployed at season end without a
+ // just-completed vacation: the old 18.334 guard blocked this forever.
+ fresh({seasonDone:true,day:163});
+ v18112Dismissal.pending=false;v53Sim.syncing=false;v53Sim.patching=false;
+ v18358RecoveryDone=false;
+ assert.equal(v18358SeasonEndReady(),true);
+ await v89RunJobWait();
+ assert.equal(state.year,2031);
+ assert.equal(simDays,2);
  console.log(JSON.stringify({ok:true,version:'18.358.0',
   alreadyFinishedVacationUnlocksJobButton:true,
   staleOverlayAndSaverDoNotBlock:true,
@@ -139,7 +148,7 @@ async function v53StartSimulation(mode){
   careerIdentityProtected:true,
   noReleaseBeforeCheckpointSettles:true,
   failedCheckpointUsesLiveMemory:true,
-  seasonEndAdvancesToOffers:true,
+  seasonEndAdvancesToOffers:true,seasonEndWithoutDismissalRecoveryWorks:true,
   preservesTurboSimulation:true}));
 })().catch(e=>{console.error(e);process.exit(1)});
 """
