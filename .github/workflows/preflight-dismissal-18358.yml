@@ -1,0 +1,24 @@
+name: Preflight 18.358 - vacation dismissal and job-wait button
+on:
+  push:
+    branches: [fix/desktop-18358-dismissal-button-recovery]
+    paths:
+      - .github/workflows/preflight-dismissal-18358.yml
+      - .github/scripts/fix_dismissal_button_18358.py
+      - .github/scripts/test_dismissal_button_18358.py
+      - .github/scripts/test_dismissal_preflight_18358.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce actual dismissal from original game source
+        run: |
+          python -m py_compile .github/scripts/fix_dismissal_button_18358.py .github/scripts/test_dismissal_button_18358.py .github/scripts/test_dismissal_preflight_18358.py
+          python .github/scripts/test_dismissal_preflight_18358.py
