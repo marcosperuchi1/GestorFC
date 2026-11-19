@@ -21,6 +21,11 @@ jobs:
               path=next(n for n in z.namelist() if n.endswith('/src/index.html'))
               src=z.read(path).decode('utf-8-sig')
           print('SRC',len(src),flush=True)
+          for term in ["G.v170?._afterWorkerSave","G.v170._afterWorkerSave","v93Promote","v93CommitVacation","v93RestoreVacation","v171SaveScope","v53Sim.syncing=false;try{v53PaintStatus","async function v93"]:
+              positions=[m.start() for m in re.finditer(re.escape(term),src)]
+              print('HIGHLIGHT',repr(term),'matches',len(positions),flush=True)
+              for i in positions[:3]:
+                  print(src[max(0,i-2400):i+1350],flush=True)
           for term,span,maxn in [
             ('const baseAfter=G.v170',4500,3),
             ('G.v170._afterWorkerSave=',5400,3),
