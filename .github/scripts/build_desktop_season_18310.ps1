@@ -81,6 +81,9 @@ Run-Python '.github/scripts/test_seriec_phases_history_18351.py'
 Run-Python '.github/scripts/set_desktop_version_18352.py'
 Run-Python '.github/scripts/optimize_oomsafe_saves_18352.py'
 Run-Python '.github/scripts/test_oomsafe_saves_18352.py'
+Run-Python '.github/scripts/set_desktop_version_18353.py'
+Run-Python '.github/scripts/fix_seriec_full_history_18353.py'
+Run-Python '.github/scripts/test_seriec_full_history_18353.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -173,6 +176,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-version-18352-install.json' 'artifacts/desktop-version-18352-install.json'
   Copy-Item 'oomsafe-save-18352-install.json' 'artifacts/oomsafe-save-18352-install.json'
   Copy-Item 'oomsafe-save-18352-tests.json' 'artifacts/oomsafe-save-18352-tests.json'
+  Copy-Item 'desktop-version-18353-install.json' 'artifacts/desktop-version-18353-install.json'
+  Copy-Item 'serie-c-full-history-18353-install.json' 'artifacts/serie-c-full-history-18353-install.json'
+  Copy-Item 'serie-c-full-history-18353-tests.json' 'artifacts/serie-c-full-history-18353-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -219,6 +225,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_incremental_saves_ca
 if (-not $source.Contains("Run-Python '.github/scripts/test_calendar_match_retirement_18350.py'")) { throw 'Gerenciador de aposentadorias e alinhamento do calendario 18.350 ausentes.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_seriec_phases_history_18351.py'")) { throw 'Testes das fases e campeoes da Serie C 18.351 ausentes.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_oomsafe_saves_18352.py'")) { throw 'Teste de salvamento seguro para carreiras longas 18.352 ausente.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_seriec_full_history_18353.py'")) { throw 'Teste do vice e artilharia imediatos da Serie C 18.353 ausente.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
