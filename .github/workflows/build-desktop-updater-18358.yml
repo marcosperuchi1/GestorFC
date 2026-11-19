@@ -281,3 +281,5 @@ jobs:
 
 # Trigger after passing 18.357 source preflight, checkpoint ordering, race protection and safe first unemployed day.\n
 # 18.358: release unemployed search after fully completed vacation stream/checkpoint despite stale shell flags, not during active Worker; keep signed updater verification mandatory.
+
+# Release candidate includes the final season-end guard and original-game dayfast fixture; do not publish unless all regression and signature checks complete.
