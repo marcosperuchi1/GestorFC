@@ -63,28 +63,35 @@ def main():
     start=src.index('async function ensureSaved(){')
     end=src.index('async function archiveCurrent(',start)
     block=src[start:end]
-    original="if(state){const p=persist(false);await v52FlushSave();await p;if(v52SavePromise)await v52SavePromise;}"
-    replacement="""if(state){
-    const v18355SaveWork=(async()=>{
-      const p=persist(false);
-      await v52FlushSave();
-      await p;
-      if(v52SavePromise)await v52SavePromise;
-    })();
-    let timer;
-    try{
-      await Promise.race([
-        v18355SaveWork,
-        new Promise((_,reject)=>{timer=setTimeout(
-          ()=>reject(new Error('O salvamento excedeu o limite de segurança. A gravação pode continuar em andamento; não feche o jogo à força. Verifique o status e tente novamente.')),90000);})
-      ]);
-    }finally{clearTimeout(timer);}
-   }"""
-    block=one(block,original,replacement,'manual save watchdog')
-    block=one(block,
-     "if(x?.format!==FORMAT||!saveOK)",
-     "if(x?.format!==FORMAT||!saveOK||Number(x.year)!==Number(state.year)||Number(x.day)!==Number(state.day))",
-     'checkpoint year/day validation')
+    # 18.338 replaced ensureSaved with a checkpoint-aware path. Insert the
+    # watchdog only in its non-clean branch so unchanged careers skip a rewrite.
+    original="""   const p=persist(false);
+   await v52FlushSave();
+   await p;
+   if(v52SavePromise)await v52SavePromise;
+   x=await get(BASE).catch(()=>null);"""
+    replacement="""   const v18355PendingSave=(async()=>{
+    const p=persist(false);
+    await v52FlushSave();
+    await p;
+    if(v52SavePromise)await v52SavePromise;
+   })();
+   let v18355Timer;
+   try{
+    await Promise.race([
+     v18355PendingSave,
+     new Promise((_,reject)=>{v18355Timer=setTimeout(()=>reject(new Error(
+      'O salvamento excedeu 90 segundos. A gravação ainda pode estar ativa; não feche à força. Verifique o status antes de tentar novamente.')),90000);})
+    ]);
+   }finally{clearTimeout(v18355Timer);}
+   x=await get(BASE).catch(()=>null);"""
+    block=one(block,original,replacement,'manual save watchdog after 18.338 verified checkpoint')
+    # The 18.338 matches(x) already checks full identity, career, year, day,
+    # season closure, and save health. Do not weaken or duplicate that check.
+    for guard in ('const clean=matches(x)&&saveOK',
+      'if(!matches(x)||!saveOK||v52SaveDirty||v52SavePromise)',
+      "String(x.root?.v1903CareerId||'')===String(state.v1903CareerId||'')"):
+      if guard not in block:raise RuntimeError('Missing 18.338 integrity guard: '+guard)
     src=src[:start]+block+src[end:]
     src=one(src,"const EDITION='18.354.0';","const EDITION='18.355.0';",'sidebar version')
     src=one(src,
