@@ -18,7 +18,9 @@ def main():
     helper=section(src,'/* FUTBR_DISMISSAL_HANDOFF_18357','/* FUTBR_JOBWAIT_SEASON_RECOVERY_18356')
     inner=section(src,'const v18112BaseSimulation=v53StartSimulation;','const v18112BaseChrome=v555UpdateChrome;')
     outer=section(src,'const baseStart171=v53StartSimulation;','G.v171={version:V')
-    if 'await persist(false);await v52FlushSave();' in inner:\n        p=inner.index('await persist(false);await v52FlushSave();')\n        raise RuntimeError('Legacy forced save still present: '+inner[max(0,p-270):p+400])
+    if 'await persist(false);await v52FlushSave();' in inner:
+        p=inner.index('await persist(false);await v52FlushSave();')
+        raise RuntimeError('Legacy forced save still present: '+inner[max(0,p-270):p+400])
     assert 'v18357AwaitingPromotion=true' in inner
     assert outer.index('await promoteVacationCheckpoint()')<outer.index('await v18357FinalizeDismissal()')
     assert 'liveStateNoPreSave:true' in outer
