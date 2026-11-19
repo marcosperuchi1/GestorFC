@@ -27,11 +27,22 @@ def main():
            'async function save(s){',
            'async function v171DecodeManifest(x)']:
   if m not in s:raise RuntimeError('Required runtime not installed: '+m)
- s=once(s,'const SHARDS='+OLD,'/* '+MARK+' UI */\nconst SHARDS='+NEW,
-   'UI sharded root keys')
- s=once(s,'V171_SHARDS='+OLD,
-   '/* '+MARK+' Worker */\nV171_SHARDS='+NEW,
-   'Worker sharded root keys')
+ import re
+ def extend_list(text,key,label):
+  pattern=(r'\\bconst\\s+SHARDS\\s*=\\s*\\[([^\\]]*)\\]' if key=='SHARDS'
+    else r'\\bV171_SHARDS\\s*=\\s*\\[([^\\]]*)\\]')
+  found=list(re.finditer(pattern,text,re.S))
+  if len(found)!=1:
+   raise RuntimeError('18.354 '+label+': expected one sharded list, got '+str(len(found)))
+  match=found[0]
+  values=re.findall(r"'([^']+)'",match.group(1))
+  for essential in ['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats','v538CareerArchive','v555CareerArchive','crestOverrides']:
+   if essential not in values:raise RuntimeError('Missing required '+label+' shard: '+essential)
+  extended=values+[v for v in EXTRA if v not in values]
+  stringified='['+','.join(repr(v) for v in extended)+']'
+  return text[:match.start()]+('/* '+MARK+' '+label+' */\\n')+text[match.start():match.start(1)-1]+stringified+text[match.end():]
+ s=extend_list(s,'SHARDS','UI')
+ s=extend_list(s,'V171_SHARDS','Worker')
  # Both writers already use v18343HistoricalKeys: all six keys were listed
  # there but none appeared in their actual collections! Enforce exact reuse.
  for key in EXTRA:
