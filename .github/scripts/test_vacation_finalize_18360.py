@@ -24,7 +24,7 @@ def main():
  assert "GFC_VAC_CHECKPOINT_93" in promote
  assert "await rawRead(KEY+':v93vac:meta')" in promote
  assert "const keep=keysOf(manifest);for(const k of keysOf(old))keep.add(k)" in promote
- assert "G.v18360CleanupStatus" in promote
+ assert "window.GestorFC.v18360CleanupStatus" in promote
 
  stream=segment(s,'async function streamVacationWorld125(destructive=true,skipCheckpoint=false){','async function simulate(message){')
  assert "key==='players'?(Number(finalYear)>=2029?640:900)" in stream
@@ -72,7 +72,7 @@ const vm={format:'GFC_VAC_CHECKPOINT_93',token:'2031-120',year:2031,day:120,
  }};
 const rootDelta={year:2031,day:120,v1903CareerId:'C-2031',seasonDone:false,manager:'Test manager'};
 const records=new Map([[KEY+':v93vac:meta',vm],[vm.rootKey,rootDelta],[KEY,old],[KEY+':previous',oldPrev]]);
-const stats={lastMode:''},G={};
+const stats={lastMode:''},G={},window={GestorFC:G};
 let commitCount=0,cleanupCount=0,cleanupStarted=false,cleanupKeep,deleted=[],warnings=[];
 const console={warn:(...a)=>warnings.push(a.join(' ')),log:(...a)=>process.stdout.write(a.join(' ')+'\n')};
 const timers=[];
