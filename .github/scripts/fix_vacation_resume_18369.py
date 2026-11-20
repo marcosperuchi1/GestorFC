@@ -171,11 +171,9 @@ def patch_final_drain(drain):
   'reject terminal error before its optional toast')
  # A completed terminal message is never retried. Save its settlement before
  # entering the optional batch repaint and clear the local completion handle.
- terminal_end="""    }else if(state)finish?.resolve(state);else finish?.reject(Error('A simulação terminou sem sincronizar a carreira.'));
-    continue;"""
+ terminal_end="""    }else if(state)finish?.resolve(state);else finish?.reject(Error('A simulação terminou sem sincronizar a carreira.'));"""
  terminal_new="""    }else if(state)finish?.resolve(state);else finish?.reject(Error('A simulação terminou sem sincronizar a carreira.'));
-    v18369PendingFinish=null;
-    continue;"""
+    v18369PendingFinish=null;"""
  drain=once(drain,terminal_end,terminal_new,'never retain a settled terminal promise')
  # rank snapshots can request a full redraw before the ordinary batch tail.
  rank_old="if(['clubrankings','rankings','coaches','nationalrankings'].includes(view)&&!document.hidden)v53RefreshView(true);"
@@ -297,7 +295,7 @@ def main():
  file.write_text(s,encoding='utf-8')
  report={
   'ok':True,'version':VERSION,
-  'rootCause':'First advance after vacation could read stale pre-vacation save or wait for entire-world pre-save',
+  'rootCause':'Optional repaint could interrupt Worker ACK and queue delivery; first post-vacation advance could also reuse an outdated save',
   'commonHandoffForEmployedAndUnemployed':True,
   'captureOnlyAfterRealFullWorkerSync':True,
   'normalDayAfterVacationUsesLiveWorld':True,
