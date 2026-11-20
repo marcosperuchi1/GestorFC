@@ -1,0 +1,46 @@
+name: Diagnose 18.368 real unemployed Worker and pre-save
+on:
+  push:
+    branches: [fix/desktop-18368-unemployed-real-worker]
+    paths: ['.github/workflows/diag-real-job-progress-18368.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract real original game functions and snapshots
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+            name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+            s=z.read(name).decode('utf-8-sig')
+          print('SOURCE CHARS',len(s),flush=True)
+          patterns=[
+           ('JOBWAIT','async function v89RunJobWait(){',3900),
+           ('POST_ROUND','function v636AfterRound(',3600),
+           ('AFTER_VAC','function v636GenerateCoachOffer(',2800),
+           ('PRESAVE','async function v52FlushSave(',5200),
+           ('WORKER_LIVE','async function v126PublishVacationLive(',5700),
+           ('WORKER_LIVE2','function v126PublishVacationLive(',5700),
+           ('WORKER_START','async function v53GetWorker(',4700),
+           ('WORKER_START2','function v53GetWorker(',4700),
+           ('WORKER_DAY','async function simulate(message){',2000),
+           ('PROMISE_PATCH','if(m.kind===\'finished\'){',2600),
+           ('UNEMPLOYED_CHROME','function v18334ShouldWait(){',1500),
+           ('UNEMPLOYED_DAY','async function v53StartSimulation(mode,options={}){',5000),
+           ('WORKER_SIM','v53Sim.finished={resolve,reject}',1700),
+           ('JOBWAIT_STATUS','function v89PaintJobWait(){',900),
+          ]
+          for label,term,span in patterns:
+            i=s.find(term)
+            print('\n===== '+label+' '+str(i)+' =====',flush=True)
+            if i>=0:print(s[i:i+span],flush=True)
+          for term in ('function v636AfterRound(', 'v126PublishVacationLive(', 'v53StartSimulation(', 'v636GenerateCoachOffer('):
+            print('COUNT',term,len(list(re.finditer(re.escape(term),s))),flush=True)
+          PY
