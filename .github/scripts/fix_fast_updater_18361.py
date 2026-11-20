@@ -200,6 +200,10 @@ margin:8px 0 5px;accent-color:#58d382}
    '<div class="actions">''','progress meter')
  js=once(js,OLD_HANDLER,NEW_HANDLER,'signed updater UI')
  html=html[:a]+js+html[b:]
+ if 'FUTBR_VACATION_FINALIZE_LIGHT_18360' in html:
+  html=once(html,"const EDITION='18.360.0';","const EDITION='18.361.0';",'visible edition')
+  html=once(html,"window.GestorFC.version='18.360.0';window.GestorFC.visualVersion='18.360.0';",
+            "window.GestorFC.version='18.361.0';window.GestorFC.visualVersion='18.361.0';",'runtime version')
  hp.write_text(html,encoding='utf-8')
  out={'ok':True,'version':V,'noDuplicateCheckWithinMinutes':10,
       'officialCDNFeed':DIRECT,'metadataOnlyCache':True,'noInstallerPrefetch':True,
