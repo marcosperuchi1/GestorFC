@@ -15,6 +15,7 @@ function init(){
  renderCount=0;offerDialogs=0;failAdvance=false;
 }
 function v18356ReconcileRollover(){}
+function v18358SafeJobButtons(){return false}
 function v18363CanUseJobWait(){return true}
 function v89HasNationalJob(){return false}
 function v636PendingCoachOffers(s){return s?.offers||[]}
