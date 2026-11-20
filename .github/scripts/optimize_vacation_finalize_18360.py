@@ -152,9 +152,20 @@ def main():
  ui=once(ui,"if(m.kind==='vac-sync-collection-start'){\n    if(!v125VacIncoming)continue;",
           "if(m.kind==='vac-sync-collection-start'){\n    if(!v125VacIncoming)continue;\n    v18360SyncCollection(m);",
           'read actual total from worker collection header')
- ui=once(ui,"if(m.key==='players')v53Stats.playerUpdates+=rows.length;",
-          "if(m.key==='players'){v53Stats.playerUpdates+=rows.length;v18360SyncUpdate(rows.length);}",
-          'update small progress label only after decoded players installed')
+ # Later releases stream packed players with an iterable decoder; the
+ # old "rows.length" counter is not a stable anchor anymore. Use the
+ # authoritative cumulative m.done sent by the Worker, but only after the
+ # UI has applied the entire batch and posted its acknowledgment.
+ begin=ui.index("if(m.kind==='vac-sync-part'){")
+ end=ui.index("if(m.kind==='vac-sync-collection-end')",begin)
+ part=ui[begin:end]
+ tail=part.rfind('continue;')
+ if tail<0 or 'vac-sync-ack' not in part or tail<=part.rfind('vac-sync-ack'):
+  raise RuntimeError('18.360 vacation UI ACK handler changed, cannot count installed players')
+ part=part[:tail]+(
+  "if(m.key==='players')v18360SyncUpdate(Math.max(0,(Number(m.done)||0)-v18360SyncMetrics.players));\n    "
+ )+part[tail:]
+ ui=ui[:begin]+part+ui[end:]
  ui=once(ui,"if(m.kind==='vac-sync-end'){",
           "if(m.kind==='vac-sync-end'){\n    v18360SyncEnd();",
           'mark transfer complete before releasing overlay')
