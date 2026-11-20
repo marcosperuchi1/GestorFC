@@ -104,6 +104,9 @@ Run-Python '.github/scripts/test_dismissal_button_18358.py'
 Run-Python '.github/scripts/set_desktop_version_18359.py'
 Run-Python '.github/scripts/fix_dismissal_control_18359.py'
 Run-Python '.github/scripts/test_dismissal_control_18359.py'
+Run-Python '.github/scripts/set_desktop_version_18360.py'
+Run-Python '.github/scripts/optimize_vacation_finalize_18360.py'
+Run-Python '.github/scripts/test_vacation_finalize_18360.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -218,6 +221,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-version-18359-install.json' 'artifacts/desktop-version-18359-install.json'
   Copy-Item 'dismissal-control-18359-install.json' 'artifacts/dismissal-control-18359-install.json'
   Copy-Item 'dismissal-control-18359-tests.json' 'artifacts/dismissal-control-18359-tests.json'
+  Copy-Item 'desktop-version-18360-install.json' 'artifacts/desktop-version-18360-install.json'
+  Copy-Item 'vacation-finalize-18360-install.json' 'artifacts/vacation-finalize-18360-install.json'
+  Copy-Item 'vacation-finalize-18360-tests.json' 'artifacts/vacation-finalize-18360-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -272,6 +278,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_18356.py'"))
 if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_handoff_18357.py'")) { throw 'A demissao 18.357 requer regressao sem salvamento duplicado.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_button_18358.py'")) { throw 'Demissao durante as ferias 18.358 sem regressao da interface.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_control_18359.py'")) { throw '18.359 requer teste do evento real Worker e desbloqueio do botao.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_finalize_18360.py'")) { throw '18.360 requer teste de salvamento atomico, memoria e fim de ferias leve.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
