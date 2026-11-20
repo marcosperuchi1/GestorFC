@@ -1,0 +1,38 @@
+name: Diagnose synchronous season closure CPU 18.360
+on:
+  push:
+    branches: [fix/desktop-18359-dismissal-control-state]
+    paths: ['.github/workflows/diagnose-season-cpu-18360.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify synchronous CPU in season finalization
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import io,zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+           f=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           s=z.read(f).decode('utf-8-sig')
+          for label,term,n in [
+           ('RANK_END','function v82FinalizeRankAfterSync(',8500),
+           ('RANK_END_ARROW','v82FinalizeRankAfterSync=',4000),
+           ('RANK_CATCHUP','function v81CatchUpRank(',3000),
+           ('MAINT','function v555Maintenance(',4500),
+           ('RENDER_V555','function v555RenderPage(',4500),
+           ('RENDER_ROOT','function render(',2500),
+           ('VAC_PROGRESS','function v53PaintStatus(',2000),
+           ('ARCHIVE_SYNC','function v18119BeginSeasonTransfer(',1500),
+           ('SYNC_WORKER_PACK','function v18191wPackPlayer(',3800),
+           ('SYNC_UI_UNPACK','function v18191uUnpackPlayer(',3800),
+           ('QUEUE_ACK','const v53PatchQueue=',1400),
+          ]:
+           ix=[m.start() for m in re.finditer(re.escape(term),s)]
+           print('\n==CPU '+label+' '+str(len(ix))+'==',flush=True)
+           for i in ix[:2]:print(s[max(0,i-150):i+n],flush=True)
+          PY
