@@ -7,8 +7,8 @@ HOOK=r"""
 /* TEST ONLY: real Engine/Worker vacation -> manual stop -> normal nextmatch. */
 window.__vacResume369={
  working:false,result:null,notices:[],
- snapshot(){
-   return {working:this.working,
+ async snapshot(){
+   const snapshot={working:this.working,
      year:state?.year,day:state?.day,employed:state?.userEmployed,
      vacationActive:!!state?.vacation?.active,vacationPaused:!!state?.vacation?.paused,
      remaining:state?.vacation?.remaining,completed:state?.vacation?.completed,
@@ -21,7 +21,18 @@ window.__vacResume369={
      incoming:!!v125VacIncoming,
      saveActive:!!v52SavePromise,saveDirty:!!v52SaveDirty,
      career:window.GestorFC.vacationResume18369?.status?.(),
-     notices:this.notices.slice(-6)}
+     stage:(state?.schedule?.[Number(state?.day)||0]||null)?.type||null,
+     stageFixtures:state?.schedule?.[Number(state?.day)||0]?.fixtures?.length||0,
+     notices:this.notices.slice(-6)};
+   // The original Worker check RPC works while it simulates: determine
+   // whether the day advanced internally, or the Engine is CPU-bound.
+   try{
+    snapshot.workerCheck=await Promise.race([
+      v53Call('check'),
+      new Promise((resolve)=>setTimeout(()=>resolve({timeout:true}),1800))
+    ]);
+   }catch(err){snapshot.workerCheck={error:String(err)}}
+   return snapshot;
  },
 
  makeCareer(){
