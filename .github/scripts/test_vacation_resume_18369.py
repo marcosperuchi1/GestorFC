@@ -102,6 +102,11 @@ def main():
  ds=s.rindex('v53DrainPatches=function(){')
  de=s.index('async function v722CatchUpAfterFocus(){',ds)
  drain=s[ds:de]
+ assert "let v18369InFlight=null;" in drain,'Original MessageChannel needs guarded in-flight event'
+ assert "v18369ResumeStats.queueErrors++" in drain,'Worker queue must not freeze after repaint errors'
+ assert "v53PatchScheduled=false;" in drain,'Worker queue scheduler must be unlocked after exceptions'
+ assert "['nextmatch-sync','vac-sync-end','finished'].includes(v18369InFlight.kind)" in drain,'Terminal day/sync/completion messages cannot be dropped'
+ assert "nextmatch vacation header repaint" in drain,'Nonessential vacation chrome cannot block nextmatch'
  assert "if(wasVacation){" in drain
  assert "if(!m.error)v18369CaptureVacationReturn(state,m);" in drain
  assert drain.index("v53Sim.active=false;v53Sim.patching=false;v53Sim.syncing=false;") < drain.index("if(!m.error)v18369CaptureVacationReturn(state,m);")
