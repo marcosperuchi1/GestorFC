@@ -113,6 +113,31 @@ def main():
  if 'if(!canLoadSaved&&!(mode===\'dayfast\'&&options?.jobWaitResident===true))msg.state=state;' not in base:
   raise RuntimeError('18.369 live state Worker transfer is missing')
  s=s[:bs]+base+s[be:]
+ # 18.369: the actual next-match Worker formerly showed 'Partidas: 16/16'
+ # indefinitely. Report the REAL post-match stages, without changing sporting
+ # decisions or replaying the round. One short message per stage; no world clone.
+ eng_start=s.index('async function advanceDayAsync(s,onProgress=()=>{},options=null){')
+ eng_end=s.index('async function vacationStepAsync(',eng_start)
+ engine=s[eng_start:eng_end]
+ phase_marks=[
+  ("    const played=new Set(matches.flatMap",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Recuperando os elencos');\\n    const played=new Set(matches.flatMap"),
+  ("    for(const {f,m} of matches){applyIntlResult(s,f,m);",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Aplicando resultados e disciplina');\\n    for(const {f,m} of matches){applyIntlResult(s,f,m);"),
+  ("    if(stage.type!=='world'&&stage.type!=='national')for(const t of s.teams){stageFinances",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Processando financas');\\n    if(stage.type!=='world'&&stage.type!=='national')for(const t of s.teams){stageFinances"),
+  ("    if(delegatedDepthEmergency||stage.type==='league'){const q=",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Avaliando mercado de transferencias');\\n    if(delegatedDepthEmergency||stage.type==='league'){const q="),
+  ("    if(stage.type==='league'||delegatedDepthEmergency){const q=",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Avaliando mercado de tecnicos');\\n    if(stage.type==='league'||delegatedDepthEmergency){const q="),
+  ("    const uf=stage.fixtures.find(f=>f.home===s.user||f.away===s.user);",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Consolidando estatisticas da rodada');\\n    const uf=stage.fixtures.find(f=>f.home===s.user||f.away===s.user);"),
+  ("    s.lastDay=s.day;s.day++;s.live=null;delete s.liveCompanions;",
+   "    if(s.v158FastManualEngine)onProgress(1,1,'Concluindo jornada no calendario');\\n    s.lastDay=s.day;s.day++;s.live=null;delete s.liveCompanions;")
+ ]
+ for old,new in phase_marks:
+  engine=once(engine,old,new.replace('\\\\n','\\n'),'trace authoritative original Engine phase')
+ s=s[:eng_start]+engine+s[eng_end:]
  # Only the active, final patch-drain handler may declare vacation fully
  # returned. The first legacy definition no longer owns the 18.360 stream.
  ds=s.rindex('v53DrainPatches=function(){')
@@ -145,7 +170,8 @@ def main():
   'unemployedResidentWorkerUnchanged':True,
   'careerIdentityAndSessionGuard':True,
   'noNewWorkerDuringStreaming':True,
-  'checkpointAndHistoricDataUnchanged':True}
+  'checkpointAndHistoricDataUnchanged':True,
+  'realEnginePhaseTelemetry':True}
  (root/'vacation-resume-18369-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
