@@ -1,0 +1,34 @@
+name: Inspect live vacation ACK and end-state release
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-vacation-live-ack-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import zipfile,io,pathlib,re
+          p=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in p))) as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for n,needle,count in [
+           ('PUB_LIVE','async function v126PublishVacationLive(',11500),
+           ('ACK_LIVE_SEND',"op:'vac-live-ack'",1900),
+           ('ACK_LIVE_IN',"m.op==='vac-live-ack'",2500),
+           ('ACK_LIVE_WAIT','v128LiveAck',2200),
+           ('UI_LIVE_RECEIVE',"if(m.kind==='vac-live'){",3400),
+           ('UI_VAC_ACK',"kind==='vac-day'",1500),
+           ('UI_READY','function v53GetWorker(){',2500),
+           ('RETURN_START',"if(m.kind==='vac-return-start'){",2400),
+           ('PAUSE',"if(m.op==='pause'){",1200)
+          ]:
+           i=s.find(needle)
+           print('===',n,'COUNT',s.count(needle),'LOC',i,'===',flush=True)
+           if i>=0:print(s[i:i+count],flush=True)
+          PY
