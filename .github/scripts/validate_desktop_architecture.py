@@ -73,7 +73,34 @@ def main():
         die('Preload antigo da base de jogadores ainda existe no head')
     if "load_player_base" not in html:
         die('Bridge nativo da base de jogadores nao foi ligado ao frontend')
-    if "async function v548EnterGame(){await v260FastLoadLocal(false);await v310StartRosterLoad();renderWelcome();}" not in html:
+    # Validate the *function's behavior*, not a one-line formatting snapshot.
+    # Login completes before the local roster is requested, and the
+    # authenticated welcome view must render only after both awaited loads.
+    login_match=re.search(r'async\s+function\s+v548EnterGame\s*\(\s*\)\s*\{',html)
+    if not login_match:
+        die('Entrada autenticada v548EnterGame ausente')
+    start=login_match.end()
+    depth=1; quote=None; escaped=False; end=None
+    for i in range(start,len(html)):
+        ch=html[i]
+        if quote:
+            if escaped: escaped=False
+            elif ch=='\\': escaped=True
+            elif ch==quote: quote=None
+            continue
+        if ch in ("'",'"',chr(96)):
+            quote=ch;continue
+        if ch=='{': depth+=1
+        elif ch=='}':
+            depth-=1
+            if depth==0:
+                end=i;break
+    if end is None:
+        die('Entrada autenticada sem fechamento sintatico')
+    login=html[start:end]
+    steps=['await v260FastLoadLocal(false);','await v310StartRosterLoad();','renderWelcome();']
+    positions=[login.find(step) for step in steps]
+    if -1 in positions or positions!=sorted(positions) or len(set(positions))!=3:
         die('Entrada autenticada ainda pode renderizar antes da base instalada')
     if "v548RenderAuth('login','');" not in html:
         die('Boot nao monta o formulario de login imediatamente')
