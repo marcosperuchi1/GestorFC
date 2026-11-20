@@ -38,7 +38,7 @@ def main() -> None:
     file_url = base + "/" + INSTALLER_NAME
     manifest = {
         "version": VERSION,
-        "notes": "18.370: Corrige o retorno do Worker de férias e restaura o avanço normal até a próxima partida ou próxima jornada, usando a carreira sincronizada sem recarregar salvamento anterior.",
+        "notes": "18.370: Reduz os picos de memória em Até o fim/proposta. A busca utiliza o Worker residente, checkpoints controlados e salvamento obrigatório ao parar ou receber proposta, sem descartar históricos.",
         "platforms": {
             "windows-x86_64": {
                 "signature": sig,
