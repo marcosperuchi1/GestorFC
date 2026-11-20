@@ -22,7 +22,7 @@ def main():
     root=Path(sys.argv[1]).resolve()
     path=root/'src-tauri/tauri.conf.json'
     cfg=json.loads(path.read_text(encoding='utf-8-sig'))
-    if cfg.get('version')!='18.366.0':raise RuntimeError('Expected validated 18.367 signed-updater baseline in build pipeline')
+    if cfg.get('version')!='18.367.0':raise RuntimeError('Expected validated 18.367 signed-updater baseline in build pipeline')
     updater=cfg.get('plugins',{}).get('updater',{})
     expected=os.environ.get('FUTBR_UPDATER_PUBLIC_KEY','').strip()
     if not expected:raise RuntimeError('Derived public key must be provided by signed CI preflight')
