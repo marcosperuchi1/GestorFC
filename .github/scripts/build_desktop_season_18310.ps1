@@ -119,6 +119,9 @@ Run-Python '.github/scripts/test_jobwait_state_18363.py'
 Run-Python '.github/scripts/set_desktop_version_18364.py'
 Run-Python '.github/scripts/fix_vacation_job_handoff_18364.py'
 Run-Python '.github/scripts/test_vacation_job_handoff_18364.py'
+Run-Python '.github/scripts/set_desktop_version_18365.py'
+Run-Python '.github/scripts/fix_dismissal_source_18365.py'
+Run-Python '.github/scripts/test_dismissal_source_18365.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -248,6 +251,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
   Copy-Item 'desktop-version-18364-install.json' 'artifacts/desktop-version-18364-install.json'
   Copy-Item 'vacation-handoff-18364-install.json' 'artifacts/vacation-handoff-18364-install.json'
   Copy-Item 'vacation-handoff-18364-tests.json' 'artifacts/vacation-handoff-18364-tests.json'
+  Copy-Item 'desktop-version-18365-install.json' 'artifacts/desktop-version-18365-install.json'
+  Copy-Item 'dismissal-source-18365-install.json' 'artifacts/dismissal-source-18365-install.json'
+  Copy-Item 'dismissal-source-18365-tests.json' 'artifacts/dismissal-source-18365-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -307,6 +313,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_fast_updater_18361.p
 if (-not $source.Contains("Run-Python '.github/scripts/test_core_transitions_18362.py'")) { throw '18.362 requer regressao real de demissao, sincronizacao e login.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_state_18363.py'")) { throw '18.363 exige teste real de retomada de proposta na jornada 42 de 2027.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_job_handoff_18364.py'")) { throw '18.364 requires a real original Worker vacation-to-offer job handoff regression.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_source_18365.py'")) { throw '18.365 must test the native click dispatcher, actual dismissal Worker and career layout.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
