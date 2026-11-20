@@ -50,6 +50,12 @@ def main():
         # The Windows release pipeline independently validates ALL patches.
         full=(root/'src/index.html').read_text(encoding='utf-8')
         sync310=mod('optimize_season_sync_18310')
+        # In the full Windows pipeline, an 18.30x preliminary patch already
+        # modernizes one of the THREE legacy decoder sites. Emulate that
+        # one existing replacement before running the real 18.310 patch.
+        old_decode="rows=m.format==='json-buffer'&&m.bytes instanceof ArrayBuffer?JSON.parse(new TextDecoder().decode(m.bytes)):(m.rows||[])"
+        if full.count(old_decode)!=3:raise RuntimeError('18.360 legacy decoder fixture changed')
+        full=full.replace(old_decode,'rows=v18310VacationRows(m)',1)
         full=sync310.patch_html(full)
         unpack_old="return packed.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});"
         unpack_new="return {length:packed.length,*[Symbol.iterator](){for(const r of packed){const p=v18191uUnpackPlayer(r);yield [p.id,p];}}};"
