@@ -19,7 +19,7 @@ RUNTIME=r"""
    The next action will use THIS authenticated, synchronized live world once.
    Never release a partially streamed world, a busy Worker or another career. */
 let v18369VacationReturn=null;
-const v18369ResumeStats={captured:0,liveStarts:0,invalid:0,
+const v18369ResumeStats={captured:0,liveStarts:0,invalid:0,queueErrors:0,lastQueueError:'',
  last:'idle',startedDay:null,returnedDay:null};
 function v18369CaptureVacationReturn(s=state,m=null){
  if(!s||!s.players||!Array.isArray(s.teams)||!s.teams.length||
@@ -74,6 +74,7 @@ window.GestorFC.vacationResume18369={status:()=>({
  workerActive:!!v53Sim?.active,workerStarting:!!v53Sim?.starting,
  syncing:!!v53Sim?.syncing,patching:!!v53Sim?.patching,
  incoming:!!v125VacIncoming,fullSaveActive:!!v52SavePromise,
+ queueScheduled:!!v53PatchScheduled,queueLength:v53PatchQueue.length,
  ...v18369ResumeStats
 })};
 """
@@ -150,6 +151,55 @@ def main():
      else{v18369VacationReturn=null;v18369ResumeStats.last='vacation-failed';}
     }"""
  drain=once(drain,anchor,replacement,'capture after last completed vacation Worker event')
+ # Source-of-truth: the final MessageChannel patch queue. A UI painter
+ # exception previously escaped its handler before clearing v53PatchScheduled.
+ # Then every subsequent nextmatch-day, nextmatch-sync, vac-sync-end and finished
+ # message was enqueued forever, despite the Worker advancing all jornadas.
+ # Keep the actual queue and ACK protocol intact. Protect nonessential painters
+ # and always restore a working pump after any exception.
+ drain=once(drain,
+   "channel.port1.onmessage=()=>{\\n  const start=performance.now(),budget=document.hidden?14:30;",
+   "channel.port1.onmessage=()=>{\\n  let v18369InFlight=null;\\n  try{\\n  const start=performance.now(),budget=document.hidden?14:30;",
+   'guard original MessageChannel handler')
+ drain=once(drain,
+   "const m=v53PatchQueue.shift();if(m.session!==v53Sim.session)continue;",
+   "const m=v53PatchQueue.shift();v18369InFlight=m;if(m.session!==v53Sim.session)continue;",
+   'capture in-flight message so terminal sync is never lost')
+ day_start=drain.index("if(m.kind==='nextmatch-day'){")
+ day_end=drain.index("if(m.kind==='nextmatch-sync'){",day_start)
+ day_block=drain[day_start:day_end]
+ old_paint="""    v53PaintStatus();
+    const slot=document.querySelector('#v624-vac-header');
+    if(slot&&!slot.hidden&&typeof v624VacationHeaderHTML==='function'){slot.innerHTML=v624VacationHeaderHTML();delete slot.dataset.sig;}"""
+ new_paint="""    // Nonessential header repaint must NEVER prevent genuine Worker sync.
+    try{v53PaintStatus();}catch(e){console.warn('[18.369] nextmatch status repaint:',e);}
+    try{const slot=document.querySelector('#v624-vac-header');
+     if(slot&&!slot.hidden&&typeof v624VacationHeaderHTML==='function'){slot.innerHTML=v624VacationHeaderHTML();delete slot.dataset.sig;}}
+    catch(e){console.warn('[18.369] nextmatch vacation header repaint:',e);}"""
+ day_block=once(day_block,old_paint,new_paint,'painted next-match Worker day must not throw')
+ drain=drain[:day_start]+day_block+drain[day_end:]
+ end_old="""  if(v53PatchQueue.length)channel.port2.postMessage(0);else{v53PatchScheduled=false;channel.port1.close();channel.port2.close();}
+ };
+ channel.port2.postMessage(0);"""
+ end_new="""  v18369InFlight=null;
+  if(v53PatchQueue.length)channel.port2.postMessage(0);else{v53PatchScheduled=false;channel.port1.close();channel.port2.close();}
+  }catch(e){
+   v18369ResumeStats.queueErrors++;v18369ResumeStats.lastQueueError=String(e?.message||e);
+   console.error('[18.369] Worker patch delivery: resuming original queue after UI error',e);
+   // These terminal messages carry the only authoritative world/day and
+   // completion promise. Never discard them when an optional painter throws.
+   if(v18369InFlight&&['nextmatch-sync','vac-sync-end','finished'].includes(v18369InFlight.kind))
+    v53PatchQueue.unshift(v18369InFlight);
+   try{channel.port1.close();channel.port2.close();}catch(_){}
+   v53PatchScheduled=false;
+   if(v53PatchQueue.length){
+    const retry=v18369ResumeStats.queueErrors>3?50:0;
+    setTimeout(()=>{if(!v53PatchScheduled)v53DrainPatches();},retry);
+   }
+  }
+ };
+ channel.port2.postMessage(0);"""
+ drain=once(drain,end_old,end_new,'always unlock queue on uncaught UI rendering error')
  s=s[:ds]+drain+s[de:]
  s=once(s,'const v18366BaseVacationHeader=v624VacationHeaderHTML;',
     RUNTIME+'\nconst v18366BaseVacationHeader=v624VacationHeaderHTML;',
@@ -171,7 +221,9 @@ def main():
   'careerIdentityAndSessionGuard':True,
   'noNewWorkerDuringStreaming':True,
   'checkpointAndHistoricDataUnchanged':True,
-  'realEnginePhaseTelemetry':True}
+  'realEnginePhaseTelemetry':True,
+  'queueErrorCannotPermanentlyFreezeAdvance':True,
+  'terminalWorldAndFinishedMessagesPreserved':True}
  (root/'vacation-resume-18369-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()
