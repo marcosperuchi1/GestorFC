@@ -7,6 +7,7 @@ from pathlib import Path
 VERSION="18.366.0"
 MARK="FUTBR_SCOPE_REPAIR_18366"
 SCRIPT_IDS=(
+ "futbr-mls-vacation-18201-ui",
  "futbr-jobwait-state-18363",
  "futbr-vacation-handoff-18364",
  "futbr-dismissal-source-18365",
@@ -70,7 +71,7 @@ def main():
 
     extra=r"""
 /* FUTBR_SCOPE_REPAIR_18366
-   All three last controllers now share the original private lexical state.
+   Legacy MLS vacation UI and all three last controllers now share the private lexical state.
    A separate <script> tag cannot access state, worker or active game views.
    Never recreate state, never start a parallel vacation Worker. */
 const v18366BaseVacationHeader=v624VacationHeaderHTML;
@@ -127,6 +128,7 @@ window.GestorFC.scope18366={
         "ok":True,"version":VERSION,"originalStateScopeReused":True,
         "relocatedOriginalDetachedScripts":[x[0] for x in blocks],
         "allControllersExecuteInsideOriginalGameIIFE":True,
+        "legacyMLSVacationRecoveredInSameScope":True,
         "removesDetachedReferenceErrors":True,
         "realButtonListenerReusesGameState":True,
         "originalWorkerStopAndAtomicCheckpointPreserved":True,

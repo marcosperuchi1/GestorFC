@@ -68,7 +68,7 @@ def main():
     root=Path(sys.argv[1]).resolve()
     html=(root/'src/index.html').read_text(encoding='utf-8')
     assert html.count('/* FUTBR_SCOPE_REPAIR_18366')==1
-    for sid in ('futbr-jobwait-state-18363','futbr-vacation-handoff-18364','futbr-dismissal-source-18365'):
+    for sid in ('futbr-mls-vacation-18201-ui','futbr-jobwait-state-18363','futbr-vacation-handoff-18364','futbr-dismissal-source-18365'):
         assert not re.search(r'<script\s+id=["\\x27]'+sid,html),sid
     i=html.index('let state=null,saved=null')
     end=html.find('</script>',i)
@@ -76,6 +76,8 @@ def main():
     assert 0<i<anchor<end and not html[anchor+5:end].strip(), "Original IIFE closing not found"
     scope=html[i:anchor]
     for marker in (
+      'v18201RecoverNotice',
+      'v18201Decorate',
       'FUTBR_JOBWAIT_STATE_CORE_18363',
       'FUTBR_VACATION_JOB_HANDOFF_18364',
       'FUTBR_DISMISSAL_SOURCE_18365',
@@ -131,7 +133,8 @@ def main():
           try{old=g.jobHandoff18365?.status?.()||null;}catch(e){old={error:String(e)};}
           try{previous=g.vacationHandoff18364?.status?.()||null;}catch(e){previous={error:String(e)};}
           return {diagnostic,old,previous,
-            loginVisible:!!document.querySelector('#v548-login-form')};
+            loginVisible:!!document.querySelector('#v548-login-form'),
+            mlsVersion:g.mlsVacationUI18201?.version||''};
         }""")
         if not probe.get('diagnostic',{}).get('sameGameScope'):
             raise RuntimeError('18.366 game scope unavailable in real Chromium: '+str(probe))
@@ -139,6 +142,8 @@ def main():
             raise RuntimeError('18.365 legacy scope still failing: '+str(probe))
         if not probe.get('previous') or 'error' in probe['previous']:
             raise RuntimeError('18.364 scope still failing: '+str(probe))
+        if probe.get('mlsVersion')!='18.201':
+            raise RuntimeError('18.201 MLS next-match control did not relocate in-scope: '+str(probe))
         pre=page.evaluate("""() => {
           window.__futbr18366Test.setup();
           let b=document.getElementById('scope-test-18366');
@@ -194,6 +199,7 @@ def main():
     report.update({
        'browser':executable,'realChromiumBootAndScopeChecked':True,
        'legacy18363And18364ScopeCallable':True,
+       'legacyMLSVacationScopeCallable':True,
        'actualDOMClickSendsOriginalWorkerEnd':True,
        'secondDOMClickKeepsRequest':True,
        'synchronizingCareerReadOnlyView':True,
