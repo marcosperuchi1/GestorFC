@@ -1,0 +1,41 @@
+name: Inspect final vacation save and transfer owner 18.360
+on:
+  push:
+    branches: [fix/desktop-18359-dismissal-control-state]
+    paths: ['.github/workflows/diagnose-vacation-owner-18360.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace authoritative checkpoint/save and worker finalization
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+           name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           s=z.read(name).decode('utf-8-sig')
+          patterns=[
+           ('DEFERRED_INIT','let deferredFinalSave',2400),
+           ('DEFERRED_ASSIGN','deferredFinalSave=',2500),
+           ('VAC_LOW_MEMORY','lowMemoryVacation=',3300),
+           ('VAC_FINISH_STREAM','if(lowMemoryVacation&&!streamed&&world)',900),
+           ('VAC_CHECKPOINT', "if(m.kind==='vac-sync-end'){",2300),
+           ('SAVE_WORKER', 'async function save(s){',4700),
+           ('V171_DECODE', 'async function v171DecodeManifest(x)',5900),
+           ('POST_SYNC_END','v92SeasonReviewSync',1600),
+           ('VAC_STREAM_TRIGGER','streamVacationWorld125(',1600),
+           ('ACK_RESOLVE','v18310ResolveSyncAck',2400),
+           ('VAC_LIVE_MID', 'async function v126PublishVacationLive()',2800),
+          ]
+          for label,term,n in patterns:
+           indices=[m.start() for m in re.finditer(re.escape(term),s)]
+           print('\n###',label,'count',len(indices),flush=True)
+           for i in indices[-4:] if label in ('DEFERRED_ASSIGN','VAC_STREAM_TRIGGER') else indices[:3]:
+            print('at',i,flush=True)
+            print(s[max(0,i-350):i+n],flush=True)
+          PY
