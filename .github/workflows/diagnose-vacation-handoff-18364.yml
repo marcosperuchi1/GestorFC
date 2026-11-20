@@ -61,3 +61,31 @@ jobs:
             for p in near[:10]:
               print('POS',p,'TEXT',src[max(0,p-380):p+1200],flush=True)
           PY
+
+      - name: Trace exact original job button dispatch and vacation paint
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+            src=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          terms=[
+           ('job marker', 'v89-job-wait', 18, 700),
+           ('click dispatch', "document.addEventListener('click'", 46, 320),
+           ('global delegated actions', "act(el)", 20, 680),
+           ('career tab', "Minha carreira", 6, 900),
+           ('career button', "function careerPage(", 4, 1800),
+           ('base v53', "const v53Base={", 1, 1200),
+           ('vac status', "function v624VacationHeaderHTML", 2, 1200),
+           ('vacation nav', "data-view=\\\"career\\\"", 4, 600),
+           ('v89 run', 'v89RunJobWait(', 10, 650),
+           ('worker pause handler', "if(m.op==='pause')", 8, 1150),
+           ('worker pause condition', "if(op==='pause')", 8, 1150)
+          ]
+          for label,term,maxn,span in terms:
+            matches=list(re.finditer(re.escape(term),src))
+            print('\n===== '+label+' TERM='+repr(term)+' COUNT='+str(len(matches))+' =====',flush=True)
+            for m in matches[:maxn]:
+              p=m.start();print('AT',p,'\n',src[max(0,p-420):p+span],flush=True)
+          PY
