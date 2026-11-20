@@ -1,0 +1,23 @@
+name: Inspect final effective AI market function
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-ai-market-final-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import zipfile,io,pathlib,re
+          p=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in p))) as z:s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for label,anchor in [('AI_MARKET','function aiMarket(s){'),('COACH_MARKET','function coachMarket(s){'),('TEAM_REPAIR','function repairLineup(s,t){'),('ELIG','function syncEligibility(s){'),('MARKET_ITER','function v172AiMarketIncremental(')]:
+           pos=[m.start() for m in re.finditer(re.escape(anchor),s)]
+           print('\n###',label,'instances',len(pos),flush=True)
+           for idx in pos:
+            print('POS',idx,'PREVIEW',s[idx:idx+9000],flush=True)
+          PY
