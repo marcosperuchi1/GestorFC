@@ -1,7 +1,7 @@
 name: Inspect 18.364 vacation-dismissal control ownership
 on:
   push:
-    branches: [fix/desktop-18364-vacation-handoff]
+    branches: [fix/desktop-18365-vacation-dismissal-source]
     paths: ['.github/workflows/diagnose-vacation-handoff-18364.yml']
   workflow_dispatch:
 permissions:
@@ -113,4 +113,29 @@ jobs:
             pos=[m.start() for m in re.finditer(re.escape(term),src)]
             print('\n### '+label+' = '+str(len(pos)),flush=True)
             for p in pos[:maxn]:print('POS',p,'\n'+src[max(0,p-left):p+right],flush=True)
+          PY
+
+      - name: Inspect career layout and dismissal stop points
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,io,re
+          p=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(f.read_bytes() for f in p))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          targets=[
+            ('career css','.v636-career',9,300,850),
+            ('career manager', 'v636-career-manager',10,380,950),
+            ('career view function','v636CareerPage',8,280,1000),
+            ('vac dismissed',"if(m.kind==='vac-dismissed')",2,390,1100),
+            ('vac dismissed message',"kind:'vac-dismissed'",2,600,900),
+            ('core route',"const el=event.target.closest?.('[data-action]');",1,450,900),
+            ('nav disabled','data-view="career"',4,350,850),
+            ('v555RenderPage','function v555RenderPage(',1,350,1600)
+          ]
+          for name,term,count,left,right in targets:
+            ps=[m.start() for m in re.finditer(re.escape(term),s)]
+            print('\n### '+name+' '+str(len(ps)),flush=True)
+            for p in ps[:count]:print('AT',p,'\n',s[max(0,p-left):p+right],flush=True)
           PY
