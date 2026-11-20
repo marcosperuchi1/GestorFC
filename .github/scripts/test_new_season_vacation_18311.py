@@ -40,8 +40,12 @@ def main():
     live_block=base[live:blocking]
     if 'await v52FlushSave()' in live_block:
         fail('live-state ainda aguarda save completo')
-    if "if(!canLoadSaved)msg.state=state;" not in base:
-        fail('Worker nao recebe o estado vivo quando loadSaved=false')
+    old_delivery="if(!canLoadSaved)msg.state=state;"
+    resident_delivery="if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;"
+    if old_delivery not in base and resident_delivery not in base:
+        fail('Worker nao recebe o estado vivo quando loadSaved=false, inclusive no primeiro dia do treinador livre')
+    if 'FUTBR_UNEMPLOYED_WORKER_REAL_PROGRESS_18368' in html and resident_delivery not in base:
+        fail('O treino do Worker residente nao pode retransmitir toda a carreira a cada jornada')
 
     ws=html.find('const v168BaseStartSimulation=v53StartSimulation;')
     we=html.find('// Autoridade final da virada:',ws)
