@@ -140,6 +140,12 @@ test().catch(e=>{console.error(e);process.exitCode=1});
   if result.returncode:raise RuntimeError('Updater UI runtime regression: '+(result.stderr or result.stdout)[-4500:])
   report=json.loads(result.stdout.strip().splitlines()[-1])
   (root/'fast-updater-18361-tests.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+  target=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path.cwd()
+  if not target.is_dir():raise RuntimeError('18.361 test report output directory does not exist')
+  artifact=target/'fast-updater-18361-tests.json'
+  artifact.write_text(json.dumps(report,indent=2),encoding='utf-8')
+  if json.loads(artifact.read_text(encoding='utf-8')).get('ok') is not True:
+   raise RuntimeError('18.361 update regression report not durably written')
   print(json.dumps(report))
 
 if __name__=='__main__':main()
