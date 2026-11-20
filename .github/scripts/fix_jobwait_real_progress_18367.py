@@ -40,9 +40,15 @@ def main():
    v89JobWait.lastProgressAt=Date.now();v89JobWait.stage='round-completed';
    // No full-world redraw or new Worker during the loop.
    """,'verify genuine day progress')
- block=once(block,
-  "finally{\n   v89JobWait.active=false;",
-  "finally{\n   v89JobWait.stage='idle';v89JobWait.active=false;",'clear activity')
+ # The 18.366 source has multiple layers of wrappers and formatting.
+ # Modify the unique final reset itself, not an indent-sensitive finally header.
+ final_reset="v89JobWait.active=false;"
+ if block.count(final_reset)!=1:
+  raise RuntimeError(f'18.367 final cleanup: expected one reset, got {block.count(final_reset)}')
+ cleanup=block.index(final_reset)
+ if "finally" not in block[max(0,cleanup-220):cleanup]:
+  raise RuntimeError('18.367 final reset is no longer inside finally; refusing unsafe patch')
+ block=block.replace(final_reset,"v89JobWait.stage='idle';"+final_reset,1)
  s=s[:start]+block+s[end:]
  s=once(s,"const EDITION='18.366.0';","const EDITION='18.367.0';",'edition')
  s=once(s,"window.GestorFC.version='18.366.0';window.GestorFC.visualVersion='18.366.0';",
