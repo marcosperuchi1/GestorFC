@@ -1,0 +1,27 @@
+name: Preflight 18.364 fired-during-vacation actual Worker handoff
+on:
+  push:
+    branches: [fix/desktop-18364-vacation-handoff]
+    paths:
+      - '.github/workflows/preflight-vacation-handoff-18364.yml'
+      - '.github/scripts/fix_vacation_job_handoff_18364.py'
+      - '.github/scripts/test_vacation_job_handoff_18364.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify fixer syntax and 2026 day-97 Worker handoff behavior
+        run: |
+          python -m py_compile .github/scripts/fix_vacation_job_handoff_18364.py .github/scripts/test_vacation_job_handoff_18364.py
+          python .github/scripts/test_vacation_job_handoff_18364.py --standalone
