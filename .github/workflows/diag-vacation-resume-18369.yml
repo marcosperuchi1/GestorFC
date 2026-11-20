@@ -1,0 +1,47 @@
+name: Diagnose 18.369 vacation end and nextmatch shared Worker lifecycle
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-vacation-resume-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+    - name: Extract and examine genuine vacation handoff
+      shell: bash
+      run: |
+        python - <<'PY'
+        import pathlib,zipfile,io,re
+        p=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+        with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in p))) as z:
+            path=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+            s=z.read(path).decode('utf-8-sig')
+        patterns=[
+          ('SIM_START','async function v53StartSimulation(mode,options={}){',6800),
+          ('SIM_NEXT','const compactHumanMatch=!!manualOverlaySnapshot',4800),
+          ('RESIDENT','const residentManual',2400),
+          ('WORKER_DONE',"if(m.kind==='finished'){",5800),
+          ('WORKER_SYNC_END',"if(m.kind==='vac-sync-end'){",3600),
+          ('PATCH_DRAIN','v53DrainPatches=function(){',5000),
+          ('NEXT_MATCH','async function v1891AdvanceToNextMatch(',4300),
+          ('NEXT_MATCH2','function v1891AdvanceToNextMatch(',4300),
+          ('NEXT_MATCH3',"mode==='nextmatch'",1600),
+          ('VACATION_END','function v624VacationHeaderHTML(',3600),
+          ('VACATION_END2',"data-action=\"vac-end\"",1900),
+          ('UI_VAC_STOP',"a==='vac-end'",1800),
+          ('SAVE_RESUME','async function promoteVacationCheckpoint(){',2200),
+          ('VAC_SYNC','async function streamVacationWorld125(destructive=true,skipCheckpoint=false){',2500),
+          ('OFFLINE','const v168BaseStartSimulation=v53StartSimulation;',3600),
+          ('ORIGINAL_STOP','async function v53PauseVacation(',2300),
+          ('ORIGINAL_STOP2',"op:'pause',end:true",2100),
+          ('FINISH_REQ',"self.postMessage({kind:'finished'",1900)
+        ]
+        for name,needle,span in patterns:
+            i=s.find(needle)
+            print('===',name,'INDEX',i,'COUNT',s.count(needle),'===',flush=True)
+            if i>=0:print(s[i:i+span],flush=True)
+        PY
