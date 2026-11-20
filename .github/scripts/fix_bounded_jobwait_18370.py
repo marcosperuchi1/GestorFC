@@ -110,6 +110,15 @@ def patch(s):
   "v89JobWait.stage='idle';v89JobWait.active=false;try{window.GestorFC?.v170?.release?.();}catch(e){}",
   'release duplicate Worker world before final career rendering')
  s=s[:a]+job+s[b:]
+ # Forward the dedicated mode into the original UI->Worker postMessage.
+ start=s.index('async function v53StartSimulation(mode,options={}){')
+ end=s.index('runVacation=async function',start)
+ simulator=s[start:end]
+ simulator=once(simulator,
+  "if(mode==='dayfast'&&options?.jobWaitResident===true)msg.jobWaitResident=true;",
+  "if(mode==='dayfast'&&options?.jobWaitResident===true)msg.jobWaitResident=true;\n    if(mode==='dayfast'&&options?.jobWaitAuto===true)msg.jobWaitAuto=true;",
+  'forward bounded-save flag to the actual Worker')
+ s=s[:start]+simulator+s[end:]
  s=once(s,'async function v89RunJobWait(){',UI_HELPER+'\nasync function v89RunJobWait(){', 'in-scope small UI/RPC helper')
  ws=s.index('async function simulate(message){')
  we=s.index('const v124SkipFalse=new Set(',ws)
