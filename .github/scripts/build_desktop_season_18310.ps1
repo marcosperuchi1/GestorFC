@@ -141,6 +141,10 @@ Run-Python '.github/scripts/test_vacation_lifecycle_scope_18369.py'
 Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'
 Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
 Run-Python '.github/scripts/test_vacation_dismissal_browser_18369.py'
+Run-Python '.github/scripts/set_desktop_version_18370.py'
+Run-Python '.github/scripts/fix_bounded_jobwait_18370.py'
+Run-Python '.github/scripts/test_bounded_jobwait_18370.py'
+Run-Python '.github/scripts/test_jobwait_memory_browser_18370.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -291,6 +295,10 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'vacation-lifecycle-scope-18369-tests.json' 'artifacts/vacation-lifecycle-scope-18369-tests.json'
    Copy-Item 'vacation-resume-browser-18369-tests.json' 'artifacts/vacation-resume-browser-18369-tests.json'
    Copy-Item 'vacation-dismissal-browser-18369-tests.json' 'artifacts/vacation-dismissal-browser-18369-tests.json'
+   Copy-Item 'desktop-version-18370-install.json' 'artifacts/desktop-version-18370-install.json'
+   Copy-Item 'jobwait-memory-18370-install.json' 'artifacts/jobwait-memory-18370-install.json'
+   Copy-Item 'jobwait-memory-18370-tests.json' 'artifacts/jobwait-memory-18370-tests.json'
+   Copy-Item 'jobwait-memory-browser-18370-tests.json' 'artifacts/jobwait-memory-browser-18370-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -356,6 +364,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_real_progres
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_worker_18368.py'")) { throw '18.368 requires original Worker transport and multi-round jobwait simulation, not mocked v53StartSimulation.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'")) { throw '18.368 requires real Chromium game Engine to advance two Worker dayfast rounds when unemployed.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'")) { throw '18.369 requires real Chromium test of vacation Worker stop then next match.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_memory_browser_18370.py'")) { throw '18.370 requires real Worker and durable final checkpoint.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
