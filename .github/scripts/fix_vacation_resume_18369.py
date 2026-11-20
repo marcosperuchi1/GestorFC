@@ -49,7 +49,7 @@ function v18369CanStartFromReturnedVacation(mode,s=state){
    !s.seasonDone&&!s.vacation?.active&&
    !!s.players&&Array.isArray(s.teams)&&!!s.teams.length&&
    Array.isArray(s.schedule)&&!!s.schedule.length&&
-   !v53Sim?.active&&!v53Sim?.starting&&!v53Sim?.syncing&&
+   !v53Sim?.active&&!v53Sim?.syncing&&
    !v53Sim?.patching&&!v125VacIncoming&&!v53Creating&&
    !v52SavePromise;
  if(!matches){
@@ -69,7 +69,7 @@ function v18369CanStartFromReturnedVacation(mode,s=state){
 }
 window.GestorFC=window.GestorFC||{};
 window.GestorFC.vacationResume18369={status:()=>({
- version:VERSION,ready:!!v18369VacationReturn,careerId:v18369VacationReturn?.careerId||'',
+ version:'18.369.0',ready:!!v18369VacationReturn,careerId:v18369VacationReturn?.careerId||'',
  year:v18369VacationReturn?.year??null,day:v18369VacationReturn?.day??null,
  workerActive:!!v53Sim?.active,workerStarting:!!v53Sim?.starting,
  syncing:!!v53Sim?.syncing,patching:!!v53Sim?.patching,
