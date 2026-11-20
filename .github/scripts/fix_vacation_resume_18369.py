@@ -200,6 +200,12 @@ def main():
  };
  channel.port2.postMessage(0);"""
  drain=once(drain,end_old,end_new,'always unlock queue on uncaught UI rendering error')
+ # A repaint error happens AFTER the queue's message has already been applied.
+ # Do not re-enqueue it and duplicate the final synchronization.
+ drain=once(drain,
+   "  if(competitionLiveDirty&&!document.hidden&&view==='competitions'){",
+   "  v18369InFlight=null;\\n  if(competitionLiveDirty&&!document.hidden&&view==='competitions'){".replace('\\n','\n'),
+   'no terminal event replay after already completed queue drain')
  s=s[:ds]+drain+s[de:]
  s=once(s,'const v18366BaseVacationHeader=v624VacationHeaderHTML;',
     RUNTIME+'\nconst v18366BaseVacationHeader=v624VacationHeaderHTML;',
