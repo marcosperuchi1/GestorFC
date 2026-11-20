@@ -89,3 +89,28 @@ jobs:
             for m in matches[:maxn]:
               p=m.start();print('AT',p,'\n',src[max(0,p-420):p+span],flush=True)
           PY
+
+      - name: Trace original event blockers and career render
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+            src=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for label,term,maxn,left,right in (
+           ('v152 capture event', "document.addEventListener('click',event=>{", 3,1100,3200),
+           ('global click route', "const el=event.target.closest?.('[data-action]');", 2,450,1300),
+           ('v125DirectAction', 'v125DirectAction', 8,750,1550),
+           ('v152SuppressAction','v152SuppressAction',8,450,650),
+           ('v53 vacation action', "if(v53Sim.active){if(a==='vac-stop'", 3,800,1050),
+           ('event sidebar career', "view==='career'", 9,400,800),
+           ('career underlying UI','v4UI_careerPage=',3,300,1000),
+           ('main nav disabled',"data-view=",8,300,500),
+           ('blocked actions', 'v53ViewActions=',3,450,1450),
+           ('job button specific direct', "if(a==='v89-job-wait')",4,700,850)
+          ):
+            pos=[m.start() for m in re.finditer(re.escape(term),src)]
+            print('\n### '+label+' = '+str(len(pos)),flush=True)
+            for p in pos[:maxn]:print('POS',p,'\n'+src[max(0,p-left):p+right],flush=True)
+          PY
