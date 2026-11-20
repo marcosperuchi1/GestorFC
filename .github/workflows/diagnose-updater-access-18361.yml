@@ -1,0 +1,42 @@
+name: Diagnose public updater download availability 18.361
+on:
+  push:
+    branches: [fix/desktop-18361-updater-responsive-recovery]
+    paths: ['.github/workflows/diagnose-updater-access-18361.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-http:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect real public feed and installer headers without downloading full binary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request,json,time
+          urls=['https://futbrmanager.com.br/updates/latest.json',
+                'https://futbrmanager.com.br/updates/FutBR-Manager-18.360-Windows.exe']
+          for i,url in enumerate(urls):
+           print('\nURL',url,flush=True)
+           for method in ['HEAD','GET']:
+            h={'User-Agent':'FutBR-Updater-Diagnostics/18.361','Accept':'application/octet-stream,application/json'}
+            if method=='GET' and i==1:h['Range']='bytes=0-63'
+            req=urllib.request.Request(url,method=method,headers=h)
+            try:
+             start=time.monotonic()
+             with urllib.request.urlopen(req,timeout=20) as r:
+              print(method,'status',r.status,'url',r.url,'elapsed',round(time.monotonic()-start,2),
+                    'content-type',r.headers.get('Content-Type'),'length',r.headers.get('Content-Length'),
+                    'range',r.headers.get('Accept-Ranges'),'cache',r.headers.get('Cache-Control'),
+                    'via',r.headers.get('Server'),flush=True)
+              if method=='GET':
+               data=r.read(2048 if i==0 else 64)
+               if i==0:
+                try:
+                 j=json.loads(data)
+                 print('manifest version',j.get('version'),'asset',j.get('platforms',{}).get('windows-x86_64',{}).get('url'),'signature chars',len(j.get('platforms',{}).get('windows-x86_64',{}).get('signature','')))
+                except Exception as e:print('manifest parse error',repr(e),repr(data[:120]))
+               else:print('installer MZ exe',data.startswith(b'MZ'),'first bytes',repr(data[:20]))
+            except Exception as e:print(method,'ERROR',str(e),flush=True)
+          PY
