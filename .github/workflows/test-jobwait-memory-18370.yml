@@ -1,0 +1,60 @@
+name: FutBR 18.370 - real Worker memory and checkpoint regression
+on:
+  push:
+    branches: [fix/desktop-18370-jobwait-memory]
+    paths: ['.github/workflows/test-jobwait-memory-18370.yml', '.github/scripts/*18370.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-18370-memory-browser
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout bounded memory patch
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exact 18.369 production game source with prior verified repairs
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14672603574
+          run-id: 44822411846
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/futbr-source-18369
+      - name: Validate source and install 18.370 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/futbr-source-18369/prepared"
+          test -s "$root/src/index.html"
+          python .github/scripts/fix_bounded_jobwait_18370.py "$root"
+          python .github/scripts/test_bounded_jobwait_18370.py "$root"
+      - name: Install Chrome driver
+        shell: bash
+        run: |
+          python -m pip install playwright
+          python -m playwright install chromium
+      - name: Actual Engine, Worker and IndexedDB durable checkpoint
+        shell: bash
+        run: |
+          root="$RUNNER_TEMP/futbr-source-18369/prepared"
+          python .github/scripts/test_jobwait_memory_browser_18370.py "$root"
+      - name: Save validation reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.370-JobWait-Memory-Real-Engine-${{ github.run_id }}
+          path: ${{ runner.temp }}/futbr-source-18369/prepared/*18370*json
+          if-no-files-found: warn
+          retention-days: 7
