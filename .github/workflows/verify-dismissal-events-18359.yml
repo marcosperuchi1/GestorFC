@@ -1,0 +1,27 @@
+name: Verify real Worker dismissal event semantics 18.359
+on:
+  push:
+    branches: [fix/desktop-18359-dismissal-control-state]
+    paths: ['.github/workflows/verify-dismissal-events-18359.yml']
+permissions:
+  contents: read
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect every emitted worker dismissal and finish event
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import io,zipfile,re
+          parts=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+              f=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+              s=z.read(f).decode('utf-8-sig')
+          for term in ["'vac-dismissed'","\"vac-dismissed\"","kind:'finished'","kind: 'finished'","kind:'vac-sync-end'","dismissed:true","vacationEndedByDismissal"]:
+              pos=[m.start() for m in re.finditer(re.escape(term),s)]
+              print('\n===',term,'count=',len(pos),flush=True)
+              for i in pos[:8]:
+                  print(s[max(0,i-650):i+1050],flush=True)
+          PY
