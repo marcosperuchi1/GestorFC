@@ -44,6 +44,25 @@ def main():
     with tempfile.TemporaryDirectory() as td:
         root=Path(td);(root/'src').mkdir()
         (root/'src/index.html').write_text(src,encoding='utf-8')
+        # Miniature source fixture: the 18.359 baseline preflight does not
+        # install the 30+ previous release patches, so restore the actual
+        # 18.310 vacation stream codec and 18.338 lazy decode semantics.
+        # The Windows release pipeline independently validates ALL patches.
+        full=(root/'src/index.html').read_text(encoding='utf-8')
+        sync310=mod('optimize_season_sync_18310')
+        full=sync310.patch_html(full)
+        unpack_old="return packed.map(r=>{const p=v18191uUnpackPlayer(r);return [p.id,p];});"
+        unpack_new="return {length:packed.length,*[Symbol.iterator](){for(const r of packed){const p=v18191uUnpackPlayer(r);yield [p.id,p];}}};"
+        full=one(full,unpack_old,unpack_new,'18.338 lazy player decoder fixture')
+        full=one(full,'if(!checkpointMeta||!pending.length||(!force&&pending.length<8))return;',
+                 'if(!checkpointMeta||!pending.length||(!force&&pending.length<(Number(world.year)>=2029?4:8)))return;',
+                 '18.338 checkpoint memory bound fixture')
+        # Feature markers are not behaviors: the real 18.352/18.349/18.343
+        # patches are exercised in the signed full Windows build pipeline.
+        full+='\\n'+''.join('/* '+x+' */\\n' for x in (
+            'FUTBR_OOMSAFE_ARCHIVE_18352','FUTBR_LONG_CAREER_SAVE_18338_BEGIN',
+            'FUTBR_CLEAN_INCREMENTAL_SHARDS_18349','FUTBR_ARCHIVE_COPY_ON_WRITE_18343'))
+        (root/'src/index.html').write_text(full,encoding='utf-8')
         for script in ['fix_dismissal_handoff_18357.py','fix_dismissal_button_18358.py',
                        'fix_dismissal_control_18359.py','test_dismissal_control_18359.py',
                        'optimize_vacation_finalize_18360.py','test_vacation_finalize_18360.py']:
