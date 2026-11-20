@@ -96,22 +96,21 @@ def main():
  start=src.index('async function promoteVacationCheckpoint(){')
  end=src.index('async function commitManifest(',start)
  part=src[start:end]
- # The original 17.1 implementation may have received a later
- # nonblocking cleanup improvement. If so, do not reintroduce duplicate
- # deletion or alter the already-committed manifest. Record the actual
- # source to verify the release variant instead of guessing.
- exact='await cleanupManifest(oldPrev,keep);stats.lastMode'
- if exact in part:
-  part=once(part,exact,
-      'v18360ScheduleObsoleteCleanup(oldPrev,keep);stats.lastMode',
-      'remove stale-shard deletion from critical end-of-vacation path')
- else:
+ # Production 18.313 already made deletion nonblocking. Delay the
+ # *existing* cleanup rather than introduce a second full-history walk.
+ # The manifest and previous generation stay atomically committed.
+ patterns=[
+  'await cleanupManifest(oldPrev,keep);stats.lastMode',
+  "cleanupManifest(oldPrev,keep).catch(e=>console.warn('[18.313] limpeza pos-checkpoint:',e?.message||e));stats.lastMode"
+ ]
+ present=[p for p in patterns if p in part]
+ if len(present)!=1:
   at=part.find('cleanupManifest')
-  print('18.360 INFO final production checkpoint cleanup clause:',
-        repr(part[max(0,at-420):at+650] if at>=0 else part[-1700:]),flush=True)
-  if 'await cleanupManifest' in part:
-   raise RuntimeError('18.360 production cleanup has a different awaited shape; inspect the logged clause')
-  print('18.360: current promotion has no blocking await cleanup; preserving its existing form.',flush=True)
+  raise RuntimeError('18.360 unknown production checkpoint cleanup: '+
+   repr(part[max(0,at-320):at+500] if at>=0 else part[-900:]))
+ part=once(part,present[0],
+    'v18360ScheduleObsoleteCleanup(oldPrev,keep);stats.lastMode',
+    'defer and serialize existing post-commit checkpoint deletion')
  src=src[:start]+part+src[end:]
  src=once(src,'async function promoteVacationCheckpoint(){',
           DEFERRED_CLEANUP+'\nasync function promoteVacationCheckpoint(){',
@@ -123,9 +122,20 @@ def main():
  a=src.index('async function streamVacationWorld125(destructive=true,skipCheckpoint=false){')
  b=src.index('async function simulate(message){',a)
  stream=src[a:b]
- stream=once(stream,"const limit=key==='players'?900:key==='competitionStats'?1",
-       "const limit=key==='players'?(Number(finalYear)>=2029?640:900):key==='competitionStats'?1",
-       'bounded full-world player sync batch in older careers')
+ # Earlier 18.3xx memory patches may already have lowered the old
+ # 900-row limit. Preserve that earlier bound; never raise it.
+ import re
+ pat=r"(?P<prefix>\blimit\s*=\s*key\s*===\s*'players'\s*\?\s*)(?P<limit>.*?)(?P<suffix>\s*:\s*key\s*===\s*'competitionStats'\s*\?\s*1)"
+ found=list(re.finditer(pat,stream,re.DOTALL))
+ if len(found)!=1 or len(found[0].group('limit'))>150:
+  at=stream.find("key==='players'")
+  raise RuntimeError('18.360 player-stream limit shape changed: '+
+   repr(stream[max(0,at-120):at+450]))
+ old=found[0].group('limit').strip()
+ if 'v18360' in old:raise RuntimeError('18.360 batch bound already installed')
+ limited=f"(Number(finalYear)>=2029?Math.min(640,({old})):({old}))"
+ stream=stream[:found[0].start('limit')]+limited+stream[found[0].end('limit'):]
+ print('18.360 active production player-stream limit:',old,'new:',limited,flush=True)
  src=src[:a]+stream+src[b:]
 
  # Record real throughput and display sync progress in the overlay using
