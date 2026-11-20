@@ -37,8 +37,9 @@ window.__vacResume369={
   state.userEmployed=true;
   if(!state.v1903CareerId)state.v1903CareerId='real-vacation-18369';
   v636CoachState(state);
-  state.vacation={...(state.vacation||{}),active:true,paused:false,
-    remaining:24,untilSeason:false,completed:0,reason:''};
+  // Use exactly the same Engine.startVacation setup as a player clicking Férias.
+  // It initializes startDay, startBalance, assistant lineup, delegation, and limits.
+  E.startVacation(state,24,false);
   state.live=null;
   v53Sim.active=false;v53Sim.starting=false;v53Sim.syncing=false;
   v53Sim.patching=false;v53Sim.finished=null;
