@@ -1,0 +1,41 @@
+name: Diagnose 18.367 unemployed auto-advance runtime
+on:
+  push:
+    branches: [fix/desktop-18367-jobwait-real-progress]
+    paths: ['.github/workflows/diagnose-jobwait-18367.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect original Worker and job search loop (read only)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+            name=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+            s=z.read(name).decode('utf-8-sig')
+          for label,term,before,after in [
+            ('JOB_WAIT_LOOP','async function v89RunJobWait(){',220,3400),
+            ('JOB_CHROME','function v89PaintJobWait()',200,1100),
+            ('COACH_OFFER','function v636GenerateCoachOffer(',100,2100),
+            ('WORKER_SIM','async function simulate(message){',100,12000),
+            ('WORKER_DAY','fastManualDay',250,1400),
+            ('WORKER_FINISHED',"if(m.kind==='finished'){",100,5500),
+            ('WORKER_SYNC',"if(m.kind==='vac-sync-end'){",100,3200),
+            ('BASE_START','async function v53StartSimulation(mode,options={}){',120,5200),
+            ('PRE_SAVE','await v52FlushSave();if(v52SavePromise)',150,300),
+            ('FAST_JOB','const v89JobWait=',150,700),
+            ('VACATION_LOOP',"message.mode==='vacation'",200,3300),
+            ('JOB_REAL_WAIT','function v89HasNationalJob()',200,800),
+          ]:
+            i=s.find(term)
+            print('\n===== '+label+': '+str(i)+' =====',flush=True)
+            if i>=0:print(s[max(0,i-before):i+after],flush=True)
+          PY
