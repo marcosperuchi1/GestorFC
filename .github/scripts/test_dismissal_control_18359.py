@@ -18,7 +18,7 @@ def main():
     assert src.count(tag)==1
     assert src.count('/* FUTBR_DISMISSAL_FINISHED_SIGNAL_18359')==1
     assert "window.GestorFC.version='18.359.0';window.GestorFC.visualVersion='18.359.0';" in src
-    helper=section(src,tag,'</script>')
+    helper=section(src,tag,'</script>')[len(tag):]
     assert "v18359OnWorkerFinished(m,wasVacation);" in src
     assert src.index(tag)>src.index('/* FUTBR_DISMISSAL_BUTTON_RECOVERY_18358')
     assert src.index(tag)>src.index('const v18112BaseChrome=v555UpdateChrome;')
