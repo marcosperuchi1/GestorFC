@@ -221,18 +221,24 @@ def main():
   "if(el&&!el.disabled){try{if(!(typeof v125DirectAction==='function'&&v125DirectAction(el)))act(el);}",
   "if(el&&!el.disabled){try{if(el.dataset.action==='v89-job-wait'&&typeof v18365HandleClick==='function'&&v18365HandleClick(el))return;if(!(typeof v125DirectAction==='function'&&v125DirectAction(el)))act(el);}",
   'real global click route, not a later overwritten act wrapper')
- s=once(s,
-  "     v18112MarkDismissal(m);\n     v53PaintStatus();",
-  """     v18112MarkDismissal(m);
-     // Contract ended: automatically stop the SAME vacation Worker at the
-     // next safe day boundary, before another UI action can race it.
+ # Locate this event by its kind, not by the following status paint:
+ # old releases insert additional 18.112/18.119 hooks between these lines.
+ event_start=s.index("if(m.kind==='vac-dismissed'){")
+ event_end=s.index('continue;',event_start)+len('continue;')
+ event_block=s[event_start:event_end]
+ mark='v18112MarkDismissal(m);'
+ if event_block.count(mark)!=1:
+  raise RuntimeError('18.365 original dismissed Worker event missing unique marker')
+ event_block=event_block.replace(mark,mark+"""
+     // Contract ended: stop the SAME vacation Worker after the safe day.
+     // Do not start the next job Worker until its original checkpoint returns.
      if(v53Sim?.active&&v53Sim?.mode==='vacation'){
       v53Sim.pause=true;v53Sim.pauseMode='end';
       try{v53Worker?.postMessage({op:'pause',end:true,reason:'dismissal'});}
       catch(e){console.warn('[18.365] dismissal safe stop',e);}
      }
-     v53PaintStatus();""",
-  'authoritative dismissal event stops original Worker')
+""",1)
+ s=s[:event_start]+event_block+s[event_end:]
  s=once(s,
   "if(v53Sim.syncing)throw Error('Sincronizando a carreira após as férias. Aguarde alguns instantes.');",
   "if(v53Sim.syncing&&!(a==='nav'&&(el.dataset.view==='career'||el.dataset.view==='vacation')))throw Error('Sincronizando a carreira após as férias. Aguarde alguns instantes.');",
