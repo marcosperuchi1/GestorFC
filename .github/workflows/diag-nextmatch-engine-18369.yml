@@ -1,0 +1,35 @@
+name: Diagnose next-match Worker stop after vacation rounds
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-nextmatch-engine-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          p=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in p))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for label,needle,size in [
+            ('NEXTMATCH_BRANCH','}else if(nextMatchJump){',8000),
+            ('NEXTMATCH_BRANCH2','}else if(nextMatchJump||nationalJump)',6800),
+            ('NEXTMATCH_CTX','const nextMatchContext=message.nextMatchContext||{};',4800),
+            ('NEXTMATCH_COMPLETE','nextmatch-day',1700),
+            ('ADVANCE_ASYNC','async function advanceDayAsync(s,onProgress=()=>{},options=null){',10500),
+            ('AFTER_TRAIN','for(const t of s.teams){trainAndRecover(s,t',4000),
+            ('USER_GAME',"const own=upcoming(s)",2300),
+            ('AFTER_MATCH',"onProgress(matches.length,stage.fixtures.length,'Partidas')",4300),
+            ('WORKER_PROGRESS','function progress(done,total,phase)',1400),
+            ('NEXTMATCH_SYNC','nextmatch-sync',2200),
+          ]:
+            i=s.find(needle)
+            print('\n===',label,'COUNT',s.count(needle),'INDEX',i,'===',flush=True)
+            if i>=0:print(s[i:i+size],flush=True)
+          PY
