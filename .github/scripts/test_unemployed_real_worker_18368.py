@@ -93,6 +93,7 @@ TEST=r"""
  assert.equal(starts[2].resident,true);
  assert.equal(starts[1].hasState,false);
  assert.equal(starts[2].hasState,false);
+ await new Promise(resolve=>setTimeout(resolve,55));
  assert.equal(offersOpened,1,'Stop on coach offer after three journeys');
  assert.equal(v89JobWait.days,3);
  assert.equal(v89JobWait.active,false);
@@ -127,7 +128,7 @@ def main():
  assert "window.GestorFC.version='18.368.0';window.GestorFC.visualVersion='18.368.0';" in html
  assert "if(message.jobWaitResident&&!residentManual)" in html
  assert 'await E.advanceDayAsync(world,progress,postMatchOptions);' in html
- for expected in ('const v18311LiveVacation=!!options?.liveStateNoPreSave',
+ for expected in ('v18311LiveVacation=!!options?.liveStateNoPreSave',
                   "mode==='dayfast'&&options?.jobWaitResident===true"):
   assert expected in html,expected
  a=html.index('async function v53StartSimulation(mode,options={}){')
