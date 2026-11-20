@@ -7,6 +7,23 @@ HOOK=r"""
 /* TEST ONLY: real Engine/Worker vacation -> manual stop -> normal nextmatch. */
 window.__vacResume369={
  working:false,result:null,notices:[],
+ snapshot(){
+   return {working:this.working,
+     year:state?.year,day:state?.day,employed:state?.userEmployed,
+     vacationActive:!!state?.vacation?.active,vacationPaused:!!state?.vacation?.paused,
+     remaining:state?.vacation?.remaining,completed:state?.vacation?.completed,
+     workerExists:!!v53Worker,workerReady:!!v53WorkerReady,
+     sim:{mode:v53Sim?.mode,active:!!v53Sim?.active,starting:!!v53Sim?.starting,
+       syncing:!!v53Sim?.syncing,patching:!!v53Sim?.patching,
+       pause:!!v53Sim?.pause,pauseMode:v53Sim?.pauseMode,
+       progress:v53Sim?.progress,done:v53Sim?.done,total:v53Sim?.total,
+       finishedPending:!!v53Sim?.finished,session:v53Sim?.session},
+     incoming:!!v125VacIncoming,
+     saveActive:!!v52SavePromise,saveDirty:!!v52SaveDirty,
+     career:window.GestorFC.vacationResume18369?.status?.(),
+     notices:this.notices.slice(-6)}
+ },
+
  makeCareer(){
   // The actual 18.x game has ~185k players and over five thousand clubs.
   // Keep all sports/world logic real; only bypass the auth-dependent renderer.
@@ -136,8 +153,28 @@ def main():
   setup=page.evaluate("() => window.__vacResume369.makeCareer()")
   print('18.369 REAL VACATION TEST SETUP '+json.dumps(setup,ensure_ascii=False),flush=True)
   page.evaluate("() => window.__vacResume369.start()")
-  page.wait_for_function("() => window.__vacResume369.result!==null",timeout=320000)
-  result=page.evaluate("() => window.__vacResume369.result")
+  from playwright.sync_api import TimeoutError as PwTimeout
+  snapshots=[]
+  result=None
+  for cycle in range(8):
+   try:
+    page.wait_for_function("() => window.__vacResume369.result!==null",timeout=18000)
+    result=page.evaluate("() => window.__vacResume369.result")
+    break
+   except PwTimeout:
+    try:
+     snap=page.evaluate("() => window.__vacResume369.snapshot()")
+     snapshots.append(snap)
+     print('18.369 VACATION PROGRESS '+json.dumps({'cycle':cycle+1,'snapshot':snap},ensure_ascii=False),flush=True)
+    except Exception as err:
+     print('18.369 VACATION PAGE UNRESPONSIVE '+str(err),flush=True)
+     break
+  if result is None:
+   result={'ok':False,'error':'vacation-end or nextmatch remained pending after 144 seconds',
+      'progressSnapshots':snapshots,
+      'lastSnapshot':snapshots[-1] if snapshots else None}
+  else:
+   result['progressSnapshots']=snapshots
   ctx.close();browser.close()
  report={'ok':bool(result.get('ok')),'version':'18.369.0',
   'realOriginalEngine':True,'realVacationWorkerAndStream':bool(result.get('afterVacation')),
