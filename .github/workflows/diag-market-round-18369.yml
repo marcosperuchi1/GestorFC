@@ -1,0 +1,34 @@
+name: Diagnose slow market and coach loops after vacation
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-market-round-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import pathlib,zipfile,io
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for name,needle,span in [
+            ('AI_MARKET','function aiMarket(s)',10500),
+            ('AI_MARKET_ARG','function aiMarket(s,',10500),
+            ('COACH_MARKET','function coachMarket(s)',8800),
+            ('ROUND_LEDGER','function v18117CoachRoundLedger(',8000),
+            ('TEAM_TRAIN','function trainAndRecover(',4300),
+            ('FINANCES','function stageFinances(',3100),
+            ('NEXT_SEASON','function prepareStage(s)',3000),
+            ('MARKET_PULSE','function v18116AiMarket(',3400),
+            ('ROUND_END','const delegatedDepthEmergency=!!(',4200),
+          ]:
+            at=s.find(needle)
+            print('\n===',name,'COUNT',s.count(needle),'INDEX',at,'===',flush=True)
+            if at>=0:print(s[at:at+span],flush=True)
+          PY
