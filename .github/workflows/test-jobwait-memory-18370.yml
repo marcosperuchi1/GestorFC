@@ -32,6 +32,7 @@ jobs:
           run-id: 44822411846
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ${{ runner.temp }}/futbr-source-18369
+          merge-multiple: true
       - name: Validate source and install 18.370 patch
         shell: bash
         run: |
