@@ -31,6 +31,7 @@ function v18360ScheduleObsoleteCleanup(oldManifest,keep){
   });
  return true;
 }
+window.GestorFC.v18360CleanupStatus=()=>({...v18360CleanupStats});
 """
 
 TRANSFER_PROGRESS=r"""
@@ -71,7 +72,7 @@ function v18360SyncEnd(){
 }
 window.GestorFC=window.GestorFC||{};
 window.GestorFC.vacationFinalize18360={
- version:'18.360',status:()=>({...v18360SyncMetrics,cleanup:{...v18360CleanupStats}}),
+ version:'18.360',status:()=>({...v18360SyncMetrics,cleanup:window.GestorFC.v18360CleanupStatus?.()||{}}),
  noExtraFullSave:true,onePlayerBatchAtATime:true,atomicManifestUnchanged:true
 };
 """
