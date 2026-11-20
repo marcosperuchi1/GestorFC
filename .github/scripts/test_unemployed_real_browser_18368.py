@@ -6,13 +6,19 @@ from playwright.sync_api import sync_playwright
 HOOK=r"""
 /* TEST ONLY: injected into ephemeral HTML, not shipped in release */
 window.__futbr18368Real={
- result:null,working:false,
+ result:null,working:false,notices:[],
  prepare(){
   const club='t0'; // E.createCareer assigns t0, t1... regardless of catalog IDs
   const s=E.createCareer({club,manager:'Integration Worker Test',difficulty:'normal',seed:183682026});
   if(!s||!s.players||!Array.isArray(s.teams)||!s.teams.length||!s.schedule?.length)
    throw Error('Engine did not create a complete playable world');
+  // The test runs in an authless browser. Keep the game Engine and Worker
+  // real, but suppress only the login-dependent full-page renderer.
+  render=()=>document.getElementById('app');
   state=s;saved=null;view='career';
+  this.notices=[];
+  const oldToast=toast;
+  toast=(...args)=>{this.notices.push(args.map(String).join(' '));return oldToast(...args);};
   if(!state.v1903CareerId)state.v1903CareerId='real-engine-browser-test-2026';
   try{v636CoachState(state);}catch(e){throw Error('Coach state invalid: '+e.message);}
   state.userEmployed=false;state.v640National=null;state.live=null;
@@ -50,9 +56,11 @@ window.__futbr18368Real={
       workerMode:v53Sim?.mode||'',careerUnchanged:String(state.v1903CareerId)===career,
       unemployed:state.userEmployed===false,
       running:!!v89JobWait.active,
-      hasRealWorker:!!v53Worker};
+      hasRealWorker:!!v53Worker,
+      notices:[...this.notices].slice(-12),
+      simulationStatus:window.GestorFC.unemployedWorker18368?.status?.()};
    }catch(e){this.result={ok:false,error:String(e),stack:String(e?.stack||'').slice(0,3000),
-       start,day:state?.day,rounds};}
+       start,day:state?.day,rounds,notices:[...this.notices].slice(-12)};}
    finally{v53StartSimulation=old;this.working=false;}
   })();
   return true;
@@ -99,6 +107,9 @@ def main():
   page.route('**/*',route_handler)
   page.goto('http://localhost:8732/',wait_until='domcontentloaded',timeout=150000)
   page.wait_for_function("() => !!window.__futbr18368Real",timeout=120000)
+  # Let 18.366's existing login/bootstrap microtasks settle before injecting
+  # the ephemeral career, so account-init doesn't overwrite the state to null.
+  page.wait_for_timeout(2200)
   setup=page.evaluate("() => window.__futbr18368Real.prepare()")
   print('18.368 ORIGINAL ENGINE TEST SETUP: '+json.dumps(setup,ensure_ascii=False),flush=True)
   page.evaluate("() => window.__futbr18368Real.start()")
