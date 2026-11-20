@@ -41,7 +41,9 @@ if(m.kind==='vac-dismissed'){
   helper=between(s,'<script id="futbr-dismissal-source-18365">','</script>')
   assert 'document.addEventListener' not in helper
   assert 'v18365Job.duplicateClicks++' in helper
-  assert 'v18365Job.pending=false' not in helper[helper.index('if(v18365Job.pending){'):helper.index("if(!v18365RealWorkerBusy()",helper.index('if(v18365Job.pending){'))]
+  clickfn=helper[helper.index('function v18365HandleClick('):helper.index('const v18365BaseChrome=',helper.index('function v18365HandleClick('))]
+  repeated=clickfn[clickfn.index('if(v18365Job.pending){'):clickfn.index('if(!v18365RealWorkerBusy()')]
+  assert 'v18365Job.pending=false' not in repeated
   # Real global button route: this invokes v18365HandleClick before any
   # old act() wrapper or prior v53 vacation guard can reject the click.
   click_head="document.addEventListener('click',event=>{\n const el=event.target.closest?.('[data-action]');"
