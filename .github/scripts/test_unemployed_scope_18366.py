@@ -119,10 +119,11 @@ def main():
         browser=pw.chromium.launch(executable_path=executable,headless=True,
            args=['--disable-gpu','--disable-dev-shm-usage','--no-sandbox'])
         page=browser.new_page(viewport={'width':1600,'height':900})
-        page.on('pageerror',lambda e:errors.append(str(e)))
-        page.on('console',lambda m:console.append(m.text) if m.type=='error' else None)
+        page.on('pageerror',lambda e:errors.append({'message':str(e),'stack':str(getattr(e,'stack',''))[:3000]}))
+        page.on('console',lambda m:console.append({'message':m.text,'location':m.location}) if m.type=='error' else None)
         page.set_content(test_html,wait_until='domcontentloaded',timeout=150000)
         page.wait_for_timeout(1800)
+        startup_errors=len(errors);startup_console=len(console)
         probe=page.evaluate("""() => {
           const g=window.GestorFC||{};
           let diagnostic=null,old=null,previous=null;
@@ -176,11 +177,20 @@ def main():
                 not after['status'].get('pendingJobHandoff')):
             raise RuntimeError('18.366 post-checkpoint offer search not reached: '+str(after))
         browser.close()
-    bad=[e for e in errors+console
-        if 'state is not defined' in e.lower()
-        or 'v18365' in e.lower() and ('not defined' in e.lower() or 'referenceerror' in e.lower())
-        or 'v18364' in e.lower() and ('not defined' in e.lower() or 'referenceerror' in e.lower())]
-    if bad:raise RuntimeError('18.366 browser ReferenceError: '+repr(bad[:5]))
+    def is_scope_error(e):
+        v=(e.get('message','')+' '+e.get('stack','')).lower()
+        return ('state is not defined' in v or
+          (('v18365' in v or 'v18364' in v) and
+           ('not defined' in v or 'referenceerror' in v)))
+    bad=[e for e in errors+console if is_scope_error(e)]
+    if bad:
+        info={'beforeFixture':sum(is_scope_error(e) for e in errors[:startup_errors]+console[:startup_console]),
+          'afterFixture':sum(is_scope_error(e) for e in errors[startup_errors:]+console[startup_console:]),
+          'sourceStacks':[{'message':e.get('message',''),'stack':e.get('stack',''),
+             'location':e.get('location',{})} for e in bad[:12]],
+          'allPageErrorCount':len(errors),'allConsoleErrorCount':len(console)}
+        print('18.366 TRACE SCOPE ERRORS: '+json.dumps(info,ensure_ascii=False)[:24000],flush=True)
+        raise RuntimeError('18.366 browser ReferenceError requires source correction; see TRACE SCOPE ERRORS above')
     report.update({
        'browser':executable,'realChromiumBootAndScopeChecked':True,
        'legacy18363And18364ScopeCallable':True,
