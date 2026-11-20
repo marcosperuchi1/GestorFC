@@ -8,6 +8,7 @@ def main():
  assert "const EDITION='18.370.0';" in s
  assert 'const yearBefore=Number(state.year)||0,worldBefore=state;' not in s
  assert 'jobWaitResident:v18368SameWorker,jobWaitAuto:true' in s
+ assert "if(mode==='dayfast'&&options?.jobWaitAuto===true)msg.jobWaitAuto=true;" in s
  assert "!(fastManualDay&&message.jobWaitAuto===true)" in s
  assert "if((!fastManualDay&&!nationalJump&&!nextMatchJump||message.jobWaitAuto===true)&&v150ManualSavePromise)" in s
  a=s.index('/* FUTBR_BOUNDED_JOBWAIT_18370');b=s.index('const v89BaseCareerPage=careerPage;',a)
