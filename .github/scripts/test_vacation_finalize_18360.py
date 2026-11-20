@@ -27,7 +27,7 @@ def main():
  assert "window.GestorFC.v18360CleanupStatus" in promote
 
  stream=segment(s,'async function streamVacationWorld125(destructive=true,skipCheckpoint=false){','async function simulate(message){')
- assert "key==='players'?(Number(finalYear)>=2029?640:900)" in stream
+ assert "key==='players'?(Number(finalYear)>=2029?Math.min(640,(" in stream
  assert "await v18117WaitSyncAck(syncSeq)" in stream
  assert "await v18310PackVacationRows(payload,!!checkpointMeta)" in stream
  assert "v93RawWrite(V93_VAC_META,checkpointMeta)" in stream
