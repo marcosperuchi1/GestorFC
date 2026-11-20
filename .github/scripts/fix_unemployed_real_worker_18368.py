@@ -31,12 +31,14 @@ def main():
     a=s.index('async function v89RunJobWait(){')
     b=s.index('const v89BaseCareerPage=careerPage;',a)
     job=s[a:b]
+    # Locate the real try/while structurally. Its indentation varies across releases.
+    loop=job.index('while(state&&!state.userEmployed')
+    opening=job.rfind('try{',0,loop)
+    if opening<0 or job[opening+4:loop].strip():
+        raise RuntimeError('18.368 original main job-wait try/while was not found')
+    job=job[:opening]+"let v18368Resident=null;\n  "+job[opening:]
     job=once(job,
-      "  try{\n   while(state&&!state.userEmployed",
-      "  let v18368Resident=null;\n  try{\n   while(state&&!state.userEmployed",
-      'track resident Worker only for this job-search run')
-    job=once(job,
-      "   await v53StartSimulation('dayfast');",
+      "await v53StartSimulation('dayfast');",
       """   const v18368SameWorker=!!(v18368Resident&&v53Worker&&v18368Resident===v53Worker&&
        !v53Sim?.active&&!v53Sim?.starting);
    // First round sends the authoritative live world exactly once; every
@@ -48,7 +50,7 @@ def main():
    v18368Resident=v53Worker||null;""",
       'make actual unemployed dayfast Worker start without full pre-save')
     job=once(job,
-      "   v89JobWait.lastProgressAt=Date.now();v89JobWait.stage='round-completed';",
+      "v89JobWait.lastProgressAt=Date.now();v89JobWait.stage='round-completed';",
       """   v89JobWait.lastProgressAt=Date.now();v89JobWait.stage='round-completed';
    // Refresh only existing chrome: the original Worker controls the world.
    try{v555UpdateChrome(document.querySelector('#app')||document);}catch(e){}""",
@@ -62,7 +64,7 @@ def main():
     start=s.index('async function v53StartSimulation(mode,options={}){')
     end=s.index('runVacation=async function',start)
     core=s[start:end]
-    core=once(core,'     if(!canLoadSaved)msg.state=state;',
+    core=once(core,'if(!canLoadSaved)msg.state=state;',
       """     if(mode==='dayfast'&&options?.jobWaitResident===true)msg.jobWaitResident=true;
      if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;""",
       'send live full world only for first dayfast job round')
@@ -71,7 +73,7 @@ def main():
     # Fail closed if the worker could not reuse the exact same world. NEVER
     # fall back to a different career or silently process an old disk save.
     worker=s.index('  async function simulate(message){')
-    next_fn=s.index("   if(!residentManual&&message.loadSaved){",worker)
+    next_fn=s.index("if(!residentManual&&message.loadSaved){",worker)
     s=s[:next_fn]+"""   if(message.jobWaitResident&&!residentManual)
     throw Error('O Worker de propostas perdeu a sincronização de carreira/jornada. Avanço interrompido sem recuperar um save antigo.');
 """+s[next_fn:]
