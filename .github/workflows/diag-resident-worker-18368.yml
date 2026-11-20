@@ -1,0 +1,29 @@
+name: Diagnose actual resident Worker retention and identity 18.368
+on:
+  push:
+    branches: [fix/desktop-18368-unemployed-real-worker]
+    paths: ['.github/workflows/diag-resident-worker-18368.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect actual original Worker variable and completion lifecycle
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in parts))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          a=s.index('async function simulate(message){')
+          b=s.index('\nfunction ',a) if '\nfunction ' in s[a:] else a+44000
+          worker=s[a:min(len(s),a+44000)]
+          for term in ('const residentManual=', 'if(!residentManual&&message.loadSaved){','if(!residentManual&&!message.loadSaved)','world=null', 'world = null','world=','message.mode===\'dayfast\'', 'fastManualDay', 'self.postMessage({kind:\'finished\'', "kind:'finished'",'finally{', 'postProgress','if(message.mode===\'dayfast\')'):
+            print('\n### TERM',repr(term),flush=True)
+            hits=[m.start() for m in re.finditer(re.escape(term),worker)]
+            print('HITS',len(hits),flush=True)
+            for p in hits[:8]:print(worker[max(0,p-460):p+1450],flush=True)
+          PY
