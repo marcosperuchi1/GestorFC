@@ -235,7 +235,7 @@ def main():
   'authoritative dismissal event stops original Worker')
  s=once(s,
   "if(v53Sim.syncing)throw Error('Sincronizando a carreira após as férias. Aguarde alguns instantes.');",
-  "if(v53Sim.syncing&&!v53ViewActions.has(a))throw Error('Sincronizando a carreira após as férias. Aguarde alguns instantes.');",
+  "if(v53Sim.syncing&&!(a==='nav'&&(el.dataset.view==='career'||el.dataset.view==='vacation')))throw Error('Sincronizando a carreira após as férias. Aguarde alguns instantes.');",
   'keep read-only career navigation possible during vacation synchronization')
  s=once(s,
   "queueMicrotask(()=>{void v18364OnVacationSettled(origin,v18364Succeeded);});",
