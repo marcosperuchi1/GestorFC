@@ -37,7 +37,7 @@ function spawn(){
  const worker={postMessage(message){
    assert.equal(message.mode,'dayfast','Original dayfast Worker mode required');
    assert.equal(message.loadSaved,false,'Do not replay stale disk save');
-   starts.push({mode:message.mode,day:message.day,year:message.year,hasState:!!message.state,resident:!!message.jobWaitResident});
+   starts.push({mode:message.mode,day:message.day,year:message.year,hasState:!!message.state,resident:!!message.jobWaitResident,useResident:!!message.useResident});
    if(message.state){
      fullStateTransfers++;
      assert.equal(message.jobWaitResident,undefined,'first round must transfer actual live state');
@@ -89,8 +89,11 @@ TEST=r"""
  assert.equal(fullStateTransfers,1,'Only first day may send entire live world');
  assert.equal(presaves,0,'No whole-world pre-save may run before ANY unemployed round');
  assert.equal(starts[0].resident,false);
+ assert.equal(starts[0].useResident,false,'Initial live state is sent explicitly');
  assert.equal(starts[1].resident,true);
+ assert.equal(starts[1].useResident,true,'Critical: second day must set actual useResident Worker flag');
  assert.equal(starts[2].resident,true);
+ assert.equal(starts[2].useResident,true,'Third live-state day must reuse same Worker');
  assert.equal(starts[1].hasState,false);
  assert.equal(starts[2].hasState,false);
  await new Promise(resolve=>setTimeout(resolve,55));
@@ -116,7 +119,8 @@ TEST=r"""
   noFullWorldPreSave:true,allLaterRoundsResident:true,
   staleDiskReplayForbidden:true,jobOfferStops:true,phantomRoundFails:true,
   stopActionWorks:true,unemployedDayfastLiveStateOnly:true,
-  sourceWorkerIdentityGuard:true,saveCodecUnchanged:true}));
+  sourceWorkerIdentityGuard:true,saveCodecUnchanged:true,
+  verifiedActualUseResidentFlagOnSecondAndThirdDay:true}));
 })().catch(e=>{console.error(e);process.exitCode=1});
 """
 
@@ -128,6 +132,7 @@ def main():
  assert "window.GestorFC.version='18.368.0';window.GestorFC.visualVersion='18.368.0';" in html
  assert "if(message.jobWaitResident&&!residentManual)" in html
  assert 'await E.advanceDayAsync(world,progress,postMatchOptions);' in html
+ assert "useResident:(!v18311LiveVacation||(mode==='dayfast'&&options?.jobWaitResident===true))" in html
  for expected in ('v18311LiveVacation=!!options?.liveStateNoPreSave',
                   "mode==='dayfast'&&options?.jobWaitResident===true"):
   assert expected in html,expected
