@@ -1,141 +1,46 @@
-name: Inspect 18.364 vacation-dismissal control ownership
+name: Diagnose 18.365 state scope and real vacation button
 on:
   push:
-    branches: [fix/desktop-18365-vacation-dismissal-source]
+    branches: [fix/desktop-18366-root-scope-handoff]
     paths: ['.github/workflows/diagnose-vacation-handoff-18364.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  source:
+  inspect:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect original game event and worker contracts
+      - name: Inspect original HTML state lexical boundary and callable exports
         shell: bash
         run: |
           python - <<'PY'
           import pathlib,zipfile,io,re
           parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
           with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
-            name=next(p for p in z.namelist() if p.endswith('/src/index.html'))
-            s=z.read(name).decode('utf-8-sig')
-          patterns=[
-           ('v53 simulation',r'async function v53StartSimulation\(',4200,1),
-           ('vacation action',r"if\(a===['\"][^'\"]*vac[^'\"]*['\"]\)",1100,15),
-           ('vacation work handler',r"if\(a===['\"][^'\"]*(pause|stop|end|finish|resume)[^'\"]*['\"]",1100,12),
-           ('v53 pause variable',r'v53Sim\.pause\s*=',680,10),
-           ('v53 pauseMode variable',r'v53Sim\.pauseMode\s*=',780,10),
-           ('v53 controls',r'function v53\w*(?:Pause|Stop|Vacation|Control|Cancel)\w*\(',1800,12),
-           ('v53 Worker start',r'v53Worker\.postMessage\(',800,14),
-           ('v53 Worker flags',r'v53Sim\.active\s*=\s*true',700,8),
-           ('vacation done worker',r"kind:\s*['\"]vac-dismissed['\"]",2200,3),
-           ('vacation control UI',r'Pausar|Encerrar',550,15),
-           ('vacation page',r'vacationPage=function',1900,4),
-           ('v53 actions',r'const v53BaseAct|v53Base\.act',1800,5),
-           ('dismissal event handler',r'function v18112MarkDismissal\(',2000,2),
-           ('job wait handler',r'async function v89RunJobWait\(',1800,1),
-          ]
-          for label,pat,span,maxn in patterns:
-            matches=list(re.finditer(pat,s,re.I))
-            print('\n===',label,'MATCHES',len(matches),'===',flush=True)
-            for m in matches[:maxn]:
-              p=m.start()
-              print('AT',p,'\n',s[max(0,p-300):p+span],flush=True)
-          PY
-      - name: Verify capture and delegated click ownership
-        shell: bash
-        run: |
-          python - <<'PY'
-          import pathlib,zipfile,io,re
-          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
-          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
-            src=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
-          center=src.index('const v53Base={')
-          print('V53 CENTRAL',center,flush=True)
-          terms=["document.addEventListener('click'","document.addEventListener(\"click\"","stopImmediatePropagation","v53ViewActions","document.onclick","addEventListener('pointerdown'","data-action"]
-          for term in terms:
-            found=[m.start() for m in re.finditer(re.escape(term),src)]
-            near=[p for p in found if center-100000<=p<=center+300000]
-            print('TERM',term,'TOTAL',len(found),'NEAR',len(near),flush=True)
-            for p in near[:10]:
-              print('POS',p,'TEXT',src[max(0,p-380):p+1200],flush=True)
-          PY
-
-      - name: Trace exact original job button dispatch and vacation paint
-        shell: bash
-        run: |
-          python - <<'PY'
-          import pathlib,zipfile,io,re
-          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
-          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
-            src=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
-          terms=[
-           ('job marker', 'v89-job-wait', 18, 700),
-           ('click dispatch', "document.addEventListener('click'", 46, 320),
-           ('global delegated actions', "act(el)", 20, 680),
-           ('career tab', "Minha carreira", 6, 900),
-           ('career button', "function careerPage(", 4, 1800),
-           ('base v53', "const v53Base={", 1, 1200),
-           ('vac status', "function v624VacationHeaderHTML", 2, 1200),
-           ('vacation nav', "data-view=\\\"career\\\"", 4, 600),
-           ('v89 run', 'v89RunJobWait(', 10, 650),
-           ('worker pause handler', "if(m.op==='pause')", 8, 1150),
-           ('worker pause condition', "if(op==='pause')", 8, 1150)
-          ]
-          for label,term,maxn,span in terms:
-            matches=list(re.finditer(re.escape(term),src))
-            print('\n===== '+label+' TERM='+repr(term)+' COUNT='+str(len(matches))+' =====',flush=True)
-            for m in matches[:maxn]:
-              p=m.start();print('AT',p,'\n',src[max(0,p-420):p+span],flush=True)
-          PY
-
-      - name: Trace original event blockers and career render
-        shell: bash
-        run: |
-          python - <<'PY'
-          import pathlib,zipfile,io,re
-          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
-          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
-            src=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
-          for label,term,maxn,left,right in (
-           ('v152 capture event', "document.addEventListener('click',event=>{", 3,1100,3200),
-           ('global click route', "const el=event.target.closest?.('[data-action]');", 2,450,1300),
-           ('v125DirectAction', 'v125DirectAction', 8,750,1550),
-           ('v152SuppressAction','v152SuppressAction',8,450,650),
-           ('v53 vacation action', "if(v53Sim.active){if(a==='vac-stop'", 3,800,1050),
-           ('event sidebar career', "view==='career'", 9,400,800),
-           ('career underlying UI','v4UI_careerPage=',3,300,1000),
-           ('main nav disabled',"data-view=",8,300,500),
-           ('blocked actions', 'v53ViewActions=',3,450,1450),
-           ('job button specific direct', "if(a==='v89-job-wait')",4,700,850)
-          ):
-            pos=[m.start() for m in re.finditer(re.escape(term),src)]
-            print('\n### '+label+' = '+str(len(pos)),flush=True)
-            for p in pos[:maxn]:print('POS',p,'\n'+src[max(0,p-left):p+right],flush=True)
-          PY
-
-      - name: Inspect career layout and dismissal stop points
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import zipfile,io,re
-          p=sorted(Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
-          with zipfile.ZipFile(io.BytesIO(b''.join(f.read_bytes() for f in p))) as z:
             s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
-          targets=[
-            ('career css','.v636-career',9,300,850),
-            ('career manager', 'v636-career-manager',10,380,950),
-            ('career view function','v636CareerPage',8,280,1000),
-            ('vac dismissed',"if(m.kind==='vac-dismissed')",2,390,1100),
-            ('vac dismissed message',"kind:'vac-dismissed'",2,600,900),
-            ('core route',"const el=event.target.closest?.('[data-action]');",1,450,900),
-            ('nav disabled','data-view="career"',4,350,850),
-            ('v555RenderPage','function v555RenderPage(',1,350,1600)
-          ]
-          for name,term,count,left,right in targets:
-            ps=[m.start() for m in re.finditer(re.escape(term),s)]
-            print('\n### '+name+' '+str(len(ps)),flush=True)
-            for p in ps[:count]:print('AT',p,'\n',s[max(0,p-left):p+right],flush=True)
+          print('SOURCE LEN',len(s),flush=True)
+          starts=[m.start() for m in re.finditer(r'<script\b',s,re.I)]
+          ends=[m.start() for m in re.finditer(r'</script>',s,re.I)]
+          print('SCRIPTS',len(starts),len(ends),'FIRST',starts[:8],'LAST',starts[-12:],flush=True)
+          for label,pat,maxcount,left,right in [
+            ('state declarations',r'\b(?:let|var|const)\s+state\s*[=,;]',8,1300,1100),
+            ('main act declarations',r'(?:function act\(|\blet act\s*=|\bact=function)',8,400,800),
+            ('v53 simulator state',r'const v53Sim=',3,500,400),
+            ('first IIFE on script start',r'\(\(\)\s*=>\s*\{',3,120,300),
+            ('export references',r'(?:window.GestorFC.state|GestorFC.state|\.getState\(|GFC\s*=)',10,250,500),
+            ('login auth setup',r'let v548Session|const v548Session|function v548EnterGame',6,500,600),
+            ('last script fragment',r'const EDITION=',5,150,550)
+          ]:
+            found=[m.start() for m in re.finditer(pat,s,re.I)]
+            print('\nLABEL',label,'COUNT',len(found),flush=True)
+            for p in found[:maxcount]:
+              ix=max([i for i,a in enumerate(starts) if a<p],default=-1)
+              e=ends[ix] if ix>=0 and ix<len(ends) else None
+              print('AT',p,'SCRIPT',ix,'SCRIPTSTART',starts[ix] if ix>=0 else None,
+                    'SCRIPTEND',e,'AFTEREND',bool(e is not None and p>e),
+                    'CONTEXT',s[max(0,p-left):p+right],flush=True)
+          print('FIRST SCRIPTS HEADERS', [(i,s[a:a+100]) for i,a in enumerate(starts[:6])],flush=True)
+          print('LAST 2500',s[-2500:],flush=True)
           PY
