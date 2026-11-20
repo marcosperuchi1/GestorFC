@@ -76,6 +76,10 @@ function v555UpdateChrome(){
 }
 function render(){v555UpdateChrome(document)}
 function v18356ReconcileRollover(){return false}
+// The production job function still references the legacy 18.358 fast-path.
+// The screenshot fixture intentionally has no matching 18.358 completion
+// marker; it must fall through to the new authoritative 18.363 state check.
+function v18358SafeJobButtons(){return false}
 function toast(s){notices.push(s)}
 function v89PaintJobWait(){v555UpdateChrome(document)}
 function v89HasNationalJob(){return !!state?.v640National?.userTeam}
