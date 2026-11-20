@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 HOOK=r"""
 /* TEST ONLY: real Engine/Worker vacation -> manual stop -> normal nextmatch. */
 window.__vacResume369={
- working:false,result:null,notices:[],
+ working:false,result:null,progress:null,notices:[],
  async snapshot(){
    const snapshot={working:this.working,
      year:state?.year,day:state?.day,employed:state?.userEmployed,
@@ -66,7 +66,26 @@ window.__vacResume369={
   this.working=true;this.result=null;
   // Never retain the 185k-player old world across vacation sync: the game deliberately releases it.
   const career=String(state.v1903CareerId),startDay=Number(state.day);
-  const reports={startDay,career,stages:[],notices:this.notices};
+  const reports={startDay,career,stages:[],notices:this.notices,
+    terminalPaintFaults:0,terminalPaintFaultPromiseSettled:false};
+  this.progress=reports;
+  // The active final drain settles its finished Promise before the tail
+  // repaint. A throw in that repaint could still skip ACK/scheduler cleanup
+  // and starve the next Worker session. Inject one harmless UI exception,
+  // then require the next genuine command to complete through the same pump.
+  // Engine, Worker messages, state transfer and ACKs stay original.
+  const originalRefresh=v53RefreshView;
+  v53RefreshView=function(...args){
+   if(!reports.terminalPaintFaults&&v53Sim.mode==='vacation'&&
+      !v53Sim.active&&!v53Sim.starting&&!v53Sim.finished&&state){
+    reports.terminalPaintFaults++;
+    reports.terminalPaintFaultState={mode:v53Sim.mode,active:v53Sim.active,
+      starting:v53Sim.starting,finishedPending:!!v53Sim.finished,
+      queueScheduled:v53PatchScheduled,queueLength:v53PatchQueue.length};
+    throw Error('TEST_ONLY_18369_TERMINAL_PAINT_FAILURE');
+   }
+   return originalRefresh.apply(this,args);
+  };
   (async()=>{
    let pauseTimer=null,stopSent=false,interval=null;
    try{
@@ -79,10 +98,12 @@ window.__vacResume369={
      if(seenDay<=startDay)return;
      // User presses "Encerrar férias" after a completed jornada. The original
      // Worker must receive END, stream the full world and settle.
-     stopSent=true;v53Sim.pause=true;v53Sim.pauseMode='end';
-     v53Worker.postMessage({op:'pause',end:true,source:'real-chromium-integration'});
+     // Exercise the SAME function used by pointer/keyboard actions. Do not
+     // manufacture the pause flags or the Worker command in the harness.
+     stopSent=v723RequestVacationControl('end')===true;
     },1000);
     await vacation;
+    reports.terminalPaintFaultPromiseSettled=reports.terminalPaintFaults===1;
     clearInterval(interval);interval=null;
     reports.stages.push('original-vacation-promise-settled');
     reports.afterVacation={year:state?.year,day:state?.day,stopped:stopSent,
@@ -93,10 +114,16 @@ window.__vacResume369={
       marker:window.GestorFC.vacationResume18369?.status?.(),
       teams:state?.teams?.length,
       players:Object.keys(state?.players||{}).length};
-    if(!state||state.vacation?.active||v53Sim.active||v53Sim.syncing||
+    if(!stopSent)throw Error('Vacation ended without the manual end command being accepted');
+    if(!reports.terminalPaintFaultPromiseSettled)
+      throw Error('Terminal repaint fault was not exercised during the completed vacation');
+    if(!state||state.userEmployed!==true||state.vacation?.active||v53Sim.active||v53Sim.syncing||
        !state.players||!state.schedule?.length||
        !window.GestorFC.vacationResume18369?.status?.().ready)
       throw Error('Vacation did not return an authoritative complete world');
+    // Match the normal screen the player uses after returning to the club.
+    // The authenticated renderer remains isolated; Engine/Worker are original.
+    view='dashboard';
 
     // Create one controlled non-match day after the real vacation. This avoids
     // a correctly disabled Next Match button if a human fixture is already
@@ -116,7 +143,8 @@ window.__vacResume369={
       mode:v53Sim.mode,nextSteps:v53Sim.nextMatchSteps,
       employed:state.userEmployed,careerId:String(state.v1903CareerId),
       marker:window.GestorFC.vacationResume18369?.status?.()};
-    reports.ok=Number(state.day)>before&&state.userEmployed===true&&
+    reports.ok=stopSent&&reports.terminalPaintFaultPromiseSettled&&reports.afterVacation.employed&&
+      reports.afterVacation.sameCareer&&Number(state.day)>before&&state.userEmployed===true&&
       String(state.v1903CareerId)===career&&!v53Sim.active&&!v53Sim.syncing;
    }catch(e){reports.ok=false;reports.error=String(e);
      reports.stack=String(e?.stack||'').slice(0,2100);
@@ -125,6 +153,7 @@ window.__vacResume369={
        vacation:state?.vacation?.active,marker:window.GestorFC.vacationResume18369?.status?.()};}
    finally{
     if(interval)clearInterval(interval);
+    v53RefreshView=originalRefresh;
     this.result=reports;this.working=false;
    }
   })();
@@ -155,13 +184,18 @@ def main():
  anchor=html.rfind('})();',a,b)
  assert 0<a<anchor<b,'Real IIFE not found'
  test_html=html[:anchor]+'\n'+HOOK+'\n'+html[anchor:]
- errors=[];exe=browser_path()
+ errors=[];console_errors=[];phase='startup';exe=browser_path()
  with sync_playwright() as pw:
   browser=pw.chromium.launch(executable_path=exe,headless=True,
    args=['--disable-gpu','--disable-dev-shm-usage','--no-sandbox'])
   ctx=browser.new_context(viewport={'width':1380,'height':840})
   page=ctx.new_page()
-  page.on('pageerror',lambda e:errors.append(str(e)[:600]))
+  page.on('pageerror',lambda e:errors.append({
+    'phase':phase,'message':str(e)[:1200],
+    'stack':str(getattr(e,'stack',''))[:5000]}))
+  page.on('console',lambda m:console_errors.append({
+    'phase':phase,'message':m.text[:1800],'location':m.location})
+    if m.type=='error' else None)
   def route(r):
    if r.request.resource_type=='document' and r.request.url.startswith('http://localhost:8739/'):
     r.fulfill(status=200,content_type='text/html; charset=utf-8',body=test_html)
@@ -170,8 +204,11 @@ def main():
   page.goto('http://localhost:8739/',wait_until='domcontentloaded',timeout=180000)
   page.wait_for_function("() => !!window.__vacResume369",timeout=90000)
   page.wait_for_timeout(2400) # Allow the authless initial-shell tasks to settle.
+  startup_error_count=len(errors)
+  phase='career-setup'
   setup=page.evaluate("() => window.__vacResume369.makeCareer()")
   print('18.369 REAL VACATION TEST SETUP '+json.dumps(setup,ensure_ascii=False),flush=True)
+  phase='vacation-and-resume'
   page.evaluate("() => window.__vacResume369.start()")
   from playwright.sync_api import TimeoutError as PwTimeout
   snapshots=[]
@@ -184,13 +221,15 @@ def main():
    except PwTimeout:
     try:
      snap=page.evaluate("() => window.__vacResume369.snapshot()")
+     snap['runtimeErrors']=errors[startup_error_count:][-8:]
      snapshots.append(snap)
      print('18.369 VACATION PROGRESS '+json.dumps({'cycle':cycle+1,'snapshot':snap},ensure_ascii=False),flush=True)
     except Exception as err:
      print('18.369 VACATION PAGE UNRESPONSIVE '+str(err),flush=True)
      break
   if result is None:
-   result={'ok':False,'error':'vacation-end or nextmatch remained pending after 144 seconds',
+   partial=page.evaluate("() => window.__vacResume369.progress") or {}
+   result={**partial,'ok':False,'error':'vacation-end or nextmatch remained pending after 144 seconds',
       'progressSnapshots':snapshots,
       'lastSnapshot':snapshots[-1] if snapshots else None}
   else:
@@ -200,9 +239,15 @@ def main():
   'realOriginalEngine':True,'realVacationWorkerAndStream':bool(result.get('afterVacation')),
   'realNextMatchAfterManualVacationEnd':bool(result.get('afterNext')) and bool(result.get('ok')),
   'realWorkersNotMocked':True,'browser':exe,'setup':setup,'result':result,
-  'pageErrors':errors[:12],'testHookNotShipped':True}
+  'originalManualEndCommandAccepted':bool(result.get('afterVacation',{}).get('stopped')),
+  'terminalRepaintFailurePreservesOriginalPromise':bool(result.get('terminalPaintFaultPromiseSettled')),
+  'startupErrors':errors[:startup_error_count][-12:],
+  'runtimeErrors':errors[startup_error_count:][-30:],
+  'consoleErrors':console_errors[-20:],
+  'testHookNotShipped':True}
  (root/'vacation-resume-browser-18369-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print('18.369 REAL VACATION TEST RESULT '+json.dumps(report,ensure_ascii=False),flush=True)
- if not report['ok'] or not report['realVacationWorkerAndStream'] or not report['realNextMatchAfterManualVacationEnd']:
+ if not report['ok'] or not report['realVacationWorkerAndStream'] or not report['realNextMatchAfterManualVacationEnd'] or not report['originalManualEndCommandAccepted'] or not report['terminalRepaintFailurePreservesOriginalPromise']:
   raise RuntimeError('Real vacation end -> next match still cannot advance genuine jornadas')
 if __name__=='__main__':main()
+

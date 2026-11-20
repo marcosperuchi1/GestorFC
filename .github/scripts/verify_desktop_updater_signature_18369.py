@@ -48,7 +48,7 @@ def main():
     digest=hashlib.sha256(installer.read_bytes()).hexdigest()
     if digest!=(artifacts/'SHA256SUMS.txt').read_text(encoding='ascii').strip().split()[0]:
         raise RuntimeError('Installer SHA-256 does not match the checksum manifest')
-    for name in ('initial-nationalities-18340-tests.json','scorers-submit-18340-tests.json','desktop-version-18369-install.json','welcome-national-preview-18342-tests.json','season-save-18343-tests.json','career-isolation-18344-tests.json','serie-c-champion-18345-tests.json','retirement-vacation-18346-tests.json','calendar-list-18347-tests.json','calendar-nav-version-18348-tests.json','incremental-saves-calendar-18349-tests.json','calendar-retirement-18350-tests.json','serie-c-phases-history-18351-tests.json','oomsafe-save-18352-tests.json','serie-c-full-history-18353-tests.json','job-save-exit-18355-tests.json','jobwait-season-18356-tests.json','dismissal-handoff-18357-tests.json','dismissal-button-18358-tests.json','dismissal-control-18359-tests.json','vacation-finalize-18360-tests.json','fast-updater-18361-tests.json','native-save-mirror-18354-tests.json','archive-root-shards-18354-tests.json','core-transitions-18362-tests.json','jobwait-state-18363-tests.json','vacation-handoff-18364-tests.json','dismissal-source-18365-tests.json','scope-repair-18366-tests.json','unemployed-worker-18368-tests.json','unemployed-browser-18368-tests.json','vacation-resume-18369-tests.json','vacation-resume-browser-18369-tests.json'):
+    for name in ('initial-nationalities-18340-tests.json','scorers-submit-18340-tests.json','desktop-version-18369-install.json','welcome-national-preview-18342-tests.json','season-save-18343-tests.json','career-isolation-18344-tests.json','serie-c-champion-18345-tests.json','retirement-vacation-18346-tests.json','calendar-list-18347-tests.json','calendar-nav-version-18348-tests.json','incremental-saves-calendar-18349-tests.json','calendar-retirement-18350-tests.json','serie-c-phases-history-18351-tests.json','oomsafe-save-18352-tests.json','serie-c-full-history-18353-tests.json','job-save-exit-18355-tests.json','jobwait-season-18356-tests.json','dismissal-handoff-18357-tests.json','dismissal-button-18358-tests.json','dismissal-control-18359-tests.json','vacation-finalize-18360-tests.json','fast-updater-18361-tests.json','native-save-mirror-18354-tests.json','archive-root-shards-18354-tests.json','core-transitions-18362-tests.json','jobwait-state-18363-tests.json','vacation-handoff-18364-tests.json','dismissal-source-18365-tests.json','scope-repair-18366-tests.json','unemployed-worker-18368-tests.json','unemployed-browser-18368-tests.json','vacation-resume-18369-tests.json','vacation-queue-18369-tests.json','vacation-resume-browser-18369-tests.json'):
         report=json.loads((artifacts/name).read_text(encoding='utf-8'))
         if not report.get('ok'):raise RuntimeError('Mandatory preserved game regression failed: '+name)
     fast=json.loads((artifacts/'fast-updater-18361-tests.json').read_text(encoding='utf-8'))
@@ -101,14 +101,19 @@ def main():
     if not all(basic.get(k) for k in (
       'ok','realOriginalV53StartSimulation','nextMatchAfterVacationWorks',
       'normalDayAfterVacationWorks','noPreSaveBeforeResume','noStaleDiskReload',
-      'careerIdentityGuard','noEarlySyncRelease'
+      'careerIdentityGuard','noEarlySyncRelease',
+      'previousSessionGuard','noStrongWorldRetention','dispatchConsumesToken','failedDispatchPreservesToken','newVacationConsumesOldToken'
     )):
         raise RuntimeError('18.369 normal-day or nextmatch Worker handoff regression failed')
     if not all(realvac.get(k) for k in (
       'ok','realOriginalEngine','realVacationWorkerAndStream',
-      'realNextMatchAfterManualVacationEnd','realWorkersNotMocked','testHookNotShipped'
+      'realNextMatchAfterManualVacationEnd','realWorkersNotMocked',
+      'originalManualEndCommandAccepted','terminalRepaintFailurePreservesOriginalPromise','testHookNotShipped'
     )):
         raise RuntimeError('18.369 Chrome real vacation stop followed by nextmatch failed')
+    queue=json.loads((artifacts/'vacation-queue-18369-tests.json').read_text(encoding='utf-8'))
+    if not all(queue.get(k) for k in ('ok', 'originalFinalDrainExecuted', 'vacLiveAckSurvivesPaintException', 'nextMatchSyncSurvivesPaintException', 'finishedPromiseSettlesOnce', 'errorToastCannotLoseRejection', 'appliedMessagesNeverReplayed', 'realDataFailureRejectsWithoutAck', 'dataFailureRoutesToOriginalRecovery', 'queueOwnershipAlwaysReleased', 'staleSessionIgnored')):
+        raise RuntimeError('18.369 Worker queue or acknowledgement recovery regression failed')
     result={'ok':True,'version':VERSION,'installedUpdaterTrustMatchesSignature':True,
             'installerSha256Verified':True,'manifestSignatureExact':True,'careerSavesPreserved':True,
             'oneTimeManualInstallRequiredForBroken18339And18340':True,
@@ -117,3 +122,4 @@ def main():
     print(json.dumps(result))
 
 if __name__=='__main__':main()
+
