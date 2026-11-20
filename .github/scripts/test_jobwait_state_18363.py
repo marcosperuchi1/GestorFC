@@ -32,7 +32,7 @@ def main():
 
  pre=r"""
 const assert=require('node:assert/strict');
-const window={GestorFC:{v172:{_finishJobWait(){}}}},nativeSetTimeout=setTimeout;
+const window={GestorFC:{v172:{_finishJobWait(){}}}},nativeSetTimeout=require('node:timers').setTimeout;
 function setTimeout(fn,delay){return delay===900?-1:nativeSetTimeout(fn,delay);}
 let state,view='career',v53Sim,v18112Dismissal,v125VacIncoming=null,
  v53Creating=false,v52Processing=false,v52SavePromise=null,v53RPC=new Map(),v53Worker={},
