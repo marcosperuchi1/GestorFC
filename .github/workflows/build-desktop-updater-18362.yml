@@ -2,7 +2,7 @@ name: FutBR Windows 18.362 - fast signed automatic updates
 on:
   push:
     branches: [fix/desktop-18362-lifecycle-performance]
-    paths: ['.github/workflows/build-desktop-updater-18362.yml', '.github/scripts/*18362.py', '.github/scripts/build_desktop_season_18310.ps1']
+    paths: ['.github/workflows/build-desktop-updater-18362.yml', '.github/scripts/*18362.py', '.github/scripts/build_desktop_season_18310.ps1', '.github/scripts/validate_desktop_architecture.py']
   workflow_dispatch:
 permissions:
   contents: read
