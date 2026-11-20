@@ -50,7 +50,8 @@ window.__vacResume369={
  start(){
   if(this.working)throw Error('Running');
   this.working=true;this.result=null;
-  const prior=state,career=String(prior.v1903CareerId),startDay=Number(prior.day);
+  // Never retain the 185k-player old world across vacation sync: the game deliberately releases it.
+  const career=String(state.v1903CareerId),startDay=Number(state.day);
   const reports={startDay,career,stages:[],notices:this.notices};
   (async()=>{
    let pauseTimer=null,stopSent=false,interval=null;
