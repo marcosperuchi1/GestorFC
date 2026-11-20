@@ -55,6 +55,7 @@ jobs:
         run: |
           python .github/scripts/test_unemployed_real_browser_18368.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
           python .github/scripts/test_vacation_resume_browser_18369.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
+          python .github/scripts/test_vacation_dismissal_browser_18369.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
       - name: Retain real integration reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

@@ -140,6 +140,7 @@ Run-Python '.github/scripts/test_vacation_lifecycle_scope_18369.py'
 # Recheck unemployed real-Worker advancement on the final vacation queue implementation.
 Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'
 Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
+Run-Python '.github/scripts/test_vacation_dismissal_browser_18369.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -288,6 +289,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'vacation-queue-18369-tests.json' 'artifacts/vacation-queue-18369-tests.json'
    Copy-Item 'vacation-lifecycle-scope-18369-tests.json' 'artifacts/vacation-lifecycle-scope-18369-tests.json'
    Copy-Item 'vacation-resume-browser-18369-tests.json' 'artifacts/vacation-resume-browser-18369-tests.json'
+   Copy-Item 'vacation-dismissal-browser-18369-tests.json' 'artifacts/vacation-dismissal-browser-18369-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
