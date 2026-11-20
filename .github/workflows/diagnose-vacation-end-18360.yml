@@ -1,0 +1,43 @@
+name: Inspect vacation end performance and memory in source 18.360
+on:
+  push:
+    branches: [fix/desktop-18359-dismissal-control-state]
+    paths: ['.github/workflows/diagnose-vacation-end-18360.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snapshot actual source and stream/saving hotpaths
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+           fn=next(n for n in z.namelist() if n.endswith('/src/index.html'))
+           s=z.read(fn).decode('utf-8-sig')
+          print('SOURCE LEN',len(s),flush=True)
+          patterns=[
+           ('PATCH_Q_END', 'v53DrainPatches=function(){',13000),
+           ('SYNC_VAC_BEGIN', "if(m.kind==='vac-sync-start')",7100),
+           ('SYNC_VAC_PART', "if(m.kind==='vac-sync-part')",8500),
+           ('STREAM', 'async function streamVacationWorld125(destructive=true,skipCheckpoint=false)',9000),
+           ('VAC_FINAL', 'if(lowMemoryVacation&&!streamed&&world)',2500),
+           ('PERSIST_PROMOTE', 'async function promoteVacationCheckpoint()',9000),
+           ('AFTER_WORKER_SAVE', 'async function v143PostVacationRank',2800),
+           ('SWAP_INCOMING', 'v125VacIncoming={...(m.root||{})',2800),
+           ('SAVE_MANIFEST', 'async function save(s){',3600),
+           ('SAVE_UI', 'async function saveSharded(s,mode=',2600),
+           ('SYNC_STATUS', 'function v18119PaintSeasonTransfer()',2000),
+          ]
+          for label,term,length in patterns:
+           pos=[m.start() for m in re.finditer(re.escape(term),s)]
+           print('\n==BEGIN '+label+' COUNT='+str(len(pos))+' ==',flush=True)
+           for ix in pos[-1:]:
+            print('AT '+str(ix),flush=True)
+            print(s[max(0,ix-200):ix+length],flush=True)
+           print('==END '+label+' ==',flush=True)
+          PY
