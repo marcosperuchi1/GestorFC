@@ -42,5 +42,11 @@ jobs:
                     'SCRIPTEND',e,'AFTEREND',bool(e is not None and p>e),
                     'CONTEXT',s[max(0,p-left):p+right],flush=True)
           print('FIRST SCRIPTS HEADERS', [(i,s[a:a+100]) for i,a in enumerate(starts[:6])],flush=True)
+          state_index=s.index('let state=null,saved=null')
+          script_close=s.find('</script>',state_index)
+          print('PRIMARY SCRIPT CLOSE AT',script_close,'DISTANCE',script_close-state_index,flush=True)
+          print('PRIMARY SCRIPT TAIL',s[script_close-3600:script_close+200],flush=True)
+          for tag in ('futbr-jobwait-state-18363','futbr-vacation-handoff-18364','futbr-dismissal-source-18365'):
+            print('CONTAINER TAG',tag,'FROM ORIGINAL',s.find(tag),flush=True)
           print('LAST 2500',s[-2500:],flush=True)
           PY
