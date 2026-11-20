@@ -136,7 +136,7 @@ def main():
    "    if(s.v158FastManualEngine)onProgress(1,1,'Concluindo jornada no calendario');\\n    s.lastDay=s.day;s.day++;s.live=null;delete s.liveCompanions;")
  ]
  for old,new in phase_marks:
-  engine=once(engine,old,new.replace('\\\\n','\\n'),'trace authoritative original Engine phase')
+  engine=once(engine,old,new.replace('\\n','\n'),'trace authoritative original Engine phase')
  s=s[:eng_start]+engine+s[eng_end:]
  # Only the active, final patch-drain handler may declare vacation fully
  # returned. The first legacy definition no longer owns the 18.360 stream.
