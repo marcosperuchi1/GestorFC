@@ -110,6 +110,19 @@ def main():
  runtime=s[a:b].strip()
  code=FIXTURE+'\n'+runtime+'\n'+base+'\n'+TEST
  with tempfile.TemporaryDirectory() as temp:
+  # Validate the complete shipped JavaScript, not merely the isolated
+  # simulator stub: accidental literal backslash-n makes the whole game fail boot.
+  engine_start=s.index('const Engine = (() => {')
+  tag=s.rfind('<script',0,engine_start)
+  if tag<0:raise RuntimeError('Original main game script element not found')
+  opener=s.index('>',tag)+1
+  closer=s.index('</script>',engine_start)
+  if closer<=opener:raise RuntimeError('Original script closing tag absent')
+  full=Path(temp)/'full-original-game-18369.js'
+  full.write_text(s[opener:closer],encoding='utf-8')
+  fullcheck=subprocess.run(['node','--check',str(full)],capture_output=True,text=True,timeout=90)
+  if fullcheck.returncode:
+   raise RuntimeError('18.369 full shipped JavaScript syntax invalid: '+fullcheck.stderr[-4000:])
   path=Path(temp)/'actual-original-simulator-after-vacation.js'
   path.write_text(code,encoding='utf-8')
   check=subprocess.run(['node','--check',str(path)],capture_output=True,text=True,timeout=25)
