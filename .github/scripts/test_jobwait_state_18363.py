@@ -16,7 +16,10 @@ def main():
  assert "const EDITION='18.363.0';" in s
  assert "window.GestorFC.version='18.363.0';window.GestorFC.visualVersion='18.363.0';" in s
  helper=part(s,script,'</script>')
- job=part(s,'async function v89RunJobWait(){','const v89BaseCareerPage=careerPage;')
+ # Include the function declaration; part() deliberately excludes its start marker.
+ # Without this wrapper the extracted original method contains await at top level,
+ # which is illegal in the CommonJS regression fixture.
+ job='async function v89RunJobWait(){'+part(s,'async function v89RunJobWait(){','const v89BaseCareerPage=careerPage;')
  start=s.index('function v18334ShouldWait(){')
  assert 'if(v18363CanUseJobWait())return false;' in s[start:start+220]
  assert 'if(!v18363CanUseJobWait()){' in job
