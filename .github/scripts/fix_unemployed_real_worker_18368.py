@@ -72,7 +72,7 @@ def main():
 
     # Fail closed if the worker could not reuse the exact same world. NEVER
     # fall back to a different career or silently process an old disk save.
-    worker=s.index('  async function simulate(message){')
+    worker=s.index('async function simulate(message){')
     next_fn=s.index("if(!residentManual&&message.loadSaved){",worker)
     s=s[:next_fn]+"""   if(message.jobWaitResident&&!residentManual)
     throw Error('O Worker de propostas perdeu a sincronização de carreira/jornada. Avanço interrompido sem recuperar um save antigo.');
