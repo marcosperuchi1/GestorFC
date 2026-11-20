@@ -98,6 +98,8 @@ async function cleanupManifest(manifest,keep){
  assert.equal(await promoteVacationCheckpoint(),true);
  assert.equal(commitCount,1);
  assert.equal(cleanupCount,0,'Old shard cleanup may not delay checkpoint promotion');
+ // The deferred cleanup scheduler is chained behind a resolved Promise.
+ await Promise.resolve();await Promise.resolve();
  assert.equal(timers.length,1);
  assert.equal(timers[0].ms,1200);
  const newest=records.get(KEY);
