@@ -37,7 +37,7 @@ def main():
  progress=segment(s,'/* FUTBR_VACATION_STREAM_PROGRESS_18360','const v18119SeasonTransfer=')
  queue=segment(s,'v53DrainPatches=function(){','async function v722CatchUpAfterFocus(){')
  assert 'v18360SyncStart();' in queue and 'v18360SyncCollection(m);' in queue
- assert "v18360SyncUpdate(rows.length)" in queue and "v18360SyncEnd();" in queue
+ assert "v18360SyncUpdate(Math.max(0,(Number(m.done)||0)-v18360SyncMetrics.players))" in queue and "v18360SyncEnd();" in queue
  assert 'v18360SyncMetrics.total=Math.max(0,Number(m.total)||0)' in progress
  assert "if(!force&&now-v18360SyncMetrics.lastPaint<200)return;" in progress
  assert "v18360SyncMetrics.players+=Math.max(0,Number(count)||0)" in progress
