@@ -74,7 +74,7 @@ const rootDelta={year:2031,day:120,v1903CareerId:'C-2031',seasonDone:false,manag
 const records=new Map([[KEY+':v93vac:meta',vm],[vm.rootKey,rootDelta],[KEY,old],[KEY+':previous',oldPrev]]);
 const stats={lastMode:''},G={};
 let commitCount=0,cleanupCount=0,cleanupStarted=false,cleanupKeep,deleted=[],warnings=[];
-const console={warn:(...a)=>warnings.push(a.join(' '))};
+const console={warn:(...a)=>warnings.push(a.join(' ')),log:(...a)=>process.stdout.write(a.join(' ')+'\n')};
 const timers=[];
 function setTimeout(fn,ms){timers.push({fn,ms});return timers.length}
 function rawRead(k){return Promise.resolve(records.get(k))}
