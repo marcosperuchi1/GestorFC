@@ -64,6 +64,11 @@ def main():
     start=s.index('async function v53StartSimulation(mode,options={}){')
     end=s.index('runVacation=async function',start)
     core=s[start:end]
+    core=once(core,
+      "useResident:!v18311LiveVacation&&(mode==='day'||mode==='dayfast'||mode==='nationaljump'||mode==='nextmatch'),",
+      """useResident:(!v18311LiveVacation||(mode==='dayfast'&&options?.jobWaitResident===true))&&
+       (mode==='day'||mode==='dayfast'||mode==='nationaljump'||mode==='nextmatch'),""",
+      'allow ONLY the verified unemployed job-wait dayfast Worker to be resident in live-state mode')
     core=once(core,'if(!canLoadSaved)msg.state=state;',
       """     if(mode==='dayfast'&&options?.jobWaitResident===true)msg.jobWaitResident=true;
      if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;""",
@@ -104,6 +109,7 @@ window.GestorFC.unemployedWorker18368={
       'residentWorkerReusedOnlyWhenIdentical':True,'workerValidatesYearDayAndCareer':True,
       'fullWorldTransferredAtMostOncePerContinuousWait':True,
       'perRoundOriginalWorldCheckpointPreserved':True,
+      'jobWaitLiveResidentFlagCorrected':True,
       'noParallelWorkers':True,'nationalManagerUnaffected':True,
       'historicRecordsAndSaveCodecUnchanged':True,
     }
