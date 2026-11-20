@@ -96,9 +96,22 @@ def main():
  start=src.index('async function promoteVacationCheckpoint(){')
  end=src.index('async function commitManifest(',start)
  part=src[start:end]
- part=once(part,'await cleanupManifest(oldPrev,keep);stats.lastMode',
-           'v18360ScheduleObsoleteCleanup(oldPrev,keep);stats.lastMode',
-           'remove stale-shard deletion from critical end-of-vacation path')
+ # The original 17.1 implementation may have received a later
+ # nonblocking cleanup improvement. If so, do not reintroduce duplicate
+ # deletion or alter the already-committed manifest. Record the actual
+ # source to verify the release variant instead of guessing.
+ exact='await cleanupManifest(oldPrev,keep);stats.lastMode'
+ if exact in part:
+  part=once(part,exact,
+      'v18360ScheduleObsoleteCleanup(oldPrev,keep);stats.lastMode',
+      'remove stale-shard deletion from critical end-of-vacation path')
+ else:
+  at=part.find('cleanupManifest')
+  print('18.360 INFO final production checkpoint cleanup clause:',
+        repr(part[max(0,at-420):at+650] if at>=0 else part[-1700:]),flush=True)
+  if 'await cleanupManifest' in part:
+   raise RuntimeError('18.360 production cleanup has a different awaited shape; inspect the logged clause')
+  print('18.360: current promotion has no blocking await cleanup; preserving its existing form.',flush=True)
  src=src[:start]+part+src[end:]
  src=once(src,'async function promoteVacationCheckpoint(){',
           DEFERRED_CLEANUP+'\nasync function promoteVacationCheckpoint(){',
