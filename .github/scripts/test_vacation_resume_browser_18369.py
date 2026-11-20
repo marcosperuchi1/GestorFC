@@ -59,8 +59,12 @@ window.__vacResume369={
     const vacation=v53StartSimulation('vacation',{liveStateNoPreSave:true});
     interval=setInterval(()=>{
      if(stopSent||!v53Sim.active||v53Sim.mode!=='vacation'||!v53Worker)return;
-     // User presses "Encerrar férias": the original Worker must receive END,
-     // finish its current jornada, stream the complete world and settle.
+     // The stop request must happen AFTER the first genuine Worker day:
+     // sending it during startup can be reset by simulate()'s pause=null.
+     const seenDay=Math.max(Number(v53Sim.day)||startDay,Number(state?.day)||startDay);
+     if(seenDay<=startDay)return;
+     // User presses "Encerrar férias" after a completed jornada. The original
+     // Worker must receive END, stream the full world and settle.
      stopSent=true;v53Sim.pause=true;v53Sim.pauseMode='end';
      v53Worker.postMessage({op:'pause',end:true,source:'real-chromium-integration'});
     },1000);
