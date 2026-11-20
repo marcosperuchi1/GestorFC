@@ -8,7 +8,7 @@ HOOK=r"""
 window.__futbr18368Real={
  result:null,working:false,
  prepare(){
-  const club=WorldCatalog.clubs?.[0]?.id||'t0';
+  const club='t0'; // E.createCareer assigns t0, t1... regardless of catalog IDs
   const s=E.createCareer({club,manager:'Integration Worker Test',difficulty:'normal',seed:183682026});
   if(!s||!s.players||!Array.isArray(s.teams)||!s.teams.length||!s.schedule?.length)
    throw Error('Engine did not create a complete playable world');
