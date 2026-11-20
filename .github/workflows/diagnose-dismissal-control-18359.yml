@@ -1,0 +1,49 @@
+name: Inspect exact unemployment UI and vacation signal sources 18.359
+on:
+  push:
+    branches: [fix/desktop-18359-dismissal-control-state]
+    paths: ['.github/workflows/diagnose-dismissal-control-18359.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact production source sections; no changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(p.read_bytes() for p in parts))) as z:
+             name=next(p for p in z.namelist() if p.endswith('/src/index.html'))
+             src=z.read(name).decode('utf-8-sig')
+          print('GAME LENGTH',len(src),flush=True)
+          patterns=[
+            ('DISMISSAL_MARK','function v18112MarkDismissal(',2500),
+            ('CHROME_WRAPPER','const v18112BaseChrome=v555UpdateChrome;',4000),
+            ('JOB_CAREER','const v89BaseCareerPage=careerPage;',3500),
+            ('CORE_CHROME','function v555UpdateChrome(',3500),
+            ('JOB_WAIT','async function v89RunJobWait(){',3600),
+            ('UI_WAIT_MESSAGE','Aguardando a sincronização da demissão',1300),
+            ('UI_WAIT_MESSAGE_ALT','Aguardando sincronização da demissão',1300),
+            ('VACATION_OUTER','const baseStart171=v53StartSimulation;',4100),
+            ('VACATION_COMPLETION','const v18112BaseSimulation=v53StartSimulation;',2700),
+            ('COACH_MODAL','v636CoachOfferModal(true)',900),
+            ('CORE_DOM','v89-job-wait',1200),
+            ('UI_DISMISS','v18112Dismissal.pending?',2500),
+            ('UI_NOMANAGER','Sem clube',1000),
+            ('STATE_SYNC_END',"if(m.kind==='vac-sync-end')",2100),
+            ('STATE_FINISHED',"if(m.kind==='finished')",3400),
+            ('STATE_FINISHED_ALT',"if(m.kind==='finished'){",3900),
+            ('SEASON_SYNC_FUNC','function v18119CompleteSeasonTransfer(',1600),
+            ('VACATION_STATE','const v53Sim=',1600)
+          ]
+          for label,term,span in patterns:
+            positions=[m.start() for m in re.finditer(re.escape(term),src)]
+            print('\n===== '+label+'; matches='+str(len(positions))+' =====',flush=True)
+            for pos in positions[-3:] if label in ('CORE_DOM','UI_WAIT_MESSAGE','UI_WAIT_MESSAGE_ALT','UI_DISMISS','STATE_FINISHED_ALT') else positions[:2]:
+              print('AT:',pos,flush=True)
+              print(src[max(0,pos-260):pos+span],flush=True)
+          PY
