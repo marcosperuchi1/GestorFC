@@ -1,0 +1,39 @@
+name: Diagnose vacation Worker ACK and completion deadlock 18.369
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-vacation-worker-ack-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import pathlib,zipfile,io
+          parts=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in parts))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          terms=[
+            ('ACK_WAIT','function v18117WaitSyncAck',2600),
+            ('ACK_IN','op===\'vac-sync-ack\'',2400),
+            ('SYNC_START',"if(m.kind==='vac-sync-start'){",3600),
+            ('SYNC_COLLECTION',"if(m.kind==='vac-sync-collection-start'){",3500),
+            ('SYNC_PART',"if(m.kind==='vac-sync-part'){",3500),
+            ('SYNC_END',"if(m.kind==='vac-sync-end'){",1400),
+            ('VAC_LOOP','if(lowMemoryVacation){',6200),
+            ('VAC_LOOP2',"else if(lowMemoryVacation){",6200),
+            ('VAC_ORIGINAL','if(message.mode===\'vacation\'){',4000),
+            ('VAC_COMPLETE','await streamVacationWorld125(',3100),
+            ('VAC_READY',"self.postMessage({kind:'finished'",1100),
+            ('VAC_POST','function v53DrainPatches()',1800),
+            ('ACK_SEND','op:\'vac-sync-ack\'',2200),
+          ]
+          for label,k,n in terms:
+            at=s.find(k)
+            print('\n===',label,'INDEX',at,'COUNT',s.count(k),'===',flush=True)
+            if at>=0:print(s[at:at+n],flush=True)
+          PY
