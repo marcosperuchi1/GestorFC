@@ -1,0 +1,36 @@
+name: Diagnose nextmatch patch queue starvation
+on:
+  push:
+    branches: [fix/desktop-18369-vacation-resume]
+    paths: [.github/workflows/diag-nextmatch-queue-18369.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import zipfile,pathlib,io,re
+          files=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in files))) as z:
+           s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for label,needle,span,rev in [
+           ('FINAL_DRAIN','v53DrainPatches=function(){',22000,True),
+           ('DRAIN_QUEUE','function v53DrainPatches(){',9500,False),
+           ('QUEUE_DECL','const v53PatchQueue=',2300,False),
+           ('QUEUE_DEF','let v53PatchQueue=',2300,False),
+           ('QUEUE_SCHEDULE','function v53QueuePatch(',2000,False),
+           ('NEXTMATCH_DAY',"if(m.kind==='nextmatch-day'){",3300,False),
+           ('NEXTMATCH_SYNC',"if(m.kind==='nextmatch-sync'){",3200,False),
+           ('VAC_SYNC_START',"if(m.kind==='vac-sync-start'){",3200,False),
+           ('VAC_SYNC_END',"if(m.kind==='vac-sync-end'){",4300,False),
+           ('FINISHED',"if(m.kind==='finished'){",5200,False),
+           ('MSG_PUMP','w.onmessage=event=>{',5200,False),
+          ]:
+            i=s.rfind(needle) if rev else s.find(needle)
+            print('\n====',label,'COUNT',s.count(needle),'INDEX',i,'====',flush=True)
+            if i>=0:print(s[i:i+span],flush=True)
+          PY
