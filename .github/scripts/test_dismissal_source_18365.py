@@ -53,7 +53,7 @@ if(m.kind==='vac-dismissed'){
   dismiss=between(s,"if(m.kind==='vac-dismissed'){","if(m.kind==='nextmatch-day'){")
   dismiss="if(m.kind==='vac-dismissed'){"+dismiss
   assert "v53Worker?.postMessage({op:'pause',end:true,reason:'dismissal'});" in dismiss
-  assert "if(v53Sim.syncing&&!v53ViewActions.has(a))throw Error(" in s
+  assert "if(v53Sim.syncing&&!(a==='nav'&&(el.dataset.view==='career'||el.dataset.view==='vacation')))throw Error(" in s
   assert "queueMicrotask(()=>v18365OnVacationSettled(origin,v18364Succeeded));" in s
   assert "const status=v.active?(state?.userEmployed===false?'Encerrando férias':'Em execução')" in s
   assert "body.v636-career-view .main{height:auto!important" in s
