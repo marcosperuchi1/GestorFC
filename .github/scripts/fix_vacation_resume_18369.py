@@ -158,8 +158,8 @@ def main():
  # Keep the actual queue and ACK protocol intact. Protect nonessential painters
  # and always restore a working pump after any exception.
  drain=once(drain,
-   "channel.port1.onmessage=()=>{\\n  const start=performance.now(),budget=document.hidden?14:30;",
-   "channel.port1.onmessage=()=>{\\n  let v18369InFlight=null;\\n  try{\\n  const start=performance.now(),budget=document.hidden?14:30;",
+   "channel.port1.onmessage=()=>{\n  const start=performance.now(),budget=document.hidden?14:30;",
+   "channel.port1.onmessage=()=>{\n  let v18369InFlight=null;\n  try{\n  const start=performance.now(),budget=document.hidden?14:30;",
    'guard original MessageChannel handler')
  drain=once(drain,
    "const m=v53PatchQueue.shift();if(m.session!==v53Sim.session)continue;",
