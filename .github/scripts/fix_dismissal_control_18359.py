@@ -178,10 +178,14 @@ def main():
       "if(!v18359TrustedCompleted()&&(v18112Dismissal.pending||v53Sim?.active||v53Sim?.starting||v53Sim?.patching||v53Sim?.syncing)){",
       'job-wait click must trust successful completed Worker, not stale flags')
     src=src[:start]+job+src[stop:]
-    # Install after all 18.358 UI wrappers. This is the last chrome painter.
-    src=once(src,'/* FUTBR_DISMISSAL_BUTTON_RECOVERY_18358',
-             HELPER+'\n/* FUTBR_DISMISSAL_BUTTON_RECOVERY_18358',
-             'install authoritative Worker completion + last chrome painter')
+    # All previous scripts wrap chrome and simulation again after 18.112.
+    # Install this at the *end* of the page, so no later painter can disable
+    # the released button or alter the vacation Promise tracked here.
+    if src.count('</body>')!=1:
+        raise RuntimeError('18.359 expected one closing body element')
+    src=src.replace('</body>',
+      '<script id="futbr-dismissal-finished-18359">\n'+HELPER+
+      '\n</script>\n</body>',1)
     src=once(src,"const EDITION='18.358.0';","const EDITION='18.359.0';",'visible version')
     src=once(src,"window.GestorFC.version='18.358.0';window.GestorFC.visualVersion='18.358.0';",
              "window.GestorFC.version='18.359.0';window.GestorFC.visualVersion='18.359.0';",
