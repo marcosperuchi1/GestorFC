@@ -287,6 +287,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'vacation-resume-18369-install.json' 'artifacts/vacation-resume-18369-install.json'
    Copy-Item 'vacation-resume-18369-tests.json' 'artifacts/vacation-resume-18369-tests.json'
    Copy-Item 'vacation-queue-18369-tests.json' 'artifacts/vacation-queue-18369-tests.json'
+   Copy-Item 'root-gameplay-tests.json' 'artifacts/root-gameplay-tests.json'
    Copy-Item 'vacation-lifecycle-scope-18369-tests.json' 'artifacts/vacation-lifecycle-scope-18369-tests.json'
    Copy-Item 'vacation-resume-browser-18369-tests.json' 'artifacts/vacation-resume-browser-18369-tests.json'
    Copy-Item 'vacation-dismissal-browser-18369-tests.json' 'artifacts/vacation-dismissal-browser-18369-tests.json'

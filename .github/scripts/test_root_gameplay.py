@@ -11,6 +11,59 @@ def run_node(src, root, name):
     if r.returncode: die(name+' falhou: '+r.stderr[-1800:])
     return json.loads(r.stdout.strip().splitlines()[-1])
 
+def final_patch_drain(html):
+    start=html.rfind('v53DrainPatches=function(){')
+    end=html.find('async function v722CatchUpAfterFocus(){',start)
+    if start<0 or end<start: die('Handler final de patches ausente')
+    return html[start:end]
+
+
+def nationaljump_root_checks(drain):
+    # Check the active handler, so an obsolete definition cannot hide a
+    # missing call. The protected 18.369 paint has the same required order.
+    day_start=drain.find("if(m.kind==='national-jump-day'){")
+    sync_start=drain.find("if(m.kind==='national-jump-sync'){")
+    live_start=drain.find("if(m.kind==='vac-live'){")
+    live_end=drain.find("if(m.kind==='postmatch-closed'){")
+    if not (0<=day_start<sync_start<live_start<live_end):
+        die('Rotas nationaljump ausentes no handler final')
+    day=drain[day_start:sync_start]
+    paints=(
+        'v53PaintStatus();v53ScheduleNationalJumpPaint();continue;',
+        'v18369PaintOnly(()=>v53PaintStatus());v53ScheduleNationalJumpPaint();continue;'
+    )
+    if not any(x in day for x in paints):
+        die('nationaljump sem pintura e scheduler no progresso final')
+    if 'v52MarketIndex=null;v53ScheduleNationalJumpPaint();' not in drain[sync_start:live_start]:
+        die('nationaljump sem scheduler apos sincronizacao final')
+    if "if(v53Sim?.mode==='nationaljump'){v53ScheduleNationalJumpPaint();}" not in drain[live_start:live_end]:
+        die('nationaljump sem scheduler no delta final')
+
+
+def nationaljump_guard_regressions(drain):
+    # Negative controls must fail even with an earlier, intact handler present.
+    # These mutate only the test input; no game source is rewritten.
+    suffix='async function v722CatchUpAfterFocus(){}\n'
+    def reject(broken,label):
+        if broken==drain: die('Mutacao negativa nationaljump nao aplicada: '+label)
+        try: nationaljump_root_checks(final_patch_drain(drain+suffix+broken+suffix))
+        except RuntimeError: return
+        die('Guard nationaljump aceitou regressao: '+label)
+    start=drain.index("if(m.kind==='national-jump-day'){")
+    end=drain.index("if(m.kind==='national-jump-sync'){")
+    day=drain[start:end]
+    missing_paint=day.replace('v18369PaintOnly(()=>v53PaintStatus());','',1)
+    if missing_paint==day: missing_paint=day.replace('v53PaintStatus();','',1)
+    reject(drain[:start]+missing_paint+drain[end:],'status paint')
+    # Each of the three entry points independently requires its scheduler.
+    for route,limit in [('national-jump-day','national-jump-sync'),
+                        ('national-jump-sync','vac-live'),('vac-live','postmatch-closed')]:
+        a=drain.index("if(m.kind==='"+route+"'){")
+        b=drain.index("if(m.kind==='"+limit+"'){")
+        broken=drain[a:b].replace('v53ScheduleNationalJumpPaint();','',1)
+        reject(drain[:a]+broken+drain[b:],route+' scheduler')
+
+
 def main():
     if len(sys.argv)!=2: raise SystemExit('usage: test_root_gameplay.py <project-dir>')
     root=Path(sys.argv[1]).resolve(); html=(root/'src/index.html').read_text(encoding='utf-8')
@@ -183,14 +236,11 @@ console.log(JSON.stringify({ok:true,calls}));
 """
     drag=run_node(js_drag,root,'root_drag')
 
-    # Prova estrutural do nationaljump: os tres pontos de entrada chamam o scheduler raiz.
-    jump_checks=[
-      "if(v53Sim?.mode==='nationaljump'){v53ScheduleNationalJumpPaint();}",
-      "v53PaintStatus();v53ScheduleNationalJumpPaint();continue;",
-      "v52MarketIndex=null;v53ScheduleNationalJumpPaint();"
-    ]
-    for x in jump_checks:
-        if x not in html: die('nationaljump sem refresh raiz: '+x)
+    # Prova estrutural do nationaljump: as tres rotas do handler FINAL
+    # continuam chamando o scheduler, com pintura direta ou protegida.
+    final_drain=final_patch_drain(html)
+    nationaljump_root_checks(final_drain)
+    nationaljump_guard_regressions(final_drain)
 
     # Prova estrutural da geracao mundial e do reparo de saves antigos.
     if "if(out&&op==='create'){v18170EnsureAllNationalPools(out);try{window.v18198EnforceInitialSquads?.(out);" not in html:
@@ -219,7 +269,10 @@ console.log(JSON.stringify({ok:true,calls}));
             die('Otimizacao de carreira longa ausente: '+marker)
 
     report={'ok':True,'source':'final-transformed-index','ordering':ordering,'live_drag':drag,
-            'nationaljump_root':True,'national_free_agents_root':True,'duplicate_drag':False}
+            'nationaljump_root':True,'nationaljump_final_handler':True,
+            'nationaljump_rejects_missing_paint':True,'nationaljump_rejects_missing_scheduler':True,
+            'nationaljump_rejects_inactive_handler':True,
+            'national_free_agents_root':True,'duplicate_drag':False}
     (root/'root-gameplay-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 

@@ -17,10 +17,13 @@ let v18119SeasonTransfer={active:false},v18112Dismissal={pending:false};
 let v53Stats={patches:0,playerUpdates:0},v131RankSnapshotCache=null;
 let v131VacationPaintTick=0,v93VacCheckpointValid=false,v81RankCacheHold=null;
 let posts=[],failures=[],terminations=0,settlements=0,dayWrites=0;
+let statusPaints=0,nationalPaints=[];
 let throwStatus=false,throwHeader=false,throwRefresh=false,throwToast=false,throwData=false;
 let v53DrainPatches;
 const E={invalidateMarket(){},human(){return {balance:0}}};
-function v53PaintStatus(){if(throwStatus)throw Error('TEST_STATUS_PAINT');}
+function v53PaintStatus(){statusPaints++;if(throwStatus)throw Error('TEST_STATUS_PAINT');}
+function v53ScheduleNationalJumpPaint(){nationalPaints.push({day:state.day,simDay:v53Sim.day,
+  rating:state.players.p.rating,nationalForm:state.v640National?.teams?.BRA?.form});}
 function v624VacationHeaderHTML(){if(throwHeader)throw Error('TEST_HEADER_PAINT');return '';}
 function v53RefreshView(){if(throwRefresh)throw Error('TEST_FULL_REPAINT');}
 function toast(){if(throwToast)throw Error('TEST_ERROR_TOAST');}
@@ -53,6 +56,7 @@ function reset(mode='nextmatch'){
  v131PendingVacationAck=0;v143PostRankPending=false;v18119SeasonTransfer.active=false;
  v18112Dismissal.pending=false;v53Stats={patches:0,playerUpdates:0};
  posts=[];failures=[];terminations=0;settlements=0;dayWrites=0;
+ statusPaints=0;nationalPaints=[];
  throwStatus=false;throwHeader=false;throwRefresh=false;throwToast=false;throwData=false;
  v18369VacationReturn=null;
  Object.assign(v18369ResumeStats,{captured:0,paintErrors:0,queueErrors:0});
@@ -136,6 +140,32 @@ TEST=r"""
  assert.equal(state.day,3);assert.equal(dayWrites,1);assert.equal(settlements,1);
  assert.ok(v18369ResumeStats.paintErrors>=2);assert.equal(failures.length,0);
 
+ // The three national-jump entry points still schedule their root repaint.
+ // A status-paint exception in progress cannot suppress the scheduler, the
+ // authoritative sync, a later live delta, or the original completion.
+ reset('nationaljump');view='national';throwStatus=true;
+ state.v640National={teams:{BRA:{form:'old'}}};
+ const nationalJump=operation();
+ send({kind:'national-jump-day',day:3},
+      {kind:'national-jump-sync',day:3,year:2026,stageIndex:1,
+       stage:{type:'national',fixtures:[]},code:'BRA',nationalTeam:{form:'synced'},
+       playerRows:[['p',{rating:88}]],competitionStatRows:[['national','p',{goals:1}]]},
+      {kind:'vac-live',seq:61,root:{day:4},playerRows:[['p',{rating:89}]]},
+      {kind:'finished'});
+ assert.equal(await bounded(nationalJump),state);await idle();
+ assert.equal(statusPaints,1,'national progress must attempt its status paint');
+ assert.deepEqual(nationalPaints,[
+  {day:2,simDay:3,rating:undefined,nationalForm:'old'},
+  {day:3,simDay:3,rating:88,nationalForm:'synced'},
+  {day:4,simDay:4,rating:89,nationalForm:'synced'}
+ ],'progress, authoritative sync and live delta must each schedule in order');
+ assert.equal(state.schedule[1].type,'national');
+ assert.equal(state.competitionStats.national.p.goals,1);
+ assert.equal(state.day,4);assert.equal(settlements,1);
+ assert.deepEqual(posts,[{op:'vac-live-ack',seq:61}]);
+ assert.equal(v18369ResumeStats.paintErrors,1);assert.equal(v18369ResumeStats.queueErrors,0);
+ assert.equal(failures.length,0);assert.equal(v53PatchScheduled,false);
+
  // Never treat a broken data delta as a cosmetic problem or ACK/drop it and
  // continue to a success event. Route to native recovery and reject instead.
  reset('vacation');throwData=true;
@@ -157,6 +187,7 @@ TEST=r"""
  assert.equal(settlements,1);assert.equal(state.day,3);
  console.log(JSON.stringify({ok:true,version:'18.369.0',originalFinalDrainExecuted:true,
   vacLiveAckSurvivesPaintException:true,nextMatchSyncSurvivesPaintException:true,
+  nationalJumpPaintFailureKeepsSyncAndSchedulers:true,
   finishedPromiseSettlesOnce:true,errorToastCannotLoseRejection:true,
   appliedMessagesNeverReplayed:true,realDataFailureRejectsWithoutAck:true,
   dataFailureRoutesToOriginalRecovery:true,queueOwnershipAlwaysReleased:true,

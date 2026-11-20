@@ -2,7 +2,7 @@ name: FutBR Windows 18.369 - restore advancement after ending vacation
 on:
   push:
     branches: [fix/desktop-18369-vacation-resume]
-    paths: ['.github/workflows/build-desktop-updater-18369.yml', '.github/scripts/*18369.py', '.github/scripts/build_desktop_season_18310.ps1']
+    paths: ['.github/workflows/build-desktop-updater-18369.yml', '.github/scripts/*18369.py', '.github/scripts/test_root_gameplay.py', '.github/scripts/build_desktop_season_18310.ps1']
   workflow_dispatch:
 permissions:
   contents: read
@@ -256,7 +256,9 @@ jobs:
             $vac369 = Get-Content (Join-Path $art 'vacation-resume-18369-tests.json') -Raw | ConvertFrom-Json
             if (-not $vac369.ok -or -not $vac369.realOriginalV53StartSimulation -or -not $vac369.nextMatchAfterVacationWorks -or -not $vac369.normalDayAfterVacationWorks -or -not $vac369.noPreSaveBeforeResume -or -not $vac369.noStaleDiskReload -or -not $vac369.noWrongResidentWorker -or -not $vac369.careerIdentityGuard -or -not $vac369.noEarlySyncRelease -or -not $vac369.previousSessionGuard -or -not $vac369.noStrongWorldRetention -or -not $vac369.dispatchConsumesToken -or -not $vac369.failedDispatchPreservesToken -or -not $vac369.newVacationConsumesOldToken) { throw '18.369 nextmatch or normal day still reloads pre-vacation save. BLOCK RELEASE.' }
             $queue369 = Get-Content (Join-Path $art 'vacation-queue-18369-tests.json') -Raw | ConvertFrom-Json
-            if (-not $queue369.ok -or -not $queue369.originalFinalDrainExecuted -or -not $queue369.vacLiveAckSurvivesPaintException -or -not $queue369.nextMatchSyncSurvivesPaintException -or -not $queue369.finishedPromiseSettlesOnce -or -not $queue369.errorToastCannotLoseRejection -or -not $queue369.appliedMessagesNeverReplayed -or -not $queue369.realDataFailureRejectsWithoutAck -or -not $queue369.dataFailureRoutesToOriginalRecovery -or -not $queue369.queueOwnershipAlwaysReleased -or -not $queue369.staleSessionIgnored) { throw '18.369 Worker acknowledgements, queue ownership or completion regression failed. BLOCK RELEASE.' }
+            if (-not $queue369.ok -or -not $queue369.originalFinalDrainExecuted -or -not $queue369.vacLiveAckSurvivesPaintException -or -not $queue369.nextMatchSyncSurvivesPaintException -or -not $queue369.finishedPromiseSettlesOnce -or -not $queue369.errorToastCannotLoseRejection -or -not $queue369.appliedMessagesNeverReplayed -or -not $queue369.realDataFailureRejectsWithoutAck -or -not $queue369.dataFailureRoutesToOriginalRecovery -or -not $queue369.queueOwnershipAlwaysReleased -or -not $queue369.staleSessionIgnored -or -not $queue369.nationalJumpPaintFailureKeepsSyncAndSchedulers) { throw '18.369 Worker acknowledgements, queue ownership or completion regression failed. BLOCK RELEASE.' }
+            $national369 = Get-Content (Join-Path $art 'root-gameplay-tests.json') -Raw | ConvertFrom-Json
+            if (-not $national369.ok -or -not $national369.nationaljump_root -or -not $national369.nationaljump_final_handler -or -not $national369.nationaljump_rejects_missing_paint -or -not $national369.nationaljump_rejects_missing_scheduler -or -not $national369.nationaljump_rejects_inactive_handler) { throw '18.369 national-jump active-handler repaint or scheduler regression failed. BLOCK RELEASE.' }
             $lifecycle369 = Get-Content (Join-Path $art 'vacation-lifecycle-scope-18369-tests.json') -Raw | ConvertFrom-Json
             if (-not $lifecycle369.ok -or -not $lifecycle369.originalLifecycleFunctionsExecuted -or -not $lifecycle369.lifecycleInsideOriginalPrivateUI -or -not $lifecycle369.employedFinishedCallbackHasPrivateState -or -not $lifecycle369.dismissalUsesSamePrivateWorld -or -not $lifecycle369.outerVacationPromiseSettlesBeforeHandoff -or -not $lifecycle369.controllerWrapperOrderPreserved -or -not $lifecycle369.storageCleanupUsesExplicitScalarBridge -or -not $lifecycle369.careerStateNotExported -or -not $lifecycle369.dismissalFinishedIdentityIsWeak) { throw '18.369 private vacation lifecycle scope or dismissal settlement regression failed. BLOCK RELEASE.' }
             $dismiss369 = Get-Content (Join-Path $art 'vacation-dismissal-browser-18369-tests.json') -Raw | ConvertFrom-Json
@@ -312,6 +314,7 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-18369-install.json
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-18369-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-queue-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/root-gameplay-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-lifecycle-scope-18369-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-browser-18369-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/vacation-dismissal-browser-18369-tests.json
