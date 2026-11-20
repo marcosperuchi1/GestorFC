@@ -1,0 +1,23 @@
+name: Preflight FutBR 18.361 fast signed updater
+on:
+  push:
+    branches: [fix/desktop-18361-updater-responsive-recovery]
+    paths:
+      - '.github/workflows/preflight-fast-updater-18361.yml'
+      - '.github/scripts/fix_fast_updater_18361.py'
+      - '.github/scripts/test_fast_updater_18361.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test signature-preserving native updater and actual JS events
+        run: |
+          python -m py_compile .github/scripts/fix_fast_updater_18361.py .github/scripts/test_fast_updater_18361.py
+          python .github/scripts/test_fast_updater_18361.py
