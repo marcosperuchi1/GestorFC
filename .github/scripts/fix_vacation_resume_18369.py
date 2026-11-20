@@ -206,6 +206,79 @@ def patch_final_drain(drain):
   raise RuntimeError('18.369 data messages must never be replayed after application')
  return drain
 
+def relocate_lifecycle_scope(s):
+ # 18.366 moved the 18.363-18.365 controllers but left their 18.359/18.362
+ # lifecycle dependency in a separate script. Its Worker callback therefore
+ # resolved `state` outside the game's private closure and raised ReferenceError.
+ tag='<script id="futbr-dismissal-finished-18359">'
+ if s.count(tag)!=1:
+  raise RuntimeError('18.369 expected one detached 18.359 lifecycle script')
+ a=s.index(tag);b=s.index('</script>',a)
+ lifecycle=s[a+len(tag):b].strip()
+ for required in ('FUTBR_DISMISSAL_FINISHED_SIGNAL_18359','FUTBR_CORE_LIFECYCLE_18362',
+   'function v18359OnWorkerFinished(m,wasVacation){',
+   'const v18359BaseChrome=v555UpdateChrome;',
+   'const v18359BaseStart=v53StartSimulation;'):
+  if required not in lifecycle:raise RuntimeError('18.369 missing lifecycle dependency '+required)
+ # This formerly detached controller is now active. Its identity signal must
+ # not retain an obsolete 185k-player world through a later streamed return.
+ lifecycle=once(lifecycle,'let v18359FinishedWorld=null,',
+  'const v18369FinishedWorlds=new WeakMap();\nlet v18359FinishedWorld=null,',
+  'weak identity for the newly active dismissal lifecycle')
+ if lifecycle.count('x.world!==s')!=2:
+  raise RuntimeError('18.369 expected two finished-world identity guards')
+ lifecycle=lifecycle.replace('x.world!==s','v18369FinishedWorlds.get(s)!==x')
+ lifecycle=once(lifecycle,'v18359FinishedWorld={world:state,year:',
+  'v18359FinishedWorld={year:','remove completed Worker strong-world reference')
+ lifecycle=once(lifecycle,"careerId,session,phase:'worker-finished'};",
+  "careerId,session,phase:'worker-finished'};\n v18369FinishedWorlds.set(state,v18359FinishedWorld);",
+  'record completed Worker identity without retaining the world')
+ lifecycle=once(lifecycle,'v18359FinishedWorld={world:s,year:',
+  'v18359FinishedWorld={year:','remove promoted signal strong-world reference')
+ lifecycle=once(lifecycle,"careerId:String(s.v1903CareerId||''),session:Number(v53Sim?.session)||0,phase:'promoted'};",
+  "careerId:String(s.v1903CareerId||''),session:Number(v53Sim?.session)||0,phase:'promoted'};\n v18369FinishedWorlds.set(s,v18359FinishedWorld);",
+  'record outer completion identity without retaining the world')
+ s=s[:a]+s[b+len('</script>'):]
+ # Storage retains its own manifest helpers. Only a scalar busy probe and a
+ # counter callback cross to the UI closure; the career object stays private.
+ c=s.index('/* FUTBR_VACATION_FINALIZE_LIGHT_18360')
+ d=s.index('async function promoteVacationCheckpoint(){',c)
+ cleanup=s[c:d]
+ ca=cleanup.index('function v18362CleanupBusy(){')
+ cb=cleanup.index('function v18360ScheduleObsoleteCleanup(',ca)
+ cleanup=cleanup[:ca]+"""function v18362CleanupBusy(){
+ const probe=window.GestorFC?.lifecycle18362?.cleanupBusy;
+ // If the UI is not initialized yet, defer housekeeping safely.
+ return typeof probe!=='function'||probe();
+}
+"""+cleanup[cb:]
+ if cleanup.count('v18362Transitions.cleanupDeferred++;')!=2:
+  raise RuntimeError('18.369 expected two storage-to-UI cleanup counter sites')
+ cleanup=cleanup.replace('v18362Transitions.cleanupDeferred++;',
+    'window.GestorFC?.lifecycle18362?.noteCleanupDeferred?.();')
+ s=s[:c]+cleanup+s[d:]
+ bridge="""
+// 18.369 storage bridge: scalar operations, never an exported career/state.
+window.GestorFC.lifecycle18362.cleanupBusy=()=>!!(
+ v53Sim?.active||v53Sim?.starting||v53Sim?.syncing||v53Sim?.patching||
+ v53Creating||v52Processing||v52SavePromise||v125VacIncoming||v89JobWait?.active||
+ (typeof v18121NewSeasonPreparation!=='undefined'&&v18121NewSeasonPreparation));
+window.GestorFC.lifecycle18362.noteCleanupDeferred=()=>{v18362Transitions.cleanupDeferred++;};
+"""
+ anchor='// 18.366 relocated in-scope: futbr-jobwait-state-18363'
+ ui=s.index('let state=null,saved=null')
+ end=s.index('</script>',ui)
+ insert=s.index(anchor)
+ if not ui<insert<end:
+  raise RuntimeError('18.369 lifecycle insertion must be in original private UI closure')
+ relocated='/* FUTBR_LIFECYCLE_SCOPE_18369_BEGIN */\n'+lifecycle+'\n'+bridge+'\n/* FUTBR_LIFECYCLE_SCOPE_18369_END */\n'
+ s=once(s,anchor,relocated+anchor,'install lifecycle before its later controller wrappers')
+ for function in ('function v18359OnWorkerFinished(m,wasVacation){',
+   'const v18359BaseStart=v53StartSimulation;','const v18359BaseChrome=v555UpdateChrome;'):
+  if s.count(function)!=1:raise RuntimeError('18.369 duplicate lifecycle declaration '+function)
+ if tag in s:raise RuntimeError('18.369 detached lifecycle script was not removed')
+ return s
+
 def main():
  if len(sys.argv)!=2: raise SystemExit('usage: fix_vacation_resume_18369.py <project>')
  root=Path(sys.argv[1]).resolve()
@@ -218,6 +291,7 @@ def main():
            'const compactHumanMatch=!!manualOverlaySnapshot,v18311LiveVacation=',
            'const v18366BaseVacationHeader=v624VacationHeaderHTML;'):
   if a not in s: raise RuntimeError('18.369 missing preserved source: '+a)
+ s=relocate_lifecycle_scope(s)
  # Base simulator: preserve the existing 18.311 fast path and its 18.368
  # resident-Worker protection. Reuse it once after a successful vacation
  # WITHOUT waiting for an outdated full save or loading old day from disk.
@@ -295,7 +369,7 @@ def main():
  file.write_text(s,encoding='utf-8')
  report={
   'ok':True,'version':VERSION,
-  'rootCause':'Optional repaint could interrupt Worker ACK and queue delivery; first post-vacation advance could also reuse an outdated save',
+  'rootCause':'Detached vacation finalization callback accessed private state outside the UI closure; optional repaint could also interrupt Worker ACK and first post-vacation advance could reuse an outdated save',
   'commonHandoffForEmployedAndUnemployed':True,
   'captureOnlyAfterRealFullWorkerSync':True,
   'normalDayAfterVacationUsesLiveWorld':True,
@@ -313,7 +387,12 @@ def main():
   'terminalWorldAndFinishedMessagesPreserved':True,
   'paintErrorsCannotLoseVacationAck':True,
   'stateMessagesAppliedExactlyOnce':True,
-  'dataApplicationFailureUsesOriginalRecovery':True}
+  'dataApplicationFailureUsesOriginalRecovery':True,
+  'lifecycleCallbackSharesPrivateUIState':True,
+  'lifecycleWrappersKeepOriginalControllerOrder':True,
+  'storageCleanupUsesScalarUIBridge':True,
+  'noPrivateCareerStateExported':True,
+  'dismissalFinishedSignalDoesNotRetainWorld':True}
  (root/'vacation-resume-18369-install.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print(json.dumps(report,ensure_ascii=False))
 if __name__=='__main__':main()

@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json,os,shutil,sys
+import json,os,re,shutil,sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -7,6 +7,24 @@ HOOK=r"""
 /* TEST ONLY: real Engine/Worker vacation -> manual stop -> normal nextmatch. */
 window.__vacResume369={
  working:false,result:null,progress:null,notices:[],
+ probeLifecycle(){
+  // This deliberately calls the original callback while the coach is still
+  // employed. It must read the same private state and return false without
+  // changing it. An old detached global callback throws "state is not defined".
+  const before=state,probe={localCallback:typeof v18359OnWorkerFinished==='function',
+    noDetachedGlobal:typeof window.v18359OnWorkerFinished==='undefined'};
+  try{
+   probe.employedResult=v18359OnWorkerFinished({session:v53Sim.session},true);
+   probe.sameState=state===before;
+   probe.finishedStatus=window.GestorFC.dismissalFinished18359.status();
+   probe.lifecycleStatus=window.GestorFC.lifecycle18362.status();
+   probe.ok=probe.localCallback&&probe.noDetachedGlobal&&probe.employedResult===false&&
+     probe.sameState&&probe.finishedStatus.year===state.year&&
+     probe.finishedStatus.day===state.day;
+  }catch(error){probe.ok=false;probe.error=String(error);
+   probe.stack=String(error?.stack||'').slice(0,5000);}
+  return probe;
+ },
  async snapshot(){
    const snapshot={working:this.working,
      year:state?.year,day:state?.day,employed:state?.userEmployed,
@@ -59,7 +77,8 @@ window.__vacResume369={
   v53Sim.patching=false;v53Sim.finished=null;
   saveOK=true;v52SavePromise=null;v52SaveDirty=false;v52PendingState=null;
   return {career:String(state.v1903CareerId),year:state.year,day:state.day,
-     user:state.user,teams:state.teams.length,players:Object.keys(state.players).length};
+     user:state.user,teams:state.teams.length,players:Object.keys(state.players).length,
+     lifecycleProbe:this.probeLifecycle()};
  },
  start(){
   if(this.working)throw Error('Running');
@@ -67,8 +86,19 @@ window.__vacResume369={
   // Never retain the 185k-player old world across vacation sync: the game deliberately releases it.
   const career=String(state.v1903CareerId),startDay=Number(state.day);
   const reports={startDay,career,stages:[],notices:this.notices,
-    terminalPaintFaults:0,terminalPaintFaultPromiseSettled:false};
+    terminalPaintFaults:0,terminalPaintFaultPromiseSettled:false,lifecycleCallbacks:[]};
   this.progress=reports;
+  // Observe the real final handler's lexical callback without replacing any
+  // state transition. The original function and its return value are preserved.
+  const originalLifecycleFinished=v18359OnWorkerFinished;
+  v18359OnWorkerFinished=function(message,wasVacation){
+   const call={wasVacation:!!wasVacation,session:message?.session,
+     liveSession:v53Sim.session,year:state?.year,day:state?.day,
+     employed:state?.userEmployed,error:message?.error||null};
+   reports.lifecycleCallbacks.push(call);
+   try{call.result=originalLifecycleFinished.apply(this,arguments);return call.result;}
+   catch(error){call.error=String(error);call.stack=String(error?.stack||'').slice(0,5000);throw error;}
+  };
   // The active final drain settles its finished Promise before the tail
   // repaint. A throw in that repaint could still skip ACK/scheduler cleanup
   // and starve the next Worker session. Inject one harmless UI exception,
@@ -115,6 +145,13 @@ window.__vacResume369={
       teams:state?.teams?.length,
       players:Object.keys(state?.players||{}).length};
     if(!stopSent)throw Error('Vacation ended without the manual end command being accepted');
+    if(reports.afterVacation.marker?.queueErrors)
+      throw Error('Original Worker delivery failed: '+reports.afterVacation.marker.lastQueueError);
+    if(reports.lifecycleCallbacks.length!==1||
+       reports.lifecycleCallbacks[0].wasVacation!==true||
+       reports.lifecycleCallbacks[0].employed!==true||
+       reports.lifecycleCallbacks[0].result!==false)
+      throw Error('Original vacation final handler did not use the scoped employed lifecycle callback exactly once');
     if(!reports.terminalPaintFaultPromiseSettled)
       throw Error('Terminal repaint fault was not exercised during the completed vacation');
     if(!state||state.userEmployed!==true||state.vacation?.active||v53Sim.active||v53Sim.syncing||
@@ -154,6 +191,7 @@ window.__vacResume369={
    finally{
     if(interval)clearInterval(interval);
     v53RefreshView=originalRefresh;
+    v18359OnWorkerFinished=originalLifecycleFinished;
     this.result=reports;this.working=false;
    }
   })();
@@ -183,6 +221,18 @@ def main():
  b=html.index('</script>',a)
  anchor=html.rfind('})();',a,b)
  assert 0<a<anchor<b,'Real IIFE not found'
+ main_ui=html[a:anchor]
+ final_drain=main_ui.rfind('v53DrainPatches=function(){')
+ source_discovery={
+  'singleCallbackInMainIIFE':main_ui.count('function v18359OnWorkerFinished(')==1,
+  'noDetachedLifecycleScript':not re.search(r'<script\b[^>]*\bid\s*=\s*[\"\']futbr-dismissal-finished-18359[\"\']',html),
+  'sameScopeAsFinalDrain':final_drain>=0 and
+    'v18359OnWorkerFinished(m,wasVacation)' in main_ui[final_drain:main_ui.index('async function v722CatchUpAfterFocus(){',final_drain)],
+  'privateLifecycleDeclared':all(token in main_ui for token in
+    ('let v18362VacationOrigin=null','const v18362Transitions=',
+     'const v18359BaseStart=v53StartSimulation;'))}
+ print('18.369 LIFECYCLE SOURCE DISCOVERY '+json.dumps(source_discovery),flush=True)
+ assert all(source_discovery.values()),'Vacation lifecycle is outside the original final handler scope'
  test_html=html[:anchor]+'\n'+HOOK+'\n'+html[anchor:]
  errors=[];console_errors=[];phase='startup';exe=browser_path()
  with sync_playwright() as pw:
@@ -208,12 +258,15 @@ def main():
   phase='career-setup'
   setup=page.evaluate("() => window.__vacResume369.makeCareer()")
   print('18.369 REAL VACATION TEST SETUP '+json.dumps(setup,ensure_ascii=False),flush=True)
-  phase='vacation-and-resume'
-  page.evaluate("() => window.__vacResume369.start()")
   from playwright.sync_api import TimeoutError as PwTimeout
   snapshots=[]
-  result=None
-  for cycle in range(8):
+  result=None if setup.get('lifecycleProbe',{}).get('ok') else {
+    'ok':False,'error':'Original vacation lifecycle cannot read the private UI state',
+    'lifecycleProbe':setup.get('lifecycleProbe')}
+  if result is None:
+   phase='vacation-and-resume'
+   page.evaluate("() => window.__vacResume369.start()")
+  for cycle in range(8 if result is None else 0):
    try:
     page.wait_for_function("() => window.__vacResume369.result!==null",timeout=18000)
     result=page.evaluate("() => window.__vacResume369.result")
@@ -239,6 +292,11 @@ def main():
   'realOriginalEngine':True,'realVacationWorkerAndStream':bool(result.get('afterVacation')),
   'realNextMatchAfterManualVacationEnd':bool(result.get('afterNext')) and bool(result.get('ok')),
   'realWorkersNotMocked':True,'browser':exe,'setup':setup,'result':result,
+  'lifecycleSourceDiscovery':source_discovery,
+  'originalLifecycleHasPrivateState':bool(setup.get('lifecycleProbe',{}).get('ok')),
+  'originalFinalHandlerUsesScopedLifecycle':len(result.get('lifecycleCallbacks',[]))==1 and
+    result['lifecycleCallbacks'][0].get('result') is False and
+    result['lifecycleCallbacks'][0].get('employed') is True,
   'originalManualEndCommandAccepted':bool(result.get('afterVacation',{}).get('stopped')),
   'terminalRepaintFailurePreservesOriginalPromise':bool(result.get('terminalPaintFaultPromiseSettled')),
   'startupErrors':errors[:startup_error_count][-12:],
@@ -247,7 +305,7 @@ def main():
   'testHookNotShipped':True}
  (root/'vacation-resume-browser-18369-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print('18.369 REAL VACATION TEST RESULT '+json.dumps(report,ensure_ascii=False),flush=True)
- if not report['ok'] or not report['realVacationWorkerAndStream'] or not report['realNextMatchAfterManualVacationEnd'] or not report['originalManualEndCommandAccepted'] or not report['terminalRepaintFailurePreservesOriginalPromise']:
+ if not report['ok'] or not report['realVacationWorkerAndStream'] or not report['realNextMatchAfterManualVacationEnd'] or not report['originalManualEndCommandAccepted'] or not report['terminalRepaintFailurePreservesOriginalPromise'] or not report['originalLifecycleHasPrivateState'] or not report['originalFinalHandlerUsesScopedLifecycle']:
   raise RuntimeError('Real vacation end -> next match still cannot advance genuine jornadas')
 if __name__=='__main__':main()
 

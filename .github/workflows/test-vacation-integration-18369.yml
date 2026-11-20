@@ -47,6 +47,7 @@ jobs:
         run: |
           python .github/scripts/test_vacation_resume_18369.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
           python .github/scripts/test_vacation_queue_18369.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
+          python .github/scripts/test_vacation_lifecycle_scope_18369.py "$RUNNER_TEMP/futbr-prepared-regression-18369/prepared"
       - name: Install browser test driver
         run: python -m pip install playwright
       - name: Run actual Engine and Worker scenarios

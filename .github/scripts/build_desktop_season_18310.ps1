@@ -136,6 +136,7 @@ Run-Python '.github/scripts/set_desktop_version_18369.py'
 Run-Python '.github/scripts/fix_vacation_resume_18369.py'
 Run-Python '.github/scripts/test_vacation_resume_18369.py'
 Run-Python '.github/scripts/test_vacation_queue_18369.py'
+Run-Python '.github/scripts/test_vacation_lifecycle_scope_18369.py'
 # Recheck unemployed real-Worker advancement on the final vacation queue implementation.
 Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'
 Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
@@ -285,6 +286,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'vacation-resume-18369-install.json' 'artifacts/vacation-resume-18369-install.json'
    Copy-Item 'vacation-resume-18369-tests.json' 'artifacts/vacation-resume-18369-tests.json'
    Copy-Item 'vacation-queue-18369-tests.json' 'artifacts/vacation-queue-18369-tests.json'
+   Copy-Item 'vacation-lifecycle-scope-18369-tests.json' 'artifacts/vacation-lifecycle-scope-18369-tests.json'
    Copy-Item 'vacation-resume-browser-18369-tests.json' 'artifacts/vacation-resume-browser-18369-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
