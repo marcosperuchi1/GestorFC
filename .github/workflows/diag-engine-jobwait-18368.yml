@@ -1,0 +1,35 @@
+name: Diagnose real Engine new-world API for unemployed integration 18.368
+on:
+  push:
+    branches: [fix/desktop-18368-unemployed-real-worker]
+    paths: ['.github/workflows/diag-engine-jobwait-18368.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect genuine Engine API for career creation and advanceDayAsync
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,io,re
+          p=sorted(pathlib.Path('.').glob('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part*'))
+          with zipfile.ZipFile(io.BytesIO(b''.join(x.read_bytes() for x in p))) as z:
+            s=z.read(next(n for n in z.namelist() if n.endswith('/src/index.html'))).decode('utf-8-sig')
+          for label,terms,span in [
+            ('ENGINE_TOP',['const Engine = (() => {'],2700),
+            ('E_CREATE',['createCareer(','function createCareer(','newCareer(','function newCareer(','newGame(','function newGame('],2800),
+            ('E_DAY',['async function advanceDayAsync(','advanceDayAsync:','advanceDayAsync ='],5100),
+            ('E_END',['if(typeof module!==\'undefined\'&&module.exports)'],1200),
+            ('E_REST',['const E=Engine','let state=null,saved=null'],900),
+            ('STATE_INIT',['E.newGame(','E.createCareer(','E.create(','Engine.newGame(','E.startCareer('],1200),
+          ]:
+            print('\n===',label,'===',flush=True)
+            for t in terms:
+              print('TERM',t,'COUNT',s.count(t),flush=True)
+              i=s.find(t)
+              if i>=0:print(s[max(0,i-110):i+span],flush=True)
+          PY
