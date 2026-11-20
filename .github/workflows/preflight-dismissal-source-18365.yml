@@ -1,0 +1,27 @@
+name: Preflight 18.365 real dismissed vacation click and career read-only recovery
+on:
+  push:
+    branches: [fix/desktop-18365-vacation-dismissal-source]
+    paths:
+      - '.github/workflows/preflight-dismissal-source-18365.yml'
+      - '.github/scripts/fix_dismissal_source_18365.py'
+      - '.github/scripts/test_dismissal_source_18365.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source-code patch and the primary click handler (not only a fake button)
+        run: |
+          python -m py_compile .github/scripts/fix_dismissal_source_18365.py .github/scripts/test_dismissal_source_18365.py
+          python .github/scripts/test_dismissal_source_18365.py --standalone
