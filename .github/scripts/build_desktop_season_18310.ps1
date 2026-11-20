@@ -131,6 +131,7 @@ Run-Python '.github/scripts/test_jobwait_real_progress_18367.py'
 Run-Python '.github/scripts/set_desktop_version_18368.py'
 Run-Python '.github/scripts/fix_unemployed_real_worker_18368.py'
 Run-Python '.github/scripts/test_unemployed_real_worker_18368.py'
+Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -272,6 +273,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'desktop-version-18368-install.json' 'artifacts/desktop-version-18368-install.json'
    Copy-Item 'unemployed-worker-18368-install.json' 'artifacts/unemployed-worker-18368-install.json'
    Copy-Item 'unemployed-worker-18368-tests.json' 'artifacts/unemployed-worker-18368-tests.json'
+   Copy-Item 'unemployed-browser-18368-tests.json' 'artifacts/unemployed-browser-18368-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -335,6 +337,7 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_dismissal_source_183
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_scope_18366.py'")) { throw '18.366 must run real Chromium test within same lexical career scope; no detached scripts.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_real_progress_18367.py'")) { throw '18.367 requires three verified actual Worker dayfast journeys, not a cosmetic button click.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_worker_18368.py'")) { throw '18.368 requires original Worker transport and multi-round jobwait simulation, not mocked v53StartSimulation.' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'")) { throw '18.368 requires real Chromium game Engine to advance two Worker dayfast rounds when unemployed.' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
