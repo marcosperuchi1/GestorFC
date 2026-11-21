@@ -100,6 +100,14 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
   (async()=>{
    try{
     const before=Number(state.day);
+    // A manually played match consolidates against the durable pre-match
+    // world. Create it through the original save queue, as normal career
+    // creation does; flushing an empty queue alone would be a no-op.
+    this.progress.push({stage:'saving-initial-fixture'});
+    const initialSave=persist();await v52FlushSave();await initialSave;
+    if(v52SavePromise)await v52SavePromise;
+    if(!saveOK||v52SaveDirty)throw Error('Original initial career save did not complete');
+    this.progress.push({stage:'initial-fixture-saved'});
     if(mode==='normal'){
      E.kickoff(state);E.finishMatch(state,state.live);
      if(state.live?.status!=='finished')throw Error('The original league match did not finish');
@@ -335,3 +343,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
