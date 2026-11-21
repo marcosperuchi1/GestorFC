@@ -265,6 +265,16 @@ function v18373ApplyJobProgress(m){
  if(Number.isSafeInteger(m.scheduleLength)&&m.scheduleLength>=0)state.schedule.length=m.scheduleLength;
  v53Sim.day=Number(state.day);v18373JobMemory.packets++;v53Stats.patches++;
 }
+function v18373ReturningOwnMirror(m){
+ if(m?.jobwait18373!==true)return false;
+ const point=v18373JobIdentity(),incoming=v18373JobIdentity(m.root),token=v18373JobMemory.token;
+ if(!v18373JobMemory.partial||v18373JobMemory.phase!=='returning'||!state?.v18373JobWaitPartial||
+    !v18373SameJob(point,token)||!v18373SameJob(incoming,token)||
+    point.year!==Number(m.year)||point.day!==Number(m.day)||
+    incoming.year!==point.year||incoming.day!==point.day)
+  throw Error('A devolução não corresponde ao espelho e à posse atuais da carreira.');
+ return true;
+}
 async function v18373RestoreJobCheckpoint(){
  const runtime=window.GestorFC?.memoryStorage18373,token=v18373JobMemory.token;
  v18373JobMemory.phase='recovering';
@@ -422,6 +432,11 @@ def install(s):
     # Change only the final active drainer, not the superseded historical one.
     anchor="   if(m.kind==='vac-checkpoint-error'){v93VacCheckpointValid=false;console.warn('[v93] checkpoint de férias:',m.error||'falhou');continue;}"
     s=once(s,anchor,anchor+"\n   if(m.kind==='jobwait-progress-18373'){v18373ApplyJobProgress(m);v18369PaintOnly(()=>v89PaintJobWait());continue;}",'apply compact packet')
+    # This mirror already released all heavy fields before Worker creation.
+    # The old purge also terminates an idle simulation Worker and clears its
+    # queue, but the return RPC still owns that Worker after dayfast settled.
+    s=once(s,"overrides=state?.crestOverrides;v18310ReleaseOldVacationState();",
+        "overrides=state?.crestOverrides;\n    if(!v18373ReturningOwnMirror(m))v18310ReleaseOldVacationState();",'preserve return owner and sync queue')
     s=once(s,"state=null;saved=null;v125VacIncoming={...(m.root||{}),v538CareerArchive:archive538||{},v555CareerArchive:archive555||{},scorerArchive:scorers||[],crestOverrides:overrides||{}};",
         "state=null;saved=null;v125VacIncoming=m.jobwait18373?{...(m.root||{})}:{...(m.root||{}),v538CareerArchive:archive538||{},v555CareerArchive:archive555||{},scorerArchive:scorers||[],crestOverrides:overrides||{}};",'return archive roots')
     old="if(m.kind==='vac-sync-part'){if(!v125VacIncoming)continue;const dst=v125VacIncoming[m.key]||(v125VacIncoming[m.key]={}),rows=v18310VacationRows(m);m.bytes=null;for(const [id,row] of rows){if(Array.isArray(dst))dst[Number(id)]=row;else dst[id]=row;}"
@@ -470,7 +485,8 @@ def install(s):
     return s, {'alreadyInstalled':False,'sameGameScope':True,'verifiedCheckpointBoot':True,
         'fullWorldJobwaitMessages':0,'singleCompleteWorldOwner':True,'losslessBoundedReturn':True,
         'residentDaysAndFourDayCheckpoints':True,'fullWorldBeforeOffersAndNavigation':True,
-        'noHistoryTruncation':True,'inFlightArchiveMigrationGuarded':True}
+        'noHistoryTruncation':True,'inFlightArchiveMigrationGuarded':True,
+        'returnOwnerSurvivesLegacyCleanup':True}
 
 
 def main():

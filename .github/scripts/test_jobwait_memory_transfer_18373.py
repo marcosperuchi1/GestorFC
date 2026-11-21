@@ -41,6 +41,7 @@ let state=null,saved=null,view='career',saveOK=true,saveStamp='',vacationLoop=fa
  v18360SyncMetrics={players:0},v53Stats={patches:0,playerUpdates:0},v86RankCache={dirty:false},
  v18112Dismissal={pending:false},v89JobWait={active:false,stop:false,days:0};
 const v555Perf={archiveYearsPacked:0,archivePlayersPacked:0};
+const v168Stats={};
 const STORE='gestor_fc_mundo_v205_clean',V171_FORMAT='GFC_SHARDED_171';
 let disk=new Map(),owner=null,notices=[],messages=[],workers=[],apiCounts={},sequences=[],
  failStream=false,killAfterDay=0,stopAtDay=0,enableOffers=false,offerOpened=0,
@@ -82,7 +83,6 @@ function v18369FailPatchDelivery(error,finish){workerFailures.push(String(error)
  v53Sim.active=false;v53Sim.starting=false;v53Sim.finished=null;v53PatchQueue.length=0;
  finish?.reject(error);
 }
-function v18310ReleaseOldVacationState(){if(state){state.players={};state.competitionStats={};state.allTimeStats={};}}
 /* INJECT_REAL_UI_CODE */
 const rawStart=v53StartSimulation;
 v53StartSimulation=async function(mode,opts){
@@ -158,6 +158,10 @@ function installRuntime(){
    assert.equal(m.root.v1903CareerId,token.careerId);return decodeStored(clone(m));}
  };
  window.GestorFC.v170={release:()=>window.GestorFC.memoryStorage18373.releaseIdleWorker('legacy-release')};
+ // Keep the actual legacy cleanup chain. It cancels queues and terminates an
+ // idle simulation Worker, so it cannot run during the new return RPC.
+ window.GestorFC.v100={repair:{stopBackground:()=>v100StopBackground(true)}};
+ window.GestorFC.v168={purge:()=>{apiCounts.legacyPurge++;v168StopBackground();return v168DropStateCaches(state);}};
 }
 function handleWorkerMessage(w,m){
  if(w.closed)return;
@@ -204,7 +208,7 @@ function spawnWorker(){
   this.deliver(m);
  },terminate(){
   this.closed=true;sequences.push('terminate');
-  for(const [id,p] of v53RPC)if(p.worker===this){v53RPC.delete(id);p.reject(Error('Worker retired'));}
+   for(const [id,p] of v53RPC)if(p.worker===this){v53RPC.delete(id);p.reject(Error('O Worker desta consulta foi encerrado.'));}
  }};
  let retainedNational=null;
  const engine={...E,
@@ -240,7 +244,7 @@ async function v53Call(op,params={}){
 function reset(){
  for(const w of workers)w.terminate();workers=[];disk=new Map();state=fixture();saved=state;buildManifest(state);
  state.v538CareerArchive=clone(state.v538CareerArchive);owner=null;
- notices=[];messages=[];sequences=[];apiCounts={ensure:0,recovery:0,nationalRelease:0,streamParts:0,maxRows:0,maxBytes:0};
+ notices=[];messages=[];sequences=[];apiCounts={ensure:0,recovery:0,nationalRelease:0,streamParts:0,maxRows:0,maxBytes:0,legacyPurge:0};
  v53Worker=null;v53WorkerReady=null;v53RPC=new Map();v53PatchQueue=[];v53PatchScheduled=false;
  v53Sim={active:false,starting:false,session:0};v125VacIncoming=null;v52Processing=false;v53Creating=false;
  v89JobWait={active:false,stop:false,days:0};v18119SeasonTransfer.active=false;v53Stats={patches:0,playerUpdates:0};
@@ -260,8 +264,22 @@ function compareHistory(original,restored){
  assert.equal(restored.unknownLongText,original.unknownLongText);
 }
 (async()=>{
+ // Reproduce the legacy helper's exact ownership mismatch: dayfast has
+ // settled, but the Worker is still the sole owner during the return RPC.
+ reset();const retiredByLegacy={closed:false,terminate(){this.closed=true;}};
+ v53Worker=retiredByLegacy;v18373JobMemory.phase='returning';
+ v18310ReleaseOldVacationState();
+ assert.equal(retiredByLegacy.closed,true,'Actual legacy purge retires a non-simulating return owner');
+ assert.equal(apiCounts.legacyPurge,1);
+ // Ordinary vacation still performs its original cleanup while active.
+ reset();const vacationWorker={closed:false,terminate(){this.closed=true;}};
+ v53Worker=vacationWorker;v53Sim.active=true;v18310ReleaseOldVacationState();
+ assert.equal(vacationWorker.closed,false);assert.equal(apiCounts.legacyPurge,1);
+ assert.equal(Object.keys(state.players).length,0);v53Sim.active=false;
  reset();let original=clone(state);const old={closed:false,terminate(){this.closed=true;sequences.push('old-worker-terminated');}};v53Worker=old;
  await v89RunJobWait();
+ assert.equal(apiCounts.recovery,0,'Return must complete through its stream, never hide cleanup failure with recovery');
+ assert.equal(apiCounts.legacyPurge,0,'A partial mirror needs no legacy world/Worker purge');
  assert.equal(state.day,21);assert.equal(v89JobWait.days,9);assert.equal(messages.length,9);
  assert.equal(apiCounts.ensure,1);assert.equal(v18370JobSave.commits,3);
  assert.equal(messages[0].loadSaved,true);assert.equal(messages[0].useResident,false);
@@ -275,6 +293,25 @@ function compareHistory(original,restored){
  assert.ok(apiCounts.nationalRelease>0);assert.equal(workerFailures.length,0);
  const normal={days:messages.length,checkpointDays:[16,20,21],maxRows:apiCounts.maxRows,maxPlayerBytes:apiCounts.maxBytes};
  const durable=await decodeStored(clone(disk.get(STORE)));assert.equal(durable.day,21);compareHistory(original,durable);
+
+ // Skipping destructive legacy cleanup is allowed only for the exact owned
+ // mirror; ordinary vacation and mismatched return packets cannot use it.
+ reset();const returnRoot={v1903CareerId:state.v1903CareerId,userCoachId:state.userCoachId,
+  user:state.user,futbrSaveId:state.futbrSaveId,userEmployed:false,year:state.year,day:state.day},
+  returnStart={jobwait18373:true,root:returnRoot,year:state.year,day:state.day};
+ assert.equal(v18373ReturningOwnMirror({}),false);
+ assert.throws(()=>v18373ReturningOwnMirror(returnStart),/posse atuais/);
+ v18373JobMemory.token=tokenFrom(disk.get(STORE));v18373JobMemory.partial=true;
+ v18373JobMemory.phase='returning';state.v18373JobWaitPartial=true;
+ assert.equal(v18373ReturningOwnMirror(returnStart),true);
+ for(const key of ['v1903CareerId','userCoachId','user','futbrSaveId','year','day','userEmployed']){
+  const wrong={...returnStart,root:{...returnRoot,[key]:key==='userEmployed'?true:typeof returnRoot[key]==='number'?returnRoot[key]+1:'other'}};
+  assert.throws(()=>v18373ReturningOwnMirror(wrong),/posse atuais/,key+' mismatch must reject');
+ }
+ assert.throws(()=>v18373ReturningOwnMirror({...returnStart,day:state.day+1}),/posse atuais/);
+ v18373JobMemory.phase='worker';assert.throws(()=>v18373ReturningOwnMirror(returnStart),/posse atuais/);
+ v18373JobMemory.phase='returning';delete state.v18373JobWaitPartial;
+ assert.throws(()=>v18373ReturningOwnMirror(returnStart),/posse atuais/);
 
  // Use the original OVR sorting and unemployed offer policy on a complete
  // fixture and on the tiny Worker mirror; choose exactly the same offer.
@@ -380,9 +417,11 @@ function compareHistory(original,restored){
   stopDuringPreparationAndSimulation:true,saveJoinAwaitsCompleteReturn:true,
   mismatchedTokenAndCareerRejected:true,failedStreamRecoversDurableWorld:true,
   lostWorkerRecoveryDoesNotCloneWorld:true,inFlightArchiveMigrationCannotRebuildMirror:true,
-  archiveMigrationResumesAfterReturn:true,archiveMigrationJoinedBeforeWorkerBoot:true,normal}));
+  archiveMigrationResumesAfterReturn:true,archiveMigrationJoinedBeforeWorkerBoot:true,
+  actualLegacyCleanupChainExecuted:true,returnOwnerSurvivesLegacyCleanup:true,
+  exactOwnedMirrorRequiredAtReturn:true,normalReturnUsesNoRecovery:true,ordinaryVacationCleanupPreserved:true,normal}));
 })().catch(error=>{console.error(error?.stack||String(error));console.error(JSON.stringify({phase:v18373JobMemory.phase,
- notices,sequences,workerFailures,queue:v53PatchQueue.length,sim:v53Sim,owner}));process.exitCode=1;});
+ notices,sequences,workerFailures,queue:v53PatchQueue.length,sim:v53Sim,owner}));process.exit(1);});
 '''
 
 
@@ -406,6 +445,9 @@ def main():
     generator='let v636GenerateCoachOffer;const v93BaseGenerateCoachOffer=()=>0;\n'+generator
     codec=between(s,'const v18191uPlayerFields=','// 5.3: one authoritative simulation')
     vacation_rows=between(s,'function v18310VacationRows(m){','function v18310ReleaseOldVacationState(){')
+    release_old=between(s,'function v18310ReleaseOldVacationState(){','\nconst v53Base=')
+    cleanup168=between(s,'function v168CancelIdle(handle){','function v168AcademyTarget(')
+    cleanup100=between(s,' function v100CancelIdleHandle(x){',' const v100BaseNationalRepair=')
     migration=between(s,'let v555ArchiveMigration=null,v555ArchiveMigrationTimer=0;','const v555BaseActualClubsByYear=')
     worker_codec=between(worker,'const v18191wPlayerFields=',' const V171_FORMAT=')
     archive_codec=between(worker,'/* FUTBR_PACKED_ARCHIVE_PATHS_18373','const v18352NestedArchiveKeys=')
@@ -431,7 +473,7 @@ def main():
         scripts.append(match[2])
     with tempfile.TemporaryDirectory() as d:
         p=Path(d);(p/'payload.json').write_text(json.dumps(data),encoding='utf-8')
-        real_ui='\n'.join([codec,vacation_rows,tree,ui,jobs,create,generator,base,loop,drainer,migration])
+        real_ui='\n'.join([codec,vacation_rows,release_old,cleanup168,cleanup100,tree,ui,jobs,create,generator,base,loop,drainer,migration])
         (p/'test.js').write_text(HARNESS.replace('/* INJECT_REAL_UI_CODE */',real_ui),encoding='utf-8')
         (p/'scripts.json').write_text(json.dumps(scripts),encoding='utf-8')
         syntax=subprocess.run(['node','-e',"const fs=require('fs'),vm=require('vm');for(const s of JSON.parse(fs.readFileSync(process.argv[1])))new vm.Script(s)",str(p/'scripts.json')],text=True,capture_output=True,timeout=45)

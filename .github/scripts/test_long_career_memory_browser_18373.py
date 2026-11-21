@@ -42,7 +42,7 @@ HOOK = r'''
 /* TEST_ONLY_LONG_CAREER_MEMORY_18373 */
 window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notices:[],
  transport:{workersCreated:0,workersTerminated:0,fullWorldSaves:0,fullWorldJobDays:0,
-  rpcWorldLoads:0,jobDays:[],ownerSamples:[],finished:[],dismissals:[]},
+  rpcWorldLoads:0,jobDays:[],vacationBoots:[],ownerSamples:[],finished:[],dismissals:[]},
  count(obj){let n=0;for(const key in obj||{})if(Object.prototype.hasOwnProperty.call(obj,key))n++;return n;},
  hash(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;},
  digest(value){
@@ -90,6 +90,10 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
    worker.postMessage=function(message,...rest){
     if(message?.op==='save'&&message.state)test.transport.fullWorldSaves++;
     if(message?.op==='load')test.transport.rpcWorldLoads++;
+    if(message?.op==='simulate'&&message.mode==='vacation')
+     test.transport.vacationBoots.push({worker:id,phase:test.phase,hasState:!!message.state,
+      loadSaved:!!message.loadSaved,exactCheckpoint:!!message.vacationBoot18373,
+      staleOverlay:!!message.vacationCheckpoint,uiPlayers:test.count(state?.players)});
     if(message?.op==='simulate'&&['day','dayfast'].includes(message.mode)){
      if(message.state)test.transport.fullWorldJobDays++;
      test.transport.jobDays.push({worker:id,phase:test.phase,mode:message.mode,
@@ -211,7 +215,7 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
     const immediateClickMs=performance.now()-returnedAt;
     timer=setInterval(()=>{
      const status=window.GestorFC.jobWaitMemory18373.status();
-     if(status.ownsWorld&&this.transport.ownerSamples.length<100)
+     if(status.ownsWorld&&this.transport.ownerSamples.filter(s=>s.cycle===cycle).length<100)
       this.transport.ownerSamples.push({cycle,phase:status.phase,players:this.count(state?.players),
        packedYears:this.count(state?.v555CareerArchive),day:state?.day});
     },200);
@@ -308,7 +312,8 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
 
 def inject_hooks(html: str) -> str:
     for marker in ('FUTBR_VACATION_DURABLE_CHECKPOINT_18373',
-                   'memoryStorage18373', 'jobWaitMemory18373'):
+                   'memoryStorage18373', 'jobWaitMemory18373',
+                   'FUTBR_VACATION_BOUNDED_BOOT_18373'):
         assert marker in html, 'Missing production correction: ' + marker
     assert 'TEST_ONLY_LONG_CAREER_MEMORY_18373' not in html
     anchor = 'G.namedSaves125={list:'
@@ -425,6 +430,7 @@ def main():
                 probe.mark(page, 'reloaded-' + str(cycle))
             result['transport'] = page.evaluate('() => window.__longCareer373.transport')
             result['finalRuntime'] = page.evaluate('() => window.GestorFC.memoryStorage18373.status()')
+            result['vacationBoot'] = page.evaluate('() => window.GestorFC.vacationBoot18373.status()')
             result['storageAudit'] = page.evaluate('() => window.GestorFC.v171.storageAudit()')
             t = result['transport']
             flags = {
@@ -434,8 +440,11 @@ def main():
                 'immediateJobSearchAfterDismissal': all(c['search']['immediateClickMs'] < 2000 for c in result['cycles']),
                 'zeroFullWorldJobWaitTransfers': t['fullWorldJobDays'] == 0 and len(t['jobDays']) >= 2,
                 'zeroFullWorldSaveTransfers': t['fullWorldSaves'] == 0,
+                'zeroFullWorldVacationTransfers': len(t['vacationBoots']) == 4 and all(not boot['hasState'] for boot in t['vacationBoots']),
+                'exactCheckpointVacationBoots': all(boot['loadSaved'] and boot['exactCheckpoint'] and not boot['staleOverlay'] for boot in t['vacationBoots']) and result['vacationBoot']['checkpoints'] == 4,
+                'completeUiPreservedAtVacationBoot': all(boot['uiPlayers'] == result['initial']['players'] for boot in t['vacationBoots']),
                 'zeroRpcWholeWorldReloads': t['rpcWorldLoads'] == 0,
-                'workerSoleWorldOwnerDuringSearch': any(s['phase'] == 'worker' for s in t['ownerSamples']) and all(s['players'] == 0 and s['packedYears'] == 0 for s in t['ownerSamples'] if s['phase'] == 'worker'),
+                'workerSoleWorldOwnerDuringSearch': all(any(s['cycle'] == cycle and s['phase'] == 'worker' for s in t['ownerSamples']) for cycle in (1, 2)) and all(s['players'] == 0 and s['packedYears'] == 0 for s in t['ownerSamples'] if s['phase'] == 'worker') and all(day['uiPlayers'] == 0 for day in t['jobDays']),
                 'completeWorldReturnedWithoutRecovery': all(c['search']['owner']['recoveries'] == 0 for c in result['cycles']),
                 'manualVacationStopThenRealSaveExit': all(c['saveAndExit']['manualStop'] and c['saveAndExit']['actualSaveAndExitControls'] for c in result['cycles']),
                 'cleanAndDirtySaveExitPaths': result['cycles'][0]['saveAndExit']['dirtySavePath'] is False and result['cycles'][1]['saveAndExit']['dirtySavePath'] is True,

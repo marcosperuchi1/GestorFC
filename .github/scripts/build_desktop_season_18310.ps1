@@ -168,10 +168,12 @@ Run-Python '.github/scripts/set_desktop_version_18373.py'
 Run-Python '.github/scripts/fix_vacation_checkpoint_18373.py'
 Run-Python '.github/scripts/fix_save_memory_runtime_18373.py'
 Run-Python '.github/scripts/fix_jobwait_memory_transfer_18373.py'
+Run-Python '.github/scripts/fix_vacation_memory_boot_18373.py'
 Run-Python '.github/scripts/finalize_long_career_memory_18373.py'
 Run-Python '.github/scripts/test_vacation_checkpoint_18373.py'
 Run-Python '.github/scripts/test_save_memory_runtime_18373.py'
 Run-Python '.github/scripts/test_jobwait_memory_transfer_18373.py'
+Run-Python '.github/scripts/test_vacation_memory_boot_18373.py'
 Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'
 Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'
 "@.Trim()
@@ -344,6 +346,8 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'save-memory-runtime-18373-tests.json' 'artifacts/save-memory-runtime-18373-tests.json'
    Copy-Item 'jobwait-memory-transfer-18373-install.json' 'artifacts/jobwait-memory-transfer-18373-install.json'
    Copy-Item 'jobwait-memory-transfer-18373-tests.json' 'artifacts/jobwait-memory-transfer-18373-tests.json'
+   Copy-Item 'vacation-memory-boot-18373-install.json' 'artifacts/vacation-memory-boot-18373-install.json'
+   Copy-Item 'vacation-memory-boot-18373-tests.json' 'artifacts/vacation-memory-boot-18373-tests.json'
    Copy-Item 'long-career-memory-18373-install.json' 'artifacts/long-career-memory-18373-install.json'
    Copy-Item 'long-career-memory-browser-18373-tests.json' 'artifacts/long-career-memory-browser-18373-tests.json'
 "@.Trim()
@@ -428,10 +432,12 @@ if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18373
 if (-not $source.Contains("Run-Python '.github/scripts/fix_vacation_checkpoint_18373.py'")) { throw '18.373 memory gate is missing: fix_vacation_checkpoint_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_save_memory_runtime_18373.py'")) { throw '18.373 memory gate is missing: fix_save_memory_runtime_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_jobwait_memory_transfer_18373.py'")) { throw '18.373 memory gate is missing: fix_jobwait_memory_transfer_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_vacation_memory_boot_18373.py'")) { throw '18.373 memory gate is missing: fix_vacation_memory_boot_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/finalize_long_career_memory_18373.py'")) { throw '18.373 memory gate is missing: finalize_long_career_memory_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_checkpoint_18373.py'")) { throw '18.373 memory gate is missing: test_vacation_checkpoint_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_save_memory_runtime_18373.py'")) { throw '18.373 memory gate is missing: test_save_memory_runtime_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_memory_transfer_18373.py'")) { throw '18.373 memory gate is missing: test_jobwait_memory_transfer_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_memory_boot_18373.py'")) { throw '18.373 memory gate is missing: test_vacation_memory_boot_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'")) { throw '18.373 memory gate is missing: test_long_career_memory_browser_18373.py' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'

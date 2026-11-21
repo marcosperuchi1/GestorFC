@@ -108,11 +108,13 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
   'history','internationalHistory','v735NationalArchive','crestOverrides'];
  const SHARD_SET=new Set(SHARDS),own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
  const stats={version:'18.373',sameGameScope:true,noFullStateSaveRPC:true,fullSaves:0,
-  reusedCheckpoints:0,cleanWorkerSettlements:0,chunksWritten:0,chunksReused:0,playerChunksWritten:0,
+  reusedCheckpoints:0,cleanWorkerSettlements:0,coachAutosavesJoined:0,
+  coachAutosavesConfirmed:0,coachAutosaveRetries:0,coachAutosavesAfterOlderWriter:0,
+  chunksWritten:0,chunksReused:0,playerChunksWritten:0,
   maxRowsPerChunk:0,maxEncodedChunkBytes:0,maxTransactionChunks:0,
   lastSaveMs:0,lastLoadMs:0,lastMode:'',workerReleases:0,cachePurges:0,
   failed:0,cleanupFailed:0,lastError:'',lastHeapMiB:null};
- let mutation=0,owner=null,loading=false,explicitEnsure=null;
+ let mutation=0,writeTicket=0,owner=null,loading=false,explicitEnsure=null;
  const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
  const heap=()=>performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576):null;
  const identify=s=>({careerId:String(s?.v1903CareerId||''),coachId:String(s?.userCoachId||''),
@@ -424,6 +426,45 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
   if(owner)return Promise.resolve(false);
   mutation++;return previousPersist.apply(this,args);
  };
+ // A job-search schedules this notification for 60 seconds later. The timer
+ // does not edit the career. Calling persist again during an explicit save
+ // would increment its mutation generation and invalidate the same save it
+ // intends to confirm. Join the existing writer, checking its actual manifest
+ // and result; genuine edits still pass through persist and invalidate it.
+ v93ScheduleCoachDecisionSave=function(delay=60000){
+  clearTimeout(v93CoachSaveTimer);
+  // A decision scheduled DURING a writer may not be in its captured root.
+  // Keep only its numeric ticket, never retain a career in the 60-second timer.
+  const writerAtSchedule=v52SavePromise?writeTicket:0;
+  v93CoachSaveTimer=setTimeout(async()=>{
+   v93CoachSaveTimer=0;
+   if(!state||!idle()||owner||v53Creating||v89JobWait?.active||modalKind==='coach-offers')
+    return v93ScheduleCoachDecisionSave(10000);
+   const pending=v52SavePromise;
+   if(!pending){persist(false).catch(()=>{});return;}
+   const current=state,origin=identify(current),generation=mutation;
+   const olderWriter=writerAtSchedule!==0&&writerAtSchedule===writeTicket;
+   stats.coachAutosavesJoined++;
+   try{
+    await pending;
+    if(state!==current||!sameJob(identify(current),origin))return;
+    if(olderWriter&&!v52SavePromise){
+     stats.coachAutosavesAfterOlderWriter++;
+     persist(false).catch(()=>{});return;
+    }
+    const manifest=await readRaw(KEY);
+    if(state!==current||!sameJob(identify(current),origin))return;
+    if(mutation===generation&&samePoint(identify(current),origin)&&
+       manifest?.format===FORMAT&&samePoint(tokenFor(manifest),origin)&&
+       saveOK&&!v52SaveDirty&&!v52SavePromise){
+     stats.coachAutosavesConfirmed++;return;
+    }
+   }catch(error){/* A failed writer cannot confirm this autosave. */}
+   if(state===current&&sameJob(identify(current),origin)){
+    stats.coachAutosaveRetries++;v93ScheduleCoachDecisionSave(10000);
+   }
+  },Math.max(10000,Number(delay)||60000));
+ };
  v52FlushSave=async function(){
   clearTimeout(v52SaveTimer);v52SaveTimer=null;
   if(v52SavePromise)return v52SavePromise;
@@ -433,6 +474,7 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
    // Named loading awaits flush before terminating the old Worker. A manual
    // day can have no UI edits while its post-finished checkpoint still writes.
    // Join that save even on a clean flush; concurrent callers share the wait.
+   writeTicket++;
    const task=(async()=>{
     try{await settleWorker();stats.cleanWorkerSettlements++;}
     finally{if(v52SavePromise===task)v52SavePromise=null;updateSaveStatus();}
@@ -443,6 +485,7 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
   }
   const current=v52PendingState,waiters=v52SaveWaiters.splice(0),notify=v52NotifySave;
   v52NotifySave=false;v52SaveDirty=false;
+  writeTicket++;
   const task=(async()=>{
    try{
     v5CrestsOut();const result=await saveSharded(current);v53Saved(result);

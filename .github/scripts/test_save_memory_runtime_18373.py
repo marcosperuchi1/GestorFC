@@ -19,11 +19,28 @@ assert(source.includes(marker),'runtime installed');
 const runtime=source.slice(source.indexOf(marker),source.indexOf(end)+end.length);
 const playerStart=source.indexOf('const v18191uPlayerFields='),playerEnd=source.indexOf('// 5.3: one authoritative simulation',playerStart);
 const playerCodec=source.slice(playerStart,playerEnd);
+const coachStart=source.indexOf('function v93ScheduleCoachDecisionSave(delay=60000){');
+const coachEnd=source.indexOf('\n// Any actual career edit/full save',coachStart);
+assert(coachStart>0&&coachEnd>coachStart);
+const legacyCoachScheduler=source.slice(coachStart,coachEnd);
+const namedStart=source.indexOf('async function ensureSaved(){');
+const namedEnd=source.indexOf('\n/* FUTBR_LONG_CAREER_SAVE_18338_END */',namedStart);
+assert(namedStart>0&&namedEnd>namedStart);const actualEnsureSaved=source.slice(namedStart,namedEnd);
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const disk=new Map(),events=[],rpc=[],toasts=[];
 let failWrite=0,writes=0,failCommit=false,transactionMax=0,largestPackedRows=0,largestPackedBytes=0;
 let largestScorerRows=0,largestScorerBytes=0,largestCompetitionRows=0;
-let duringWrite=null;
+let duringWrite=null,duringFingerprint=null,beforeCommit=null;
+// Fire the actual long-delay callback at a deterministic storage boundary.
+// UI yielding and real compression/fingerprints still use the normal event loop.
+const longTimers=new Map();
+function testSetTimeout(callback,delay,...args){
+ if(delay>=10000){const id={};longTimers.set(id,{callback,delay,args});return id;}
+ return setTimeout(callback,delay,...args);
+}
+function testClearTimeout(id){if(!longTimers.delete(id))clearTimeout(id);}
+function fireTimer(id){const timer=longTimers.get(id);assert(timer,'scheduled real callback');
+ longTimers.delete(id);return timer.callback(...timer.args);}
 const storage={directStorage:true,
  read:async k=>clone(disk.get(k)),readMany:async ks=>ks.map(k=>clone(disk.get(k))),
  writeMany:async es=>{writes++;transactionMax=Math.max(transactionMax,es.length);
@@ -43,6 +60,7 @@ const storage={directStorage:true,
   }events.push({kind:'chunks',count:es.length});
  },
  commitManifest:async(k,m,old,meta)=>{
+  if(beforeCommit){const hook=beforeCommit;beforeCommit=null;await hook();}
   if(failCommit)throw Error('Injected manifest commit failure');
   assert.equal(k,KEY);disk.set(KEY+':previous',clone(old));disk.set(KEY,clone(m));
   disk.set(KEY+':meta',clone(meta));events.push({kind:'commit',token:m.token});
@@ -50,8 +68,11 @@ const storage={directStorage:true,
  removeMany:async ks=>{events.push({kind:'cleanup',keys:[...ks]});for(const k of ks)disk.delete(k);}
 };
 const context={console,performance,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,
- crypto:crypto.webcrypto,ArrayBuffer,Map,Set,WeakMap,Date,Math,JSON,Promise,structuredClone,Uint8Array,
- btoa,atob,setTimeout,clearTimeout,queueMicrotask,window:{FutBRDesktop:storage,GestorFC:{parallel:{},patch52:{}}},
+ crypto:{subtle:{digest:async(...args)=>{const result=await crypto.webcrypto.subtle.digest(...args);
+  if(duringFingerprint){const hook=duringFingerprint;duringFingerprint=null;hook();}return result;}}},
+ ArrayBuffer,Map,Set,WeakMap,Date,Math,JSON,Promise,structuredClone,Uint8Array,
+ btoa,atob,setTimeout:testSetTimeout,clearTimeout:testClearTimeout,queueMicrotask,
+ window:{FutBRDesktop:storage,GestorFC:{parallel:{},patch52:{}}},
  __read:k=>storage.read(k),__rpc:async(op,params)=>{rpc.push({op,keys:Object.keys(params||{})});return {settled:true};},
  __toast:m=>toasts.push(m)};
 vm.createContext(context);
@@ -64,6 +85,8 @@ vm.runInContext(`
  let v53Worker=null,v53WorkerReady=null,v53WorkerFailed=false,v125VacIncoming=null,v52Processing=false,v53Creating=false;
  let v53PatchQueue=[],v143PostRankPending=false,v158ManualPrimePromise=null,v158ManualPrimeDay=-1,v158ManualPrimeYear=-1;
  let v52MarketIndex=null,v555CoachCache={},v555MarketWarmJob=null,v555MarketWarmListJob=null,v555ShellState=null,v260ShellLockedState=null;
+ let v93CoachSaveTimer=0,modalKind='';const v89JobWait={active:false};
+ const BASE=STORE,FORMAT='GFC_SHARDED_171',get=async key=>__read(key),v18338SaveAudit={rewritten:0,reused:0,last:''};
  const v18119SeasonTransfer={active:false},v18370JobSave={busy:false},v53RPC=new Map();
  function v168DropStateCaches(){return 1;}
  function v18371BlockingWorkerRequest(){return [...v53RPC.values()].some(p=>p.op!=='check');}
@@ -78,7 +101,9 @@ vm.runInContext(`
  let persist=function(notify=false){if(!state)return Promise.resolve();v52PendingState=state;v52SaveDirty=true;
   v52NotifySave||=notify;return new Promise(resolve=>v52SaveWaiters.push(resolve));};
  let v52FlushSave=async()=>{};
- `+playerCodec+runtime+`
+ `+legacyCoachScheduler+`
+ const legacyScheduleCoach=v93ScheduleCoachDecisionSave;
+ `+playerCodec+runtime+actualEnsureSaved+`
  globalThis.fixture={
   set(s){state=s;saved=s;},get:()=>state,flush:()=>v52FlushSave(),persist:()=>persist(),
   pending:()=>({pending:v52PendingState,dirty:v52SaveDirty,saveOK,saving:!!v52SavePromise}),
@@ -86,8 +111,11 @@ vm.runInContext(`
   sim:v53Sim,rpcs:v53RPC,setWorker(w){v53Worker=w;v53WorkerReady=Promise.resolve(w);},
   worker:()=>v53Worker,prime:()=>v158PrimeManualWorker(),
   forceFail:()=>{saveOK=false;},call:(op,params)=>v53Call(op,params),
-  clearTimers(){clearTimeout(v52SaveTimer);v52SaveTimer=null;},
+  clearTimers(){clearTimeout(v52SaveTimer);v52SaveTimer=null;clearTimeout(v93CoachSaveTimer);v93CoachSaveTimer=0;},
   setDeferred(v){v168DeferredRolloverSave=v;},
+  ensureNamed:()=>ensureSaved(),
+  scheduleCoach(legacy=false){(legacy?legacyScheduleCoach:v93ScheduleCoachDecisionSave)(60000);return v93CoachSaveTimer;},
+  coachTimer:()=>v93CoachSaveTimer,
  };
  `,context);
 const f=context.fixture,api=context.window.GestorFC.memoryStorage18373,loader=context.window.GestorFC.v171;
@@ -188,6 +216,79 @@ function assertHistory(actual,expected){
  s.v555CareerArchive[2027].p.p12='new historical value';await flushChange();
  const edited=await loader.loadDirect();assert.equal(edited.v555CareerArchive[2027].p.p12,'new historical value');
  report.changedHistoryWritten=true;
+ // Reproduce the CI race using the actual pre-fix 60-second callback and the
+ // actual named-save ensureSaved function. The callback changes no data, yet
+ // its redundant persist invalidates the writer and causes Save/Exit to fail.
+ s.v622Settings.offerPopup=false;f.setDirty();
+ const raceBefore=clone(disk.get(KEY)),unchangedDuringRace=hash(s),raceFailures=api.status().failed;
+ const legacyTimer=f.scheduleCoach(true);duringFingerprint=()=>{fireTimer(legacyTimer);};
+ await assert.rejects(()=>f.ensureNamed(),/salvamento não corresponde/);
+ assert.equal(hash(s),unchangedDuringRace);assert.deepEqual(disk.get(KEY),raceBefore);
+ assert.equal(api.status().failed,raceFailures+1);assert.equal(f.pending().dirty,true);
+ f.clearTimers();await f.flush();assert.equal(f.pending().saveOK,true);
+ report.legacyDecisionAutosaveRaceReproduced=true;
+ // The patched timer was scheduled BEFORE this writer. It must join the
+ // writer without a second persist, and explicit Save/Exit must await commit.
+ s.v622Settings.offerPopup=true;f.setDirty();
+ const joinedBefore=clone(disk.get(KEY)),joinedStats=api.status(),joinedTimer=f.scheduleCoach();
+ let timerWork,namedResolved=false,enterCommit,releaseCommit;
+ const commitEntered=new Promise(resolve=>{enterCommit=resolve;});
+ const commitBarrier=new Promise(resolve=>{releaseCommit=resolve;});
+ beforeCommit=async()=>{enterCommit();await commitBarrier;};
+ duringFingerprint=()=>{timerWork=fireTimer(joinedTimer);};
+ const namedSave=f.ensureNamed().then(x=>{namedResolved=true;return x;});
+ await commitEntered;
+ assert.equal(namedResolved,false);assert.equal(f.pending().saving,true);assert.equal(f.pending().dirty,false);
+ assert.equal(api.status().coachAutosavesJoined,joinedStats.coachAutosavesJoined+1);
+ assert.deepEqual(disk.get(KEY),joinedBefore);releaseCommit();
+ const joinedManifest=await namedSave;await timerWork;
+ assert.equal(namedResolved,true);assert.equal(joinedManifest.root.v622Settings.offerPopup,true);
+ assert.equal(api.status().fullSaves,joinedStats.fullSaves+1);
+ assert.equal(api.status().failed,joinedStats.failed);
+ assert.equal(api.status().coachAutosavesConfirmed,joinedStats.coachAutosavesConfirmed+1);
+ assert.equal(f.pending().dirty,false);assert.equal(f.pending().saving,false);
+ report.actualCoachAutosaveJoinsNewerWriter=true;report.actualNamedSaveWaitsForJoinedWriter=true;
+ // A joined failure is NOT confirmation: Save/Exit rejects, old data remains
+ // readable and the actual timer rearms without reporting a successful save.
+ s.v622Settings.offerPopup=false;f.setDirty();
+ const failureBefore=clone(disk.get(KEY)),failureStats=api.status(),failureTimer=f.scheduleCoach();
+ duringFingerprint=()=>{timerWork=fireTimer(failureTimer);};failCommit=true;
+ await assert.rejects(()=>f.ensureNamed(),/salvamento não corresponde/);await timerWork;
+ assert.deepEqual(disk.get(KEY),failureBefore);assert.equal(f.pending().saveOK,false);
+ assert.equal(api.status().coachAutosavesConfirmed,failureStats.coachAutosavesConfirmed);
+ assert.equal(api.status().coachAutosaveRetries,failureStats.coachAutosaveRetries+1);
+ assert.equal(longTimers.get(f.coachTimer()).delay,10000);
+ failCommit=false;f.clearTimers();await flushChange();
+ report.joinedFailureRejectsNamedSaveAndRearms=true;
+ // A real edit while writing still invalidates the generation. The autosave
+ // wrapper must not weaken this guard or publish an inconsistent manifest.
+ s.v622Settings.offerPopup=true;f.setDirty();
+ const editBefore=clone(disk.get(KEY)),editStats=api.status(),editTimer=f.scheduleCoach();
+ duringFingerprint=()=>{timerWork=fireTimer(editTimer);s.v622Settings.matchSpeed=2;f.persist();};
+ await assert.rejects(()=>f.ensureNamed(),/salvamento não corresponde/);await timerWork;
+ assert.deepEqual(disk.get(KEY),editBefore);assert.equal(api.status().failed,editStats.failed+1);
+ assert.equal(api.status().coachAutosavesConfirmed,editStats.coachAutosavesConfirmed);
+ assert.equal(f.pending().dirty,true);f.clearTimers();await f.flush();
+ assert.equal((await loader.loadDirect()).v622Settings.matchSpeed,2);
+ report.concurrentRealEditStillInvalidatesWriter=true;
+ // If the decision is scheduled AFTER a writer captured root, that older
+ // writer cannot confirm it. Queue a new save after it settles, without
+ // invalidating the older writer just because the notification timer fired.
+ s.v622Settings.offerPopup=false;f.setDirty();const olderStats=api.status();
+ duringFingerprint=()=>{
+  s.decisionScheduledDuringWriter18373={club:'t2',terms:{salary:4567,years:3}};
+  timerWork=fireTimer(f.scheduleCoach());
+ };
+ await assert.rejects(()=>f.ensureNamed(),/salvamento não corresponde/);await timerWork;
+ assert.equal(api.status().failed,olderStats.failed);
+ assert.equal(api.status().coachAutosavesConfirmed,olderStats.coachAutosavesConfirmed);
+ assert.equal(api.status().coachAutosavesAfterOlderWriter,olderStats.coachAutosavesAfterOlderWriter+1);
+ assert.equal(disk.get(KEY).root.decisionScheduledDuringWriter18373,undefined);
+ assert.equal(f.pending().dirty,true);f.clearTimers();await f.flush();
+ const decisionManifest=await f.ensureNamed();
+ assert.deepEqual(clone(decisionManifest.root.decisionScheduledDuringWriter18373),s.decisionScheduledDuringWriter18373);
+ assert.deepEqual(clone((await loader.loadDirect()).decisionScheduledDuringWriter18373),s.decisionScheduledDuringWriter18373);
+ report.decisionScheduledDuringWriterGetsNewCheckpoint=true;
  for(const mode of ['shard','manifest']){
   const before=clone(disk.get(KEY)),previous=clone(disk.get(KEY+':previous'));
   const priorChunks=[...Object.values(before.collections).flatMap(x=>x.keys),...Object.values(previous.collections).flatMap(x=>x.keys)];

@@ -1,4 +1,4 @@
-"""Finalize the integrated 18.373 edition after all three memory corrections."""
+"""Finalize the integrated 18.373 edition after the memory corrections."""
 from __future__ import annotations
 
 import json
@@ -16,6 +16,7 @@ def finalize(source: str) -> tuple[str, dict]:
         'FUTBR_VACATION_HISTORY_WRITER_18373',
         'FUTBR_JOBWAIT_SINGLE_OWNER_18373',
         'FUTBR_JOBWAIT_PARTIAL_UI_GUARDS_18373',
+        'FUTBR_VACATION_BOUNDED_BOOT_18373',
         'FUTBR_CAREER_PROMOTION_OFFERS_18372',
         'FUTBR_NATIVE_CONFIRMATIONS_18372_BEGIN',
     ]
@@ -41,7 +42,8 @@ def finalize(source: str) -> tuple[str, dict]:
     runtime = source.index('/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN')
     owner = source.index('/* FUTBR_JOBWAIT_SINGLE_OWNER_18373\n')
     guards = source.index('/* FUTBR_JOBWAIT_PARTIAL_UI_GUARDS_18373 */')
-    if not ui_start < owner < runtime < guards < ui_end:
+    boot = source.index('/* FUTBR_VACATION_BOUNDED_BOOT_18373 */')
+    if not ui_start < boot < owner < runtime < guards < ui_end:
         raise RuntimeError('The new runtime/ownership/guards are outside the real career closure')
     scripts = []
     for attrs, body in re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>', source, flags=re.I):
@@ -58,9 +60,10 @@ def finalize(source: str) -> tuple[str, dict]:
     parsed = json.loads(check.stdout)
     return source, {
         'ok': True, 'version': '18.373.0',
-        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:6]),
+        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:7]),
         'actualCareerScopeVerified': True,
-        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[6:]),
+        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[7:]),
+        'vacationBoundedBootIntegrated': 'msg.vacationBoot18373=v18373VacationBoot;msg.vacationCheckpoint=false;' in source,
         'historicalRolloverWriterInstalled': 'await v18373WriteCheckpointHistories(world,old,meta.token)' in source,
         'testHooksExcluded': True,
         'editionUpdated': "const EDITION='18.373.0';" in source,
