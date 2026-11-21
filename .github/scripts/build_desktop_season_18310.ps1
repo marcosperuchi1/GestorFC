@@ -145,6 +145,14 @@ Run-Python '.github/scripts/set_desktop_version_18370.py'
 Run-Python '.github/scripts/fix_bounded_jobwait_18370.py'
 Run-Python '.github/scripts/test_bounded_jobwait_18370.py'
 Run-Python '.github/scripts/test_jobwait_memory_browser_18370.py'
+Run-Python '.github/scripts/set_desktop_version_18371.py'
+Run-Python '.github/scripts/fix_contract_preferences_18371.py'
+Run-Python '.github/scripts/fix_repeated_dismissal_18371.py'
+Run-Python '.github/scripts/test_contract_preferences_18371.py'
+Run-Python '.github/scripts/test_repeated_dismissal_18371.py'
+Run-Python '.github/scripts/test_career_transitions_browser_18371.py'
+# Recheck employed vacation return on the final 18.371 lifecycle.
+Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
@@ -299,6 +307,12 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'jobwait-memory-18370-install.json' 'artifacts/jobwait-memory-18370-install.json'
    Copy-Item 'jobwait-memory-18370-tests.json' 'artifacts/jobwait-memory-18370-tests.json'
    Copy-Item 'jobwait-memory-browser-18370-tests.json' 'artifacts/jobwait-memory-browser-18370-tests.json'
+   Copy-Item 'desktop-version-18371-install.json' 'artifacts/desktop-version-18371-install.json'
+   Copy-Item 'contract-preferences-18371-install.json' 'artifacts/contract-preferences-18371-install.json'
+   Copy-Item 'contract-preferences-18371-tests.json' 'artifacts/contract-preferences-18371-tests.json'
+   Copy-Item 'repeated-dismissal-18371-install.json' 'artifacts/repeated-dismissal-18371-install.json'
+   Copy-Item 'repeated-dismissal-18371-tests.json' 'artifacts/repeated-dismissal-18371-tests.json'
+   Copy-Item 'career-transitions-browser-18371-tests.json' 'artifacts/career-transitions-browser-18371-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -365,6 +379,12 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_work
 if (-not $source.Contains("Run-Python '.github/scripts/test_unemployed_real_browser_18368.py'")) { throw '18.368 requires real Chromium game Engine to advance two Worker dayfast rounds when unemployed.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'")) { throw '18.369 requires real Chromium test of vacation Worker stop then next match.' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_memory_browser_18370.py'")) { throw '18.370 requires real Worker and durable final checkpoint.' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18371.py'")) { throw '18.371 career transition gate is missing: set_desktop_version_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_contract_preferences_18371.py'")) { throw '18.371 career transition gate is missing: fix_contract_preferences_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_repeated_dismissal_18371.py'")) { throw '18.371 career transition gate is missing: fix_repeated_dismissal_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_contract_preferences_18371.py'")) { throw '18.371 career transition gate is missing: test_contract_preferences_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_repeated_dismissal_18371.py'")) { throw '18.371 career transition gate is missing: test_repeated_dismissal_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_career_transitions_browser_18371.py'")) { throw '18.371 career transition gate is missing: test_career_transitions_browser_18371.py' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
