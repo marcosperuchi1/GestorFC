@@ -59,8 +59,23 @@ window.__seasonOffers374={done:false,result:null,phase:'startup',progress:[],exp
   // Execute the real departure and replacement logic. Only the save's old
   // timestamp and current date are inputs to reproduce the user's legacy save.
   state.year=2030;state.day=oldLastDay;E.dismissCoach(state,club,'Contrato encerrado no fim da temporada de teste');
+  state.year=2031;state.day=0;state.lastDay=null;state.seasonDone=false;
+  // A midseason save needs the earlier results and qualifiers. Build them
+  // with the original asynchronous Engine, in order, instead of skipping
+  // straight to a cup date with no previous-round winners. The 2030 history
+  // is fixture input; these first 33 rounds of 2031 are genuinely simulated.
+  this.phase='building-real-2031-results';window.__longCareer373.phase=this.phase;
+  const replay={rounds:0,matches:0,originalAdvanceDayAsync:true,allPriorFixturesFinished:true};
+  while(state.day<33){
+   const day=state.day,stage=await E.advanceDayAsync(state);
+   if(state.year!==2031||state.day!==day+1||state.seasonDone||!stage)
+    throw Error('Original fixture replay did not advance exactly one round');
+   if((stage.fixtures||[]).some(f=>!f.result))throw Error('Original fixture replay left an unfinished match');
+   replay.rounds++;replay.matches+=(stage.fixtures||[]).length;
+   await new Promise(r=>setTimeout(r,0));
+  }
+  if(replay.rounds!==33||!replay.matches)throw Error('The legacy fixture has no complete prior results');
   me.unemployedSince={year:2030,day:oldLastDay};
-  state.year=2031;state.day=33;state.lastDay=32;state.seasonDone=false;
   state.v636CoachOffers=[];state.v636CoachOfferMeta={lastOfferDay:oldLastDay-2,rejected:{}};
   state.vacation.active=false;state.vacation.paused=true;
   // Prior vacancy pressure is explicit fixture input; candidates and the
@@ -77,6 +92,7 @@ window.__seasonOffers374={done:false,result:null,phase:'startup',progress:[],exp
    throw Error('Invalid complete legacy fixture: '+JSON.stringify(identity));
   this.initial={...identity,oldDismissal:{...me.unemployedSince},lastOfferDay:state.v636CoachOfferMeta.lastOfferDay,
    compatibleBoards,oldCoachReplaced:club.coachId!==me.id,calendarOriginal:true,priorSeasonsActuallySimulated:false,
+   currentSeasonReplay:replay,
    oldSaveInputs:true,authAndOuterShellIsolated:true};
   this.phase='initial-named-save';render();window.GestorFC.namedSaves125.save();return this.initial;
  },
@@ -266,6 +282,7 @@ def main() -> None:
             flags = {
                 'legacy2031SaveRecovered': result['search']['daysAdvanced'] <= 8,
                 'fullOriginalWorld': result['initial']['players'] >= 180000 and result['initial']['teams'] >= 5000,
+                'priorRoundResultsBuiltByOriginalEngine': result['initial']['currentSeasonReplay']['rounds'] == 33 and result['initial']['currentSeasonReplay']['allPriorFixturesFinished'],
                 'actualJobSearchButtonAndWorker': result['search']['actualButtonClick'] and bool(t['jobDays']),
                 'compactWorkerTransportPreserved': t['fullWorldJobDays'] == 0 and all(d['uiPlayers'] == 0 for d in t['jobDays']),
                 'zeroWholeWorldSaveTransfers': t['fullWorldSaves'] == 0,

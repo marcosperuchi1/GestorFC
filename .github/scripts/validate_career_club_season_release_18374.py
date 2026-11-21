@@ -16,7 +16,7 @@ REQUIREMENTS = {
         "freshOfferStopsGeneration", "repeatedDismissalYearsCovered", "actualCompactPacketAndDelta",
     ),
     "season-job-offers-browser-18374-tests.json": (
-        "legacy2031SaveRecovered", "fullOriginalWorld", "actualJobSearchButtonAndWorker",
+        "legacy2031SaveRecovered", "fullOriginalWorld", "priorRoundResultsBuiltByOriginalEngine", "actualJobSearchButtonAndWorker",
         "compactWorkerTransportPreserved", "zeroWholeWorldSaveTransfers",
         "completeWorldReturnedWithoutRecovery", "oldDismissalHistoryPreserved", "automaticOfferModal",
         "offerAndDatedClockSurviveNamedReload", "twentySavedCollectionsPreserved",

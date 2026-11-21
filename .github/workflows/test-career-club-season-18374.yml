@@ -77,6 +77,7 @@ jobs:
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_vacation_checkpoint_18373.py "$project_root" --baseline
       - name: Apply 18.373 memory corrections and verify original functions
+        id: prepare_374
         shell: bash
         run: |
           set -euo pipefail
@@ -102,36 +103,42 @@ jobs:
           python .github/scripts/test_club_management_18374.py "$project_root"
           python .github/scripts/test_season_rollover_18374.py "$project_root"
       - name: Recover a stuck 2031 career through the real job search controls
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_season_job_offers_browser_18374.py "$project_root"
       - name: Exercise club investment controls and preserve projects across saves
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_club_management_browser_18374.py "$project_root"
       - name: Compare complete 2028 to 2029 rollover with the actual previous engine
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_season_rollover_browser_18374.py "$project_root"
       - name: Real 2029 dismissal, job search, vacation, save exit and reload under memory limits
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_long_career_memory_browser_18373.py "$project_root"
       - name: Preserve real promotion and confirmation flow on the final 18.374 runtime
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
           python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
       - name: Verify final-source provenance and all release behavior
+        if: ${{ !cancelled() && steps.prepare_374.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
