@@ -8,12 +8,13 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 
 
 NODE = r'''
 'use strict';
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),crypto=require('crypto');
-const source=fs.readFileSync(process.argv[1],'utf8'),KEY='gestor_fc_mundo_v205_clean';
+const source=fs.readFileSync(process.argv[2],'utf8'),KEY='gestor_fc_mundo_v205_clean';
 const marker='/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN',end='/* FUTBR_SAVE_MEMORY_RUNTIME_18373_END */';
 assert(source.includes(marker),'runtime installed');
 let runtime=source.slice(source.indexOf(marker),source.indexOf(end)+end.length);
@@ -484,8 +485,11 @@ def main():
         raise SystemExit('usage: test_save_memory_runtime_18373.py <project>')
     root = Path(sys.argv[1])
     source = root / 'src' / 'index.html'
-    result = subprocess.run(['node', '-e', NODE, str(source.resolve())], capture_output=True,
-                            text=True, timeout=180, check=False)
+    with tempfile.TemporaryDirectory(prefix='futbr-save-memory-18373-') as tmp:
+        harness = Path(tmp) / 'test.js'
+        harness.write_text(NODE, encoding='utf-8')
+        result = subprocess.run(['node', str(harness), str(source.resolve())], capture_output=True,
+                                text=True, timeout=180, check=False)
     if result.returncode:
         raise RuntimeError(result.stderr[-14000:] or result.stdout[-14000:])
     report = json.loads(result.stdout)

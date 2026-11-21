@@ -153,7 +153,7 @@ def verify_public(directory):
             if version != VERSION:
                 require(isinstance(version, str) and re.fullmatch(r"\d+\.\d+\.\d+", version),
                         "Public feed contains an unexpected version")
-                require(tuple(map(int, version.split("."))) < (18, 372, 0),
+                require(tuple(map(int, version.split("."))) < tuple(map(int, VERSION.split("."))),
                         "Public feed has already moved past this release")
             else:
                 require(public_feed == manifest_bytes, "Public manifest differs from this verified build")
