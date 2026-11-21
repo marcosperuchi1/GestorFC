@@ -1,0 +1,160 @@
+name: FutBR 18.374 - career offers, club management and season rollover
+on:
+  push:
+    branches: [fix/desktop-18374-career-club-season]
+    paths: ['.github/scripts/*18374.py', '.github/workflows/test-career-club-season-18374.yml', '.github/scripts/*18373.py', '.github/scripts/*18372.py', '.github/scripts/*18371.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-18374-career-club-season-browser
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      FUTBR_MEMORY_HEAP_MB: '1024'
+      FUTBR_MEMORY_RSS_BUDGET_MIB: '3072'
+    steps:
+      - name: Checkout career, club and season corrections
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate memory patches and regression syntax
+        shell: bash
+        run: python -m py_compile .github/scripts/fix_vacation_memory_boot_18373.py .github/scripts/test_vacation_memory_boot_18373.py .github/scripts/fix_player_checkpoint_reuse_18373.py .github/scripts/test_player_checkpoint_reuse_18373.py .github/scripts/memory_probe_18373.py
+      - name: Validate 18.374 patch and release syntax
+        shell: bash
+        run: python -c "import glob, py_compile; [py_compile.compile(p, doraise=True) for p in glob.glob('.github/scripts/*18374.py')]"
+      - name: Exact prepared source with prior verified repairs
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14672603574
+          run-id: 44822411846
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/futbr-source-18374
+          merge-multiple: true
+      - name: Reconstruct and verify the approved 18.372 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          test -s "$project_root/src/index.html"
+          python .github/scripts/fix_bounded_jobwait_18370.py "$project_root"
+          python .github/scripts/test_bounded_jobwait_18370.py "$project_root"
+          python .github/scripts/fix_contract_preferences_18371.py "$project_root"
+          python .github/scripts/fix_repeated_dismissal_18371.py "$project_root"
+          python .github/scripts/test_contract_preferences_18371.py "$project_root"
+          python .github/scripts/test_repeated_dismissal_18371.py "$project_root"
+          python .github/scripts/fix_native_confirmations_18372.py "$project_root"
+          python .github/scripts/fix_career_promotion_offers_18372.py "$project_root"
+          python .github/scripts/test_native_confirmations_18372.py "$project_root"
+          python .github/scripts/test_career_promotion_offers_18372.py "$project_root"
+          python .github/scripts/test_contract_preferences_18371.py "$project_root"
+          python .github/scripts/test_repeated_dismissal_18371.py "$project_root"
+          # The prepared artifact already includes fix_incremental_competition_scope.py
+          # (18302), applied by the Windows ranking test. The older local ce3a8cac
+          # copy omitted only that patch: day-zero handling, competition club scope,
+          # and its marker. Applying it produces this exact hash (+601 bytes).
+          python -c 'import hashlib,pathlib,sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); expected="c1d462c96e32367b8a73a64d93d49b80442c03fa721aedfa7b2964cb631a7c29"; assert actual==expected, "18.372 prepared baseline SHA mismatch: "+actual; print("Verified 18.372 source SHA256:",actual)' "$project_root/src/index.html"
+      - name: Install browser and process-memory observer
+        shell: bash
+        run: |
+          python -m pip install playwright psutil
+          python -m playwright install chromium
+      - name: Reproduce the missing 18.372 vacation commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_vacation_checkpoint_18373.py "$project_root" --baseline
+      - name: Apply 18.373 memory corrections and verify original functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/fix_vacation_checkpoint_18373.py "$project_root"
+          python .github/scripts/fix_save_memory_runtime_18373.py "$project_root"
+          python .github/scripts/fix_jobwait_memory_transfer_18373.py "$project_root"
+          python .github/scripts/fix_vacation_memory_boot_18373.py "$project_root"
+          python .github/scripts/fix_player_checkpoint_reuse_18373.py "$project_root"
+          python .github/scripts/finalize_long_career_memory_18373.py "$project_root"
+          python .github/scripts/prepare_career_club_season_18374.py "$project_root"
+          python .github/scripts/test_vacation_checkpoint_18373.py "$project_root"
+          python .github/scripts/test_save_memory_runtime_18373.py "$project_root"
+          python .github/scripts/test_jobwait_memory_transfer_18373.py "$project_root"
+          python .github/scripts/test_vacation_memory_boot_18373.py "$project_root"
+          python .github/scripts/test_player_checkpoint_reuse_18373.py "$project_root"
+      - name: Original calendar, management and ranking regression functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_season_job_offers_18374.py "$project_root"
+          python .github/scripts/test_club_management_18374.py "$project_root"
+          python .github/scripts/test_season_rollover_18374.py "$project_root"
+      - name: Recover a stuck 2031 career through the real job search controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_season_job_offers_browser_18374.py "$project_root"
+      - name: Exercise club investment controls and preserve projects across saves
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_club_management_browser_18374.py "$project_root"
+      - name: Compare complete 2028 to 2029 rollover with the actual previous engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_season_rollover_browser_18374.py "$project_root"
+      - name: Real 2029 dismissal, job search, vacation, save exit and reload under memory limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_long_career_memory_browser_18373.py "$project_root"
+      - name: Preserve real promotion and confirmation flow on the final 18.374 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18374/prepared"
+          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
+      - name: Verify final-source provenance and all release behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/validate_career_club_season_release_18374.py "$RUNNER_TEMP/futbr-source-18374/prepared"
+      - name: Save validation reports and memory measurements
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.374-Career-Club-Season-Real-Engine-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/futbr-source-18374/prepared/*18374*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18374*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18374*jsonl
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18374*png
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/prepared-source-18374.html.gz
+            ${{ runner.temp }}/futbr-source-18374/prepared/*18373*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18373*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18373*jsonl
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/*18373*png
+            ${{ runner.temp }}/futbr-source-18374/prepared/*18372*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/promotion-offer-18372.png
+            ${{ runner.temp }}/futbr-source-18374/prepared/artifacts/delete-confirmation-18372.png
+            ${{ runner.temp }}/futbr-source-18374/prepared/*18371*json
+            ${{ runner.temp }}/futbr-source-18374/prepared/jobwait-memory-18370-tests.json
+          if-no-files-found: warn
+          retention-days: 7

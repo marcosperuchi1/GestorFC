@@ -4,6 +4,7 @@ The world fixtures are synthetic 2029 histories, not simulated past seasons.
 The browser gate separately advances real fixtures with the complete Engine.
 """
 from __future__ import annotations
+import hashlib
 import json
 import re
 import subprocess
@@ -84,6 +85,17 @@ function v18369FailPatchDelivery(error,finish){workerFailures.push(String(error)
  finish?.reject(error);
 }
 /* INJECT_REAL_UI_CODE */
+// 18.374 moved the active unemployed policy into the shared Engine. Load
+// those exact shipped functions when present, with the same fixture services
+// already used by this transport suite. Never replace the new policy with a
+// fake generator or quietly test the prior source instead.
+if(payload.offerEngine18374){
+ const realMarket=new Function('E',
+  'const team=E.team,strength=E.strength,clamp=E.clamp,news=E.news;'+
+  'const availableJobs=s=>E.availableJobs(s);'+payload.offerEngine18374+
+  '\nreturn {generateUnemployedOffer18374,recordJobOffer18374};')(E);
+ Object.assign(E,realMarket);
+}
 const rawStart=v53StartSimulation;
 v53StartSimulation=async function(mode,opts){
  const result=await rawStart(mode,opts);
@@ -331,10 +343,15 @@ function compareHistory(original,restored){
   v636GenerateCoachOffer(full,false);v636GenerateCoachOffer(light,false);
   assert.deepEqual(light.v636CoachOffers,full.v636CoachOffers,'Full and partial policy must issue identical offers');
  }
- reset();enableOffers=true;stopAtDay=0;original=clone(state);
+ reset();enableOffers=true;stopAtDay=0;
+ // Start this scenario at the actual dismissal date so BOTH policies must
+ // advance at least two real fixture rounds before an invitation is eligible.
+ // Other cases retain the older date and exercise the nine-day resident loop.
+ state.coaches.me.unemployedSince.day=state.day;buildManifest(state);original=clone(state);
  await v89RunJobWait();await new Promise(r=>setTimeout(r,45));
  assert.ok(state.v636CoachOffers.length);assert.equal(offerOpened,1);assert.ok(messages.length>=2&&messages.length<10);
- assert.equal(disk.get(STORE).day,state.day);assert.equal(state.v636CoachOffers[0].expiresDay,state.v636CoachOffers[0].day+4);
+ assert.equal(disk.get(STORE).day,state.day);
+ assert.equal(state.v636CoachOffers[0].expiresDay,state.v636CoachOffers[0].day+(payload.offerEngine18374?14:4));
  compareHistory(original,state);
 
  // Refusing a card schedules its old UI save for later. Its compact decision
@@ -443,6 +460,11 @@ def main():
     create=between(s,'function v636CreateCoachOffer(s,t,reason){','function v636GenerateCoachOffer(')
     generator=between(s,'v636GenerateCoachOffer=function(s,afterUserMatch=false){', '// Display the last completed vacation cash change')
     generator='let v636GenerateCoachOffer;const v93BaseGenerateCoachOffer=()=>0;\n'+generator
+    offer_engine=''
+    if 'FUTBR_UNEMPLOYED_CALENDAR_18374' in s:
+        offer_engine=(between(s,'  function promotionHash18372(', '  function promotionProfile18372(')+
+            between(s,'  function promotionOVR18372(', '  function adoptLegacyPromotionOffers18372(')+
+            between(s,'  /* FUTBR_UNEMPLOYED_CALENDAR_18374', '  function availableJobs(s){'))
     codec=between(s,'const v18191uPlayerFields=','// 5.3: one authoritative simulation')
     vacation_rows=between(s,'function v18310VacationRows(m){','function v18310ReleaseOldVacationState(){')
     release_old=between(s,'function v18310ReleaseOldVacationState(){','\nconst v53Base=')
@@ -463,7 +485,7 @@ def main():
     assert 'if(active&&v18373JobMemory.partial){finish?.reject(error);return;}' in s
     assert s.index('/* FUTBR_JOBWAIT_PARTIAL_UI_GUARDS_18373')<s.index('<!-- v43 clean: v130 ranking warmup removed -->')
     data={'worker':worker,'tree':tree,'uiHelpers':ui,'uiLoop':loop,'drainer':drainer,
-        'baseStart':base,'uiJobs':jobs,'offerCreate':create,'offerGenerator':generator,
+        'baseStart':base,'uiJobs':jobs,'offerCreate':create,'offerGenerator':generator,'offerEngine18374':offer_engine,
         'uiPlayerCodec':codec,'uiVacationRows':vacation_rows,'workerPlayerCodec':worker_codec,
         'workerArchiveCodec':archive_codec,'workerLegacyArchive':archive_legacy,'workerReader':reader}
     # Parse each actual inline JavaScript, excluding JSON/catalog data scripts.
@@ -482,6 +504,8 @@ def main():
         if run.returncode:raise RuntimeError(run.stderr[-12000:]+'\n'+run.stdout[-3000:])
         report=json.loads(run.stdout.strip().splitlines()[-1])
     report['inlineScriptsParsed']=len(scripts)
+    report['sourceSha256']=hashlib.sha256(s.encode('utf-8')).hexdigest()
+    report['sharedCalendarMarketEngineExecuted18374']=bool(offer_engine)
     (root/'jobwait-memory-transfer-18373-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False))
 

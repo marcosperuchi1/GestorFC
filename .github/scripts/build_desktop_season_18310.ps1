@@ -171,6 +171,8 @@ Run-Python '.github/scripts/fix_jobwait_memory_transfer_18373.py'
 Run-Python '.github/scripts/fix_vacation_memory_boot_18373.py'
 Run-Python '.github/scripts/fix_player_checkpoint_reuse_18373.py'
 Run-Python '.github/scripts/finalize_long_career_memory_18373.py'
+Run-Python '.github/scripts/set_desktop_version_18374.py'
+Run-Python '.github/scripts/prepare_career_club_season_18374.py'
 Run-Python '.github/scripts/test_vacation_checkpoint_18373.py'
 Run-Python '.github/scripts/test_save_memory_runtime_18373.py'
 Run-Python '.github/scripts/test_jobwait_memory_transfer_18373.py'
@@ -178,6 +180,12 @@ Run-Python '.github/scripts/test_vacation_memory_boot_18373.py'
 Run-Python '.github/scripts/test_player_checkpoint_reuse_18373.py'
 Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'
 Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'
+Run-Python '.github/scripts/test_season_job_offers_18374.py'
+Run-Python '.github/scripts/test_club_management_18374.py'
+Run-Python '.github/scripts/test_season_rollover_18374.py'
+Run-Python '.github/scripts/test_season_job_offers_browser_18374.py'
+Run-Python '.github/scripts/test_club_management_browser_18374.py'
+Run-Python '.github/scripts/test_season_rollover_browser_18374.py'
 "@.Trim()
 $source = $source.Replace($syncAnchor, $syncSteps)
 $initialAnchor = "Run-Python '.github/scripts/externalize_player_base.py'"
@@ -354,6 +362,7 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'player-checkpoint-reuse-18373-tests.json' 'artifacts/player-checkpoint-reuse-18373-tests.json'
    Copy-Item 'long-career-memory-18373-install.json' 'artifacts/long-career-memory-18373-install.json'
    Copy-Item 'long-career-memory-browser-18373-tests.json' 'artifacts/long-career-memory-browser-18373-tests.json'
+   Copy-Item '*18374*.json' 'artifacts/'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -445,6 +454,15 @@ if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_memory_trans
 if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_memory_boot_18373.py'")) { throw '18.373 memory gate is missing: test_vacation_memory_boot_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_player_checkpoint_reuse_18373.py'")) { throw '18.373 memory gate is missing: test_player_checkpoint_reuse_18373.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'")) { throw '18.373 memory gate is missing: test_long_career_memory_browser_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18374.py'")) { throw '18.374 required gate missing: set_desktop_version_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/prepare_career_club_season_18374.py'")) { throw '18.374 required gate missing: prepare_career_club_season_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_season_job_offers_18374.py'")) { throw '18.374 required gate missing: test_season_job_offers_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_club_management_18374.py'")) { throw '18.374 required gate missing: test_club_management_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_season_rollover_18374.py'")) { throw '18.374 required gate missing: test_season_rollover_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_season_job_offers_browser_18374.py'")) { throw '18.374 required gate missing: test_season_job_offers_browser_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_club_management_browser_18374.py'")) { throw '18.374 required gate missing: test_club_management_browser_18374.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_season_rollover_browser_18374.py'")) { throw '18.374 required gate missing: test_season_rollover_browser_18374.py' }
+
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
