@@ -14,6 +14,91 @@ import tempfile
 from pathlib import Path
 
 from test_vacation_memory_boot_18373 import NODE as BOOT_NODE, between
+from fix_player_checkpoint_reuse_18373 import legacy_unpacker
+
+
+SHAPES = r'''
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const input=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+function fast(object){return %HasFastProperties(object);}
+function makeApi(row){
+ const prefix=row.prefix,api=new Function(row.source+`\nreturn {
+  fields:${prefix}PlayerFields,unpack:${prefix}UnpackPlayer,pack:${prefix}PackPlayer,
+  encode:${prefix}EncodePlayerChunk,decode:${prefix}DecodePlayerChunk,format:${prefix}PlayerFormat};`)();
+ api.legacy=new Function('fields',`const ${prefix}PlayerFields=fields;\n`+row.legacy+`\nreturn ${prefix}UnpackPlayer;`)(api.fields);
+ return api;
+}
+function densePlayer(fields){
+ const player={id:'dense',name:'Zé 漢字 🏆\0',pos:'MEI',skills:{pace:70,pass:65},fitness:97,apps:22,
+  goals:8,assists:3,age:25,clubId:'t1',unknownString:'kept',unknownObject:{values:[0,false,null]},unknownNull:null};
+ for(let i=0;i<fields.length;i++)if(!Object.hasOwn(player,fields[i]))player[fields[i]]=i+1;
+ return player;
+}
+(async()=>{
+ const results=[];
+ for(const row of input){
+  const api=makeApi(row),dense=densePlayer(api.fields),packed=api.pack(dense,'dense');
+  const legacy=api.legacy(packed),decoded=api.unpack(packed);
+  assert.deepEqual(decoded,legacy);assert.deepEqual(Reflect.ownKeys(decoded),Reflect.ownKeys(legacy));
+  assert.equal(fast(legacy),false,row.prefix+': legacy dynamic assignments must reproduce dictionary backing');
+  assert.equal(fast(decoded),true,row.prefix+': actual shipped decoder must create a fast player object');
+  // Do not invent absent fields. Existing statistics updates retain the
+  // shape; adding new fields later is explicitly outside this guarantee.
+  decoded.fitness=83;decoded.apps++;decoded.goals+=2;decoded.skills.pace++;
+  assert.equal(fast(decoded),true);assert.equal(decoded.fitness,83);assert.equal(decoded.apps,23);
+
+  const sparse={id:'sparse',name:'',fitness:undefined,listed:false,injury:0,contract:null},sparseRow=api.pack(sparse,91),
+   sparseDecoded=api.unpack(sparseRow),sparseLegacy=api.legacy(sparseRow);
+  assert.deepEqual(sparseDecoded,sparseLegacy);
+  assert.equal(sparseDecoded.id,'91');assert.equal(Object.hasOwn(sparseDecoded,'fitness'),true);
+  assert.equal(sparseDecoded.fitness,undefined);assert.equal(sparseDecoded.listed,false);
+  assert.equal(sparseDecoded.injury,0);assert.equal(sparseDecoded.contract,null);
+  assert.equal(Object.hasOwn(sparseDecoded,'pos'),false);
+  const symbol=Symbol('legacy-extra'),extra={id:42,name:'Extra override',unknown:'保留',constructor:'data',prototype:'own'};
+  extra[symbol]='symbol value';let reads=0;
+  Object.defineProperty(extra,'getter',{enumerable:true,get(){reads++;return 'getter value';}});
+  Object.defineProperty(extra,'hidden',{enumerable:false,value:'not copied'});
+  const withExtra=[...sparseRow.slice(0,4),extra],withLegacy=api.legacy(withExtra),withDecoded=api.unpack(withExtra);
+  assert.equal(reads,2);assert.deepEqual(withDecoded,withLegacy);
+  assert.deepEqual(Reflect.ownKeys(withDecoded),Reflect.ownKeys(withLegacy));assert.equal(withDecoded.id,42);
+  assert.equal(withDecoded[symbol],'symbol value');assert.equal(Object.hasOwn(withDecoded,'hidden'),false);
+  for(const key of Reflect.ownKeys(withDecoded)){
+   const descriptor=Object.getOwnPropertyDescriptor(withDecoded,key);
+   assert.equal(descriptor.enumerable,true);assert.equal(descriptor.writable,true);assert.equal(descriptor.configurable,true);
+  }
+  const prototypeValue={injected:'literal-data'},prototypeExtra=JSON.parse('{"__proto__":{"injected":"literal-data"},"constructor":"literal"}'),
+   safe=api.unpack([...sparseRow.slice(0,4),prototypeExtra]);
+  assert.equal(Object.getPrototypeOf(safe),Object.prototype);assert.equal(Object.hasOwn(safe,'__proto__'),true);
+  assert.deepEqual(safe.__proto__,prototypeValue);assert.equal(safe.constructor,'literal');
+  assert.equal(Object.prototype.injected,undefined);
+
+  // Decode both historical storage encodings with each real w/u/m codec.
+  const transportRow=api.pack(densePlayer(api.fields),'legacy-packed'),
+   expected=api.legacy(JSON.parse(JSON.stringify(transportRow))),
+   json={format:api.format,encoding:'json',data:JSON.stringify([transportRow]),count:1},
+   fromJson=(await api.decode(json))[0][1],gzip=await api.encode([['legacy-packed',densePlayer(api.fields)]]),
+   fromGzip=(await api.decode(gzip))[0][1];
+  assert.deepEqual(fromJson,expected);assert.deepEqual(fromGzip,expected);
+  assert.equal(fast(fromJson),true);assert.equal(fast(fromGzip),true);
+
+  const count=12000,cohort=new Array(count);let newFast=0,oldFast=0;
+  for(let i=0;i<count;i++){
+   const current=api.unpack(packed);current.fitness=80+i%20;current.apps=i;cohort[i]=current;
+   if(fast(current))newFast++;if(fast(api.legacy(packed)))oldFast++;
+  }
+  assert.equal(newFast,count);assert.equal(oldFast,0);
+  assert.equal(cohort[count-1].apps,count-1);assert.equal(cohort[0].unknownString,'kept');
+  results.push({decoder:row.prefix,knownFields:api.fields.length,ownPlayerFields:Object.keys(decoded).length,
+   cohortPlayers:count,fastAfterDecodeAndExistingUpdates:newFast,legacyFast:oldFast});
+ }
+ console.log(JSON.stringify({actualThreeUnpackersUseFastProperties:true,densePlayerCohortUsesFastProperties:true,
+  existingPlayerUpdatesKeepFastProperties:true,sparsePackedPresencePreserved:true,
+  extraOverridesAndSymbolsPreserved:true,prototypeKeysDecodedAsSafeOwnData:true,
+  legacyPlayerCodecsRoundtrip:true,shapeEvidence:{engine:'Node V8 HasFastProperties intrinsic',
+   forcedGarbageCollection:false,newFieldAdditionsGuaranteedFast:false,cohorts:results}}));
+})().catch(error=>{console.error(error?.stack||String(error));process.exit(1);});
+'''
 
 
 TESTS = r'''
@@ -206,15 +291,29 @@ def main():
         (work / 'test.js').write_text(harness, encoding='utf-8')
         (work / 'payload.json').write_text(json.dumps(payload), encoding='utf-8')
         (work / 'scripts.json').write_text(json.dumps(scripts), encoding='utf-8')
+        shape_codecs = [
+            {'prefix': 'v18191w', 'source': between(source, 'const v18191wPlayerFields=', ' const V171_FORMAT='),
+             'legacy': legacy_unpacker('v18191w')},
+            {'prefix': 'v18191u', 'source': payload['playerCodec'], 'legacy': legacy_unpacker('v18191u')},
+            {'prefix': 'v18191m', 'source': between(source, 'const v18191mPlayerFields=', 'async function v18183DbWriteMany('),
+             'legacy': legacy_unpacker('v18191m')},
+        ]
+        (work / 'shapes.js').write_text(SHAPES, encoding='utf-8')
+        (work / 'shape-codecs.json').write_text(json.dumps(shape_codecs), encoding='utf-8')
         syntax = subprocess.run(['node', '-e', "const fs=require('fs'),vm=require('vm');for(const s of JSON.parse(fs.readFileSync(process.argv[1])))new vm.Script(s)", str(work / 'scripts.json')],
                                 capture_output=True, text=True, timeout=45)
         if syntax.returncode:
             raise RuntimeError(syntax.stderr)
+        shapes = subprocess.run(['node', '--allow-natives-syntax', str(work / 'shapes.js'), str(work / 'shape-codecs.json')],
+                                capture_output=True, text=True, timeout=90)
+        if shapes.returncode:
+            raise RuntimeError(shapes.stderr[-12000:])
         run = subprocess.run(['node', str(work / 'test.js'), str(work / 'payload.json')],
                              capture_output=True, text=True, timeout=180)
         if run.returncode:
             raise RuntimeError(run.stderr[-14000:] + '\n' + run.stdout[-3000:])
         report = json.loads(run.stdout.strip().splitlines()[-1])
+        report.update(json.loads(shapes.stdout.strip().splitlines()[-1]))
     report['inlineScriptsParsed'] = len(scripts)
     (root / 'player-checkpoint-reuse-18373-tests.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(report, ensure_ascii=False))

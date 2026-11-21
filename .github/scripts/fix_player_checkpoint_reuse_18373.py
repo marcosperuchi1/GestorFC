@@ -20,6 +20,38 @@ def once(source, old, new, label):
     return source.replace(old, new, 1)
 
 
+def legacy_unpacker(prefix):
+    return (f'function {prefix}UnpackPlayer(r){{const [id,lo,hi,vals,extra]=r,p={{id:String(id)}};'
+            f'for(let i=0;i<{prefix}PlayerFields.length;i++){{const has=i<32?((lo>>>i)&1):((hi>>>(i-32))&1);'
+            f'if(has)p[{prefix}PlayerFields[i]]=vals[i];}}'
+            "if(extra&&typeof extra==='object')Object.assign(p,extra);return p;}")
+
+
+def fast_unpacker(prefix):
+    return f'''function {prefix}UnpackPlayer(r){{
+ /* FUTBR_PLAYER_FAST_SHAPES_18373: preserve only present fields. Building the
+    final object at once avoids a dictionary backing for every decoded player.
+    Extra keys retain their last-write precedence; __proto__ stays own data. */
+ const [id,lo,hi,vals,extra]=r,entries=[['id',String(id)]];
+ for(let i=0;i<{prefix}PlayerFields.length;i++){{
+  const has=i<32?((lo>>>i)&1):((hi>>>(i-32))&1);
+  if(has)entries.push([{prefix}PlayerFields[i],vals[i]]);
+ }}
+ if(extra&&typeof extra==='object')for(const key of Reflect.ownKeys(extra))
+  if(Object.prototype.propertyIsEnumerable.call(extra,key))entries.push([key,extra[key]]);
+ return Object.fromEntries(entries);
+}}'''
+
+
+def patch_unpackers(source):
+    for prefix in ('v18191w', 'v18191u', 'v18191m'):
+        old, new = legacy_unpacker(prefix), fast_unpacker(prefix)
+        if new in source:
+            continue
+        source = once(source, old, new, prefix + ' fast player decode')
+    return source
+
+
 WORKER = r'''
 /* FUTBR_PLAYER_CHECKPOINT_REUSE_18373_WORKER
    Known player fields have a fixed packed order; the expanded object's order
@@ -69,7 +101,7 @@ async function v18373PackedPlayerHash(prepared,bytes=null){
 
 def patch(source):
     if MARK in source:
-        return source
+        return patch_unpackers(source)
     for required in ('FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN', 'FUTBR_VACATION_BOUNDED_BOOT_18373',
                      'FUTBR_JOBWAIT_SINGLE_OWNER_18373'):
         if required not in source:
@@ -145,7 +177,7 @@ def patch(source):
         "const at=index++,hash=await fingerprint(key==='players'?raw.map(([id,p])=>v18191uPackPlayer(p,id)):raw);hashes.push(hash);", 'UI recomputes every current packed batch')
     runtime = once(runtime, "return {isArray,length:isArray?value.length:0,keys,hashes,archiveHash:'sha256-json-v1',",
         "return {isArray,length:isArray?value.length:0,keys,hashes,archiveHash:key==='players'?playerHashFormat18373:'sha256-json-v1',", 'UI canonical hash tag')
-    return source[:a] + runtime + source[b:]
+    return patch_unpackers(source[:a] + runtime + source[b:])
 
 
 def main():
@@ -157,7 +189,10 @@ def main():
     report = {'ok': True, 'version': '18.373.0',
               'canonicalPackedPlayerHash': True, 'threeWritersUseAlignedPlayerChunks': True,
               'vacationManifestCarriesPlayerHashes': True, 'currentContentVerifiedBeforeReuse': True,
-              'legacyHashSchemesFailClosed': True, 'workerScratchNeverTransferred': True}
+              'legacyHashSchemesFailClosed': True, 'workerScratchNeverTransferred': True,
+              'threeUnpackersBuildFastPlayerObjects': True,
+              'packedPresenceAndExtraPrecedencePreserved': True,
+              'prototypeKeysDecodedAsSafeOwnData': True}
     (root / 'player-checkpoint-reuse-18373-install.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(report))
 

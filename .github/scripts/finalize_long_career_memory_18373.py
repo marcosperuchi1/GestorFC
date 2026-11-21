@@ -18,12 +18,21 @@ def finalize(source: str) -> tuple[str, dict]:
         'FUTBR_JOBWAIT_PARTIAL_UI_GUARDS_18373',
         'FUTBR_VACATION_BOUNDED_BOOT_18373',
         'FUTBR_PLAYER_CHECKPOINT_REUSE_18373',
+        'FUTBR_PLAYER_FAST_SHAPES_18373',
         'FUTBR_CAREER_PROMOTION_OFFERS_18372',
         'FUTBR_NATIVE_CONFIRMATIONS_18372_BEGIN',
     ]
     for marker in markers:
         if marker not in source:
             raise RuntimeError('18.373 integrated source is missing ' + marker)
+    # All three shipped codecs must build the decoded object in one operation.
+    # Runtime shape and legacy roundtrip assertions live in the reuse unit.
+    for prefix in ('v18191w', 'v18191u', 'v18191m'):
+        signature = f'function {prefix}UnpackPlayer(r){{'
+        match = re.search(rf'function {prefix}UnpackPlayer\(r\)\{{([\s\S]*?)\n\}}', source)
+        if source.count(signature) != 1 or not match or any(fragment not in match.group(1) for fragment in (
+                'FUTBR_PLAYER_FAST_SHAPES_18373', 'return Object.fromEntries(entries);')):
+            raise RuntimeError('18.373 fast player decoder is missing or duplicated: ' + prefix)
     for marker in ['TEST_ONLY_LONG_CAREER_MEMORY_18373', 'TEST_ONLY_NAMED_MEMORY_18373',
                    'TEST_ONLY_PROMOTION_FLOW_18372', 'TEST_ONLY_NATIVE_CONFIRMATIONS_18372',
                    'TEST_ONLY_PLAYER_CHECKPOINT_REUSE_18373']:
@@ -62,11 +71,12 @@ def finalize(source: str) -> tuple[str, dict]:
     parsed = json.loads(check.stdout)
     return source, {
         'ok': True, 'version': '18.373.0',
-        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:8]),
+        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:9]),
         'actualCareerScopeVerified': True,
-        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[8:]),
+        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[9:]),
         'vacationBoundedBootIntegrated': 'msg.vacationBoot18373=v18373VacationBoot;msg.vacationCheckpoint=false;' in source,
         'playerCheckpointReuseIntegrated': 'sha256-player-packed-json-v1' in source,
+        'playerFastUnpackersIntegrated': True,
         'historicalRolloverWriterInstalled': 'await v18373WriteCheckpointHistories(world,old,meta.token)' in source,
         'testHooksExcluded': True,
         'editionUpdated': "const EDITION='18.373.0';" in source,
