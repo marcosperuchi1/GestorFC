@@ -40,6 +40,7 @@ let state=null,saved=null,view='career',saveOK=true,saveStamp='',vacationLoop=fa
  v5RenderedView=null,v131PendingVacationAck=0,v131VacationPaintTick=0,v131RankSnapshotCache=null,
  v18360SyncMetrics={players:0},v53Stats={patches:0,playerUpdates:0},v86RankCache={dirty:false},
  v18112Dismissal={pending:false},v89JobWait={active:false,stop:false,days:0};
+const v555Perf={archiveYearsPacked:0,archivePlayersPacked:0};
 const STORE='gestor_fc_mundo_v205_clean',V171_FORMAT='GFC_SHARDED_171';
 let disk=new Map(),owner=null,notices=[],messages=[],workers=[],apiCounts={},sequences=[],
  failStream=false,killAfterDay=0,stopAtDay=0,enableOffers=false,offerOpened=0,
@@ -299,6 +300,16 @@ function compareHistory(original,restored){
  assert.equal(disk.get(STORE).day,state.day);assert.equal(state.v636CoachOffers[0].expiresDay,state.v636CoachOffers[0].day+4);
  compareHistory(original,state);
 
+ // Refusing a card schedules its old UI save for later. Its compact decision
+ // must still beat a same-day manifest when search starts immediately.
+ reset();stopAtDay=13;
+ disk.get(STORE).root.v636CoachOffers=[{id:'old-invitation',teamId:'club1',year:2029,day:12,expiresDay:16,status:'pending'}];
+ state.v636CoachOffers=[];state.v636CoachOfferMeta.rejected.club1=12;
+ state.news.unshift({title:'Recent UI decision',text:'No delayed full save was required'});
+ await v89RunJobWait();
+ assert.equal(state.v636CoachOffers.length,0);assert.equal(state.v636CoachOfferMeta.rejected.club1,12);
+ assert.equal(state.news[0].title,'Recent UI decision');assert.equal(apiCounts.recovery,0);
+
  // STOP can interrupt preparation before memory ownership or a new Worker.
  reset();let release;preparationGate=new Promise(r=>{release=r;});const preparing=v89RunJobWait();
  await waitUntil(()=>v18373JobMemory.phase==='preparing');await v89RunJobWait();release();await preparing;
@@ -330,15 +341,46 @@ function compareHistory(original,restored){
  await v89RunJobWait();assert.equal(apiCounts.recovery,1);assert.equal(state.day,12);compareHistory(original,state);
  assert.equal(owner,null);assert.equal(v53RPC.size,0);
 
+ // An old migration may be suspended between its 1,200-record batches when
+ // jobwait trims the SAME root. It must release its captured season instead
+ // of recreating a packed archive (or throwing on the deleted old container).
+ reset();const legacy={};for(let i=0;i<1201;i++)legacy['legacy'+i]=[{teamId:'old',teamName:'Old Club',apps:30,goals:4}];
+ state.v538CareerArchive={2025:legacy};state.v555CareerArchive={};
+ const migration=v555MigrateArchivesAsync();
+ state.v18373JobWaitPartial=true;delete state.v538CareerArchive;delete state.v555CareerArchive;
+ v18373JobMemory.partial=true;v18373JobMemory.phase='worker';
+ await migration;
+ assert.equal(state.v555CareerArchive,undefined);assert.equal(v555ArchiveMigration,null);
+ assert.equal(v555ArchiveMigrationTimer,0);assert.equal(v555Perf.archiveYearsPacked,0);
+ v18373JobMemory.partial=false;v18373JobMemory.phase='preparing';
+ delete state.v18373JobWaitPartial;state.v538CareerArchive={2025:legacy};state.v555CareerArchive={};
+ assert.equal(await v555MigrateArchivesAsync(),false);v555ScheduleArchiveMigration(0);
+ assert.equal(v555ArchiveMigrationTimer,0);assert.equal(state.v555CareerArchive[2025],undefined);
+ v18373JobMemory.phase='idle';await v555MigrateArchivesAsync();
+ assert.equal(Object.keys(state.v555CareerArchive[2025].p).length,1201);
+ assert.equal(state.v538CareerArchive[2025],undefined);assert.equal(v555Perf.archiveYearsPacked,1);
+ reset();state.v538CareerArchive={2025:legacy};state.v555CareerArchive={};
+ const oldMigration=v555MigrateArchivesAsync(),baseEnsure=window.GestorFC.memoryStorage18373.ensureCheckpoint;
+ let ensuredAfterMigration=false;
+ window.GestorFC.memoryStorage18373.ensureCheckpoint=async function(){
+  assert.equal(v555ArchiveMigration,null,'Captured archive must settle before checkpoint/worker boot');
+  ensuredAfterMigration=true;return baseEnsure.call(this);
+ };
+ v89JobWait.stop=true;await v18373BeginJobWait();await oldMigration;
+ assert.equal(ensuredAfterMigration,true);assert.equal(workers.length,0);
+ assert.equal(state.v555CareerArchive[2025],undefined);await v18373EndJobWait();v18373JobWaitSettled();
+
  console.log(JSON.stringify({ok:true,version:'18.373.0',
   actualBaseStartAndLoopExecuted:true,originalWorkerInSeparateScope:true,
   zeroFullWorldJobwaitMessages:true,uiReleasedBeforeWorkerBoot:true,verifiedExactCheckpointToken:true,
   residentNineDayLoop:true,boundedFourDayCheckpoints:true,singleCompleteWorldOwner:true,
   exactOfferPolicyPreserved:true,fullWorldRestoredBeforeOffer:true,losslessHistoricalReturn:true,
+  unsavedCoachDecisionsPreserved:true,
   oldAndPackedArchiveYearsPreserved:true,scorerAndUnknownTreesBounded:true,partialUIGuarded:true,
   stopDuringPreparationAndSimulation:true,saveJoinAwaitsCompleteReturn:true,
   mismatchedTokenAndCareerRejected:true,failedStreamRecoversDurableWorld:true,
-  lostWorkerRecoveryDoesNotCloneWorld:true,normal}));
+  lostWorkerRecoveryDoesNotCloneWorld:true,inFlightArchiveMigrationCannotRebuildMirror:true,
+  archiveMigrationResumesAfterReturn:true,archiveMigrationJoinedBeforeWorkerBoot:true,normal}));
 })().catch(error=>{console.error(error?.stack||String(error));console.error(JSON.stringify({phase:v18373JobMemory.phase,
  notices,sequences,workerFailures,queue:v53PatchQueue.length,sim:v53Sim,owner}));process.exitCode=1;});
 '''
@@ -364,6 +406,7 @@ def main():
     generator='let v636GenerateCoachOffer;const v93BaseGenerateCoachOffer=()=>0;\n'+generator
     codec=between(s,'const v18191uPlayerFields=','// 5.3: one authoritative simulation')
     vacation_rows=between(s,'function v18310VacationRows(m){','function v18310ReleaseOldVacationState(){')
+    migration=between(s,'let v555ArchiveMigration=null,v555ArchiveMigrationTimer=0;','const v555BaseActualClubsByYear=')
     worker_codec=between(worker,'const v18191wPlayerFields=',' const V171_FORMAT=')
     archive_codec=between(worker,'/* FUTBR_PACKED_ARCHIVE_PATHS_18373','const v18352NestedArchiveKeys=')
     archive_legacy=between(worker,'function v18352ApplyArchivedRow(dst,entry){','const v18343HistoricalKeys=')
@@ -388,7 +431,7 @@ def main():
         scripts.append(match[2])
     with tempfile.TemporaryDirectory() as d:
         p=Path(d);(p/'payload.json').write_text(json.dumps(data),encoding='utf-8')
-        real_ui='\n'.join([codec,vacation_rows,tree,ui,jobs,create,generator,base,loop,drainer])
+        real_ui='\n'.join([codec,vacation_rows,tree,ui,jobs,create,generator,base,loop,drainer,migration])
         (p/'test.js').write_text(HARNESS.replace('/* INJECT_REAL_UI_CODE */',real_ui),encoding='utf-8')
         (p/'scripts.json').write_text(json.dumps(scripts),encoding='utf-8')
         syntax=subprocess.run(['node','-e',"const fs=require('fs'),vm=require('vm');for(const s of JSON.parse(fs.readFileSync(process.argv[1])))new vm.Script(s)",str(p/'scripts.json')],text=True,capture_output=True,timeout=45)

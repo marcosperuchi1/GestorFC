@@ -28,8 +28,8 @@ def signed_id(signature):
 # 18.373 reports are generated on the final source, after preserved 18.372 gates.
 MEMORY_REQUIREMENTS = {
     'vacation-checkpoint-18373-tests.json': ('ok', 'originalStreamAndReaderExecuted', 'originalSimulationFinalizerExecuted', 'manualPauseWithoutPromotionSaved', 'dismissalWithoutPromotionSaved', 'nationalVacationSaved', 'ordinaryAndSeasonEndSaved', 'checkpointPlayerChunksReused', 'bounded2029ChunkTransactions', 'fullPlayerFieldsPreserved', 'freshRootHistoryWins', 'previousManifestPreserved', 'noAdditionalWorldSave', 'commitBeforeSyncEndAndFinished', 'rolloverArchivesFromCurrentWorld', 'initialArchivesWithoutManifestPreserved', 'atomicFailurePreservesSave', 'partialChunkFailurePreservesSave', 'failedCommitNeverClaimsSaved', 'identitySaveIdAndDateGuards', 'transportOnlyDoesNotPublish'),
-    'save-memory-runtime-18373-tests.json': ('ok', 'sameGameScope', 'noFullWorldSaveRPC', 'boundedPackedHistory', 'boundedScorerHistory', 'boundedCompetitionStats', 'fullRoundtrip', 'legacyYearIdHistoryReadable', 'sparseNamesAndUnknownFieldsPreserved', 'threeYearsPackedHistory', 'changedHistoryWritten', 'failedWriteKeepsCurrentAndPrevious', 'partialUIBlocked', 'ownerRecoveryFromAdvancedCheckpoint', 'crossCareerRecoveryRejected', 'deferredWorkerSaveSettledBeforeRelease', 'activeAndMutatingWorkersProtected', 'missingShardRejected', 'actualWorkerPackedHistoryRoundtrip', 'actualWorkerScorerHistoryRoundtrip', 'runtimeTestHookNotShipped'),
-    'jobwait-memory-transfer-18373-tests.json': ('ok',),
+    'save-memory-runtime-18373-tests.json': ('ok', 'sameGameScope', 'noFullWorldSaveRPC', 'boundedPackedHistory', 'boundedScorerHistory', 'boundedCompetitionStats', 'fullRoundtrip', 'legacyYearIdHistoryReadable', 'sparseNamesAndUnknownFieldsPreserved', 'threeYearsPackedHistory', 'changedHistoryWritten', 'failedWriteKeepsCurrentAndPrevious', 'partialUIBlocked', 'ownerRecoveryFromAdvancedCheckpoint', 'crossCareerRecoveryRejected', 'deferredWorkerSaveSettledBeforeRelease', 'activeAndMutatingWorkersProtected', 'missingShardRejected', 'actualWorkerPackedHistoryRoundtrip', 'actualWorkerScorerHistoryRoundtrip', 'runtimeTestHookNotShipped', 'ownerCannotBeReleasedWhilePartial', 'exactVacationCheckpointAvoidsCoreReread', 'vacationOverlayMismatchKeepsLegacyFallback', 'cleanFlushWaitsForDeferredWorkerSave', 'concurrentCleanFlushesShareSettlement', 'actualWorkerSettlementWaitsForDeferredPromise'),
+    'jobwait-memory-transfer-18373-tests.json': ('ok', 'zeroFullWorldJobwaitMessages', 'uiReleasedBeforeWorkerBoot', 'verifiedExactCheckpointToken', 'singleCompleteWorldOwner', 'residentNineDayLoop', 'boundedFourDayCheckpoints', 'exactOfferPolicyPreserved', 'fullWorldRestoredBeforeOffer', 'losslessHistoricalReturn', 'scorerAndUnknownTreesBounded', 'partialUIGuarded', 'mismatchedTokenAndCareerRejected', 'failedStreamRecoversDurableWorld', 'unsavedCoachDecisionsPreserved'),
     'long-career-memory-browser-18373-tests.json': ('ok', 'fullOriginalWorldIn2029', 'threeHistoricalSeasonsPreserved', 'twoRealDismissalsAndOffers', 'immediateJobSearchAfterDismissal', 'zeroFullWorldJobWaitTransfers', 'zeroFullWorldSaveTransfers', 'zeroRpcWholeWorldReloads', 'workerSoleWorldOwnerDuringSearch', 'completeWorldReturnedWithoutRecovery', 'manualVacationStopThenRealSaveExit', 'cleanAndDirtySaveExitPaths', 'actualNamedReloadPreservesCollections', 'boardRenewalsPreservedAcrossClubs', 'testHooksNotShipped', 'withinMeasuredMemoryBudget'),
 }
 
@@ -37,6 +37,12 @@ def verify_memory_reports(artifacts):
     version = json.loads((artifacts / 'desktop-version-18373-install.json').read_text(encoding='utf-8'))
     if version.get('ok') is not True or version.get('version') != '18.373.0' or version.get('canAutoUpdateFrom18372') is not True:
         raise RuntimeError('18.373 desktop version and upgrade preparation were not verified')
+    installation = json.loads((artifacts / 'long-career-memory-18373-install.json').read_text(encoding='utf-8'))
+    if installation.get('version') != '18.373.0' or any(installation.get(key) is not True for key in (
+            'ok', 'allMemoryCorrectionsIntegrated', 'actualCareerScopeVerified',
+            'priorCareerAndDialogCorrectionsPreserved', 'historicalRolloverWriterInstalled',
+            'testHooksExcluded', 'editionUpdated')) or installation.get('parsedScripts', 0) < 1:
+        raise RuntimeError('18.373 final game edition or integrated private-scope verification is missing')
     for name, required in MEMORY_REQUIREMENTS.items():
         report = json.loads((artifacts / name).read_text(encoding='utf-8'))
         if report.get('version') != '18.373.0' or any(report.get(key) is not True for key in required):

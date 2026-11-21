@@ -108,7 +108,7 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
   'history','internationalHistory','v735NationalArchive','crestOverrides'];
  const SHARD_SET=new Set(SHARDS),own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
  const stats={version:'18.373',sameGameScope:true,noFullStateSaveRPC:true,fullSaves:0,
-  reusedCheckpoints:0,chunksWritten:0,chunksReused:0,playerChunksWritten:0,
+  reusedCheckpoints:0,cleanWorkerSettlements:0,chunksWritten:0,chunksReused:0,playerChunksWritten:0,
   maxRowsPerChunk:0,maxEncodedChunkBytes:0,maxTransactionChunks:0,
   lastSaveMs:0,lastLoadMs:0,lastMode:'',workerReleases:0,cachePurges:0,
   failed:0,cleanupFailed:0,lastError:'',lastHeapMiB:null};
@@ -427,8 +427,20 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
  v52FlushSave=async function(){
   clearTimeout(v52SaveTimer);v52SaveTimer=null;
   if(v52SavePromise)return v52SavePromise;
-  if(owner||loading||v53Sim?.active||v53Sim?.syncing||v53Sim?.patching||v125VacIncoming||
-     !v52PendingState||!v52SaveDirty)return;
+  if(owner||loading||v53Sim?.active||v53Sim?.syncing||v53Sim?.patching||v125VacIncoming)return;
+  if(!v52PendingState||!v52SaveDirty){
+   if(!v53Worker?.v18373CheckpointBusy)return;
+   // Named loading awaits flush before terminating the old Worker. A manual
+   // day can have no UI edits while its post-finished checkpoint still writes.
+   // Join that save even on a clean flush; concurrent callers share the wait.
+   const task=(async()=>{
+    try{await settleWorker();stats.cleanWorkerSettlements++;}
+    finally{if(v52SavePromise===task)v52SavePromise=null;updateSaveStatus();}
+    // An edit made during the wait must also reach disk before a caller may
+    // replace the career. Do not let a newly dirty state pass a clean flush.
+    if(!owner&&v52PendingState&&v52SaveDirty)return v52FlushSave();
+   })();v52SavePromise=task;return task;
+  }
   const current=v52PendingState,waiters=v52SaveWaiters.splice(0),notify=v52NotifySave;
   v52NotifySave=false;v52SaveDirty=false;
   const task=(async()=>{
@@ -506,6 +518,38 @@ def patch_source(source):
                   'if(i+1<keys.length)await new Promise(r=>setTimeout(r,0));', 'Worker loader yield')
     worker = once(worker, "if(key==='players'&&rows?.format===v18191wPlayerFormat)rows=await v18191wDecodePlayerChunk(rows);\n     for(const entry of rows||[]){",
                   "if(rows==null)throw Error('Bloco do save ausente: '+key);\n     if(key==='players'&&rows?.format===v18191wPlayerFormat)rows=await v18191wDecodePlayerChunk(rows);\n     for(const entry of rows||[]){", 'Worker missing-shard guard')
+    worker = once(worker,
+        "  const root=await read(meta.rootKey);if(!root||typeof root!=='object')return false;Object.assign(world,root);",
+        """  const root=await read(meta.rootKey);if(!root||typeof root!=='object')return false;
+  /* FUTBR_SKIP_COMMITTED_VACATION_OVERLAY_18373
+     The canonical save already contains this exact vacation. Re-reading its
+     player chunks would temporarily retain a second complete player map.
+     Keep the old delta fallback when this precise proof is unavailable. */
+  const committed=await read(STORE);
+  const samePoint=(a,b)=>!!a&&!!b&&!!String(a.v1903CareerId||'')&&
+   !!String(a.userCoachId||'')&&!!String(a.user||'')&&
+   String(a.v1903CareerId||'')===String(b.v1903CareerId||'')&&
+   String(a.userCoachId||'')===String(b.userCoachId||'')&&
+   String(a.user||'')===String(b.user||'')&&
+   String(a.futbrSaveId||'')===String(b.futbrSaveId||'')&&
+   Number(a.year)===Number(b.year)&&Number(a.day)===Number(b.day);
+  const complete=!!world&&shards.every(key=>{
+   const value=world[key],spec=meta.collections?.[key];
+   if(!spec||!value||typeof value!=='object')return false;
+   if(spec.isArray&&(!Array.isArray(value)||value.length!==Number(spec.length)))return false;
+   if(!spec.isArray&&Array.isArray(value))return false;
+   if(key==='players'&&Number(spec.chunks)>0){
+    for(const id in value)if(Object.prototype.hasOwnProperty.call(value,id))return true;
+    return false;
+   }
+   return true;
+  });
+  if(complete&&committed?.format===V171_FORMAT&&
+     committed.token==='vacation-'+meta.token&&
+     Number(committed.year)===Number(meta.year)&&Number(committed.day)===Number(meta.day)&&
+     Number(root.year)===Number(meta.year)&&Number(root.day)===Number(meta.day)&&
+     samePoint(world,root)&&samePoint(world,committed.root))return true;
+  Object.assign(world,root);""", 'skip exact committed vacation overlay')
     save_start = worker.index('async function save(s){')
     save_end = worker.index(' function baselineOf(s)', save_start)
     save = worker[save_start:save_end]
@@ -573,6 +617,7 @@ def main():
               'legacyHistoryReadable': "if(spec.nested==='year-id-v1'){applyLegacyArchive(dst,entry);continue;}" in source,
               'ownerGuard': 'setWorkerOwner,clearWorkerOwner,restoreOwnerCheckpoint' in source,
               'deferredWorkerSaveProtected': 'checkpointPending18373:' in source}
+    report['committedVacationOverlaySkipped'] = 'FUTBR_SKIP_COMMITTED_VACATION_OVERLAY_18373' in source
     (root / 'save-memory-runtime-18373-install.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
     print(json.dumps(report))
 

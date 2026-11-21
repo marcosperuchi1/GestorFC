@@ -95,6 +95,13 @@ function v18373VerifyJobCheckpoint(stored,token,message){
   throw Error('O checkpoint da busca não corresponde à carreira e à jornada atuais. Nenhum estado antigo foi simulado.');
  return true;
 }
+function v18373ApplyJobCoachDelta(delta){
+ if(!delta||JSON.stringify(delta).length>160000||!Array.isArray(delta.offers)||
+    !Array.isArray(delta.career)||!Array.isArray(delta.news)||!delta.offerMeta||typeof delta.offerMeta!=='object')
+  throw Error('Delta de decisões da carreira inválido.');
+ world.v636CoachOffers=delta.offers;world.v636CoachOfferMeta=delta.offerMeta;
+ world.v636CareerTracker=delta.tracker||null;world.v636CoachCareer=delta.career;world.news=delta.news;
+}
 function v18373JobTeam(t){
  const row={};for(const k of ['id','name','short','country','division','base','fanPressure','coachId','color','color2','primary','secondary'])
   if(t?.[k]!=null)row[k]=t[k];
@@ -227,7 +234,11 @@ async function v18373BeginJobWait(){
   throw Error('O armazenamento seguro da busca não está disponível.');
  v18373JobMemory.phase='preparing';v18373JobMemory.lastError='';
  v18373JobMemory.done=new Promise(resolve=>{v18373JobMemory.settle=resolve;});
- const before=v18373JobIdentity(),token=await runtime.ensureCheckpoint(),after=v18373JobIdentity();
+ const before=v18373JobIdentity();
+ // A migration already between batches still owns its captured old season.
+ // Preparing pauses it at the next real yield; join that work before boot.
+ if(typeof v555ArchiveMigration!=='undefined'&&v555ArchiveMigration)await v555ArchiveMigration;
+ const token=await runtime.ensureCheckpoint(),after=v18373JobIdentity();
  if(!v18373SameJob(before,after)||!v18373SameJob(after,token)||after.userEmployed||
     state?.v640National?.userTeam||after.year!==Number(token.year)||after.day!==Number(token.day)||
     after.seasonDone!==!!token.seasonDone||!token.token||!Number.isSafeInteger(Number(token.revision)))
@@ -312,6 +323,10 @@ function v18373GuardJobAction(el){
  v18373JobMemory.blocked++;
  toast('Pare o avanço para abrir os dados completos da carreira. A jornada atual será preservada.','warn');return true;
 }
+function v18373ArchiveMigrationPaused(){
+ const flow=window.GestorFC?.jobWaitMemory18373?.status?.();
+ return !!(state?.v18373JobWaitPartial||flow?.ownsWorld||flow?.phase==='preparing');
+}
 window.GestorFC.jobWaitMemory18373={status:()=>({version:'18.373',phase:v18373JobMemory.phase,
  ownsWorld:v18373JobMemory.partial,starts:v18373JobMemory.starts,restores:v18373JobMemory.restores,
  recoveries:v18373JobMemory.recoveries,blocked:v18373JobMemory.blocked,packets:v18373JobMemory.packets,
@@ -353,6 +368,13 @@ v18119RecoverLastSave=async function(){
   v18119CompleteSeasonTransfer();view='career';render();
  }catch(error){v18119BeginSeasonTransfer();v18119FailSeasonTransfer(error?.message||String(error));}
 };
+// The named-save script registers its capture listener after this in-scope
+// block. Guard it before it can clear state or load another career mid-search.
+document.addEventListener('click',event=>{
+ const el=event.target?.closest?.('[data-action]');
+ if(!el||!v18373GuardJobAction(el))return;
+ event.preventDefault();event.stopImmediatePropagation();
+},true);
 document.addEventListener('change',event=>{
  if(!v18373JobMemory.partial&&v18373JobMemory.phase!=='preparing')return;
  event.preventDefault();event.stopImmediatePropagation();
@@ -374,6 +396,8 @@ def install(s):
         "if(message.jobWaitAuto===true){\n   if(message.state||message.mode!=='dayfast'||(!residentManual&&!message.loadSaved))throw Error('Busca de propostas exige posse exclusiva e checkpoint verificado.');\n   if(residentManual&&(!v18373JobWaitWorker||!v18373WorkerSameJob(v18373WorkerIdentity(world),v18373JobWaitToken)))throw Error('A posse do Worker de propostas foi perdida.');\n  }\nif(!residentManual&&message.loadSaved){\n   let stored=await read(STORE);\n   if(!stored)throw Error('Ainda nao existe jornada salva para processar.');\n   if(message.jobWaitAuto===true){v18373VerifyJobCheckpoint(stored,message.jobWaitCheckpoint18373,message);v18373JobWaitToken={...message.jobWaitCheckpoint18373};}\n   world=await decode(stored);stored=null;",'verified load')
     s=once(s,"  if(!world)throw Error('Estado da carreira indisponivel no Worker.');",
         "  if(!world)throw Error('Estado da carreira indisponivel no Worker.');\n  v18373JobWaitWorker=message.jobWaitAuto===true;",'ownership mode')
+    s=once(s,"  if(nationalJump){\n   const context=message.nationalContext||{},code=String(context.code||'').toUpperCase(),root=world.v640National;",
+        "  if(message.jobWaitAuto===true){\n   if(Number(world.year)!==Number(message.year)||Number(world.day)!==Number(message.day)||!v18373WorkerSameJob(v18373WorkerIdentity(world),v18373JobWaitToken))throw Error('Decisões de outra carreira/jornada foram bloqueadas.');\n   v18373ApplyJobCoachDelta(message.jobWaitCoachDelta18373);\n  }\n  if(nationalJump){\n   const context=message.nationalContext||{},code=String(context.code||'').toUpperCase(),root=world.v640National;",'current coach decisions')
     s=once(s," async function handle(m){", " async function handle(m){\n  if(m.op==='jobwait-return-18373')return v18373ReturnJobWorld(m);",'return rpc')
     s=once(s,"   running=false;\n   self.postMessage({kind:'finished',session,error:failure,day:finalDay,year:finalYear,rankPending,",
         "   running=false;\n   if(lowMemoryVacation){message.state=null;v18373ReleaseWorkerGraph();}\n   self.postMessage({kind:'finished',session,error:failure,day:finalDay,year:finalYear,rankPending,",'release before finish')
@@ -381,6 +405,7 @@ def install(s):
     s=once(s,'return {before,after,prepare,simulateFixture};',
         'return {before,after,prepare,simulateFixture,release:()=>{current=null;}};','national graph release')
     s=once(s,"const v18370JobSave={interval:4",TREE_CODEC+UI+"\nconst v18370JobSave={interval:4",'in-scope ui')
+    s=once(s,"async function v53StartSimulation(mode,options={}){\n", "async function v53StartSimulation(mode,options={}){\n if(v18373JobMemory.partial&&!(mode==='dayfast'&&options?.jobWaitAuto===true))throw Error('Pare a busca antes de iniciar outra simulação.');\n",'partial simulation guard')
     s=once(s,'  const nationalChanged=v148EnsureNationalReady(state);',
         "  const v18373OwnedJob=mode==='dayfast'&&options?.jobWaitAuto===true&&v18373JobMemory.partial;\n  const nationalChanged=v18373OwnedJob?false:v148EnsureNationalReady(state);",'avoid partial national maintenance')
     s=once(s,"  }else if(v18311LiveVacation){clearTimeout(v52SaveTimer);",
@@ -389,7 +414,7 @@ def install(s):
         "  if(!v18373OwnedJob&&!v18311LiveVacation&&state?.v1903CareerId&&!saveOK)",'owned saved state guard')
     s=once(s,"  const canLoadSaved=!v18311LiveVacation&&!!saveOK&&", "  const canLoadSaved=v18373OwnedJob?!options?.jobWaitResident:!v18311LiveVacation&&!!saveOK&&",'checkpoint first boot')
     s=once(s,"     if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;",
-        "     if(v18373OwnedJob){\n      msg.useResident=options?.jobWaitResident===true;msg.jobWaitCheckpoint18373={...v18373JobMemory.token};\n     }else if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;",'never clone owned state')
+        "     if(v18373OwnedJob){\n      msg.useResident=options?.jobWaitResident===true;msg.jobWaitCheckpoint18373={...v18373JobMemory.token};\n      msg.jobWaitCoachDelta18373={offers:state.v636CoachOffers||[],offerMeta:state.v636CoachOfferMeta||{},tracker:state.v636CareerTracker||null,career:state.v636CoachCareer||[],news:state.news||[]};\n     }else if(!canLoadSaved&&!(mode==='dayfast'&&options?.jobWaitResident===true))msg.state=state;",'never clone owned state')
     s=once(s,"   w.onmessage=event=>{const m=event.data;\n", "   w.onmessage=event=>{if(v53Worker!==w||v18371RetiredWorkers.has(w))return;const m=event.data;\n",'retired worker messages')
     s=once(s,"||m.kind==='vac-live'||m.kind==='vac-dismissed'", "||m.kind==='vac-live'||m.kind==='jobwait-progress-18373'||m.kind==='vac-dismissed'",'queue compact packet')
     s=once(s,"v53Worker=null;v53WorkerReady=null;if(active){v53Creating=true;v53RecoverAfterFailure()",
@@ -420,12 +445,32 @@ def install(s):
     # Bounded mirror must not feed delayed academy/rank builders between rounds.
     s=once(s,"function v91YouthStep(deadline){\n v91YouthTask=0;", "function v91YouthStep(deadline){\n if(v18373JobMemory.partial)return;\n v91YouthTask=0;",'deferred academy guard')
     s=once(s,"function v127RunRankWarm(expectedKey){\n v127RankWarmHandle=0;", "function v127RunRankWarm(expectedKey){\n if(v18373JobMemory.partial)return false;\n v127RankWarmHandle=0;",'rank warm guard')
+    # Clearing only the timer does not cancel an already-yielding migration.
+    # It holds its old season/ids/packed rows even after the UI root is trimmed.
+    a=s.index('let v555ArchiveMigration=null,v555ArchiveMigrationTimer=0;')
+    b=s.index('const v555BaseActualClubsByYear=',a)
+    migration=s[a:b]
+    migration=once(migration,'if(!state||v555ArchiveMigration||v555ArchiveMigrationTimer||v53Sim?.active)return;',
+        'if(!state||v555ArchiveMigration||v555ArchiveMigrationTimer||v53Sim?.active||v18373ArchiveMigrationPaused())return;','migration scheduling guard')
+    migration=once(migration,'if(!state||v555ArchiveMigration||v53Sim?.active)return false;',
+        'if(!state||v555ArchiveMigration||v53Sim?.active||v18373ArchiveMigrationPaused())return false;','migration entry guard')
+    if migration.count('if(state!==target||v53Sim?.active)')!=2:
+        raise RuntimeError('18.373 migration must have both original yield guards')
+    migration=migration.replace('if(state!==target||v53Sim?.active)',
+        'if(state!==target||v53Sim?.active||v18373ArchiveMigrationPaused())')
+    migration=once(migration,'}target.v555CareerArchive??={};',
+        '}if(state!==target||v53Sim?.active||v18373ArchiveMigrationPaused())return changed;target.v555CareerArchive??={};','migration commit guard')
+    migration=once(migration,'if(changed&&state===target){',
+        'if(changed&&state===target&&!v18373ArchiveMigrationPaused()){','migration persistence guard')
+    migration=once(migration,'if(state&&!v53Sim?.active)v555ScheduleArchiveMigration(1200);',
+        'if(state&&!v53Sim?.active&&!v18373ArchiveMigrationPaused())v555ScheduleArchiveMigration(1200);','migration reschedule guard')
+    s=s[:a]+migration+s[b:]
     tail="\n})();\n</script>\n\n\n\n\n<!-- v43 clean: v130 ranking warmup removed -->"
     s=once(s,tail,'\n'+UI_GUARDS+tail,'last in-scope routes')
     return s, {'alreadyInstalled':False,'sameGameScope':True,'verifiedCheckpointBoot':True,
         'fullWorldJobwaitMessages':0,'singleCompleteWorldOwner':True,'losslessBoundedReturn':True,
         'residentDaysAndFourDayCheckpoints':True,'fullWorldBeforeOffersAndNavigation':True,
-        'noHistoryTruncation':True}
+        'noHistoryTruncation':True,'inFlightArchiveMigrationGuarded':True}
 
 
 def main():

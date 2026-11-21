@@ -54,18 +54,21 @@ jobs:
           python .github/scripts/test_career_promotion_offers_18372.py "$project_root"
           python .github/scripts/test_contract_preferences_18371.py "$project_root"
           python .github/scripts/test_repeated_dismissal_18371.py "$project_root"
-          python -c 'import hashlib,pathlib,sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); expected="ce3a8cac59f35ec40a6864a0792eafa01f57aa60c453569b0855a945eb48186b"; assert actual==expected, "18.372 approved baseline SHA mismatch: "+actual; print("Approved 18.372 source SHA256:",actual)' "$project_root/src/index.html"
+          # The prepared artifact already includes fix_incremental_competition_scope.py
+          # (18302), applied by the Windows ranking test. The older local ce3a8cac
+          # copy omitted only that patch: day-zero handling, competition club scope,
+          # and its marker. Applying it produces this exact hash (+601 bytes).
+          python -c 'import hashlib,pathlib,sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); expected="c1d462c96e32367b8a73a64d93d49b80442c03fa721aedfa7b2964cb631a7c29"; assert actual==expected, "18.372 prepared baseline SHA mismatch: "+actual; print("Verified 18.372 source SHA256:",actual)' "$project_root/src/index.html"
       - name: Install browser and process-memory observer
         shell: bash
         run: |
           python -m pip install playwright psutil
           python -m playwright install chromium
-      - name: Preserve real 18.372 promotion and confirmation regression
+      - name: Reproduce the missing 18.372 vacation commit
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18373/prepared"
-          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
           python .github/scripts/test_vacation_checkpoint_18373.py "$project_root" --baseline
       - name: Apply 18.373 memory corrections and verify original functions
         shell: bash
@@ -79,6 +82,12 @@ jobs:
           python .github/scripts/test_vacation_checkpoint_18373.py "$project_root"
           python .github/scripts/test_save_memory_runtime_18373.py "$project_root"
           python .github/scripts/test_jobwait_memory_transfer_18373.py "$project_root"
+      - name: Preserve real promotion and confirmation flow on the final 18.373 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18373/prepared"
+          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
       - name: Real 2029 dismissal, job search, vacation, save exit and reload under memory limits
         shell: bash
         run: |

@@ -226,6 +226,30 @@ function assertHistory(actual,expected){
  await flushChange();assert.equal(ended,1);assert.equal(f.worker(),null);
  assert(rpc.some(r=>r.op==='settle-storage-18373'));assert.equal(await f.prime(),false);
  report.deferredWorkerSaveSettledBeforeRelease=true;report.manualPrewarmDisabled=true;
+ // The real named loader awaits a CLEAN flush before terminating its Worker.
+ // Its continuation must wait for the deferred checkpoint even without a
+ // pending UI state. Two callers must join one settlement RPC.
+ assert.equal(f.pending().dirty,false);assert.equal(f.pending().pending,null);
+ const cleanWorker={v18373CheckpointBusy:true,terminate(){events.push({kind:'clean-worker-terminated'});}};
+ f.setWorker(cleanWorker);let releaseDeferred,cleanResolved=false,settleCalls=0;
+ const barrier=new Promise(resolve=>{releaseDeferred=resolve;}),normalRPC=context.__rpc;
+ context.__rpc=async(op,params)=>{
+  if(op==='settle-storage-18373'){
+   settleCalls++;await barrier;events.push({kind:'manual-checkpoint-committed'});
+  }
+  return normalRPC(op,params);
+ };
+ const cleanWrites=api.status().fullSaves;
+ const cleanA=f.flush().then(()=>{cleanResolved=true;events.push({kind:'named-load-may-continue'});});
+ const cleanB=f.flush();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(cleanResolved,false);assert.equal(settleCalls,1);assert.equal(f.worker(),cleanWorker);
+ assert.equal(f.pending().saving,true);releaseDeferred();await Promise.all([cleanA,cleanB]);
+ assert.equal(f.worker(),null);assert.equal(api.status().fullSaves,cleanWrites);
+ assert.equal(f.pending().saving,false);assert.equal(api.status().cleanWorkerSettlements,1);
+ assert(events.findIndex(e=>e.kind==='manual-checkpoint-committed')<events.findIndex(e=>e.kind==='clean-worker-terminated'));
+ assert(events.findIndex(e=>e.kind==='clean-worker-terminated')<events.findIndex(e=>e.kind==='named-load-may-continue'));
+ context.__rpc=normalRPC;report.cleanFlushWaitsForDeferredWorkerSave=true;
+ report.concurrentCleanFlushesShareSettlement=true;
  f.sim.active=true;f.setWorker({terminate(){throw Error('active Worker terminated');}});
  assert.equal(api.releaseIdleWorker('active'),false);f.sim.active=false;
  f.rpcs.set(1,{op:'save'});assert.equal(api.releaseIdleWorker('mutation'),false);f.rpcs.clear();
@@ -242,17 +266,24 @@ function assertHistory(actual,expected){
  read=async key=>__read(key);
  v18181RawWriteMany=async entries=>__workerWrite(entries);
  v18310WorkerDeleteMany=async keys=>__workerDelete(keys);
- self.__fixture={save,decode};
+ self.__fixture={save,decode,handle,applyVacation:v93ApplyVacationCheckpoint,
+  setWorld:s=>{world=s;},getWorld:()=>world,setDeferredSave:p=>{v150ManualSavePromise=p;}};
  `;
  const where=workerSource.indexOf(' self.onmessage=event=>{const m=event.data;');
  assert(where>0);workerSource=workerSource.slice(0,where)+hook+workerSource.slice(where);
- const workerDisk=new Map(),workerWrites=[];
+ const workerDisk=new Map(),workerWrites=[],workerReads=[];
  const wc={console,Engine:{},performance,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,
   crypto:crypto.webcrypto,ArrayBuffer,Map,Set,Date,Math,JSON,Promise,Uint8Array,btoa,atob,setTimeout,clearTimeout,
-  self:{postMessage(){}},__read:async key=>clone(workerDisk.get(key)),
+  self:{postMessage(){}},__read:async key=>{workerReads.push(key);return clone(workerDisk.get(key));},
   __workerWrite:async entries=>{for(const e of entries){workerDisk.set(e.key,clone(e.value));workerWrites.push(e);}},
   __workerDelete:async keys=>{for(const key of keys)workerDisk.delete(key);}};
  vm.createContext(wc);vm.runInContext(workerSource+'\nv53WorkerMain();',wc);
+ let finishActualDeferred,actualSettled=false;
+ wc.self.__fixture.setDeferredSave(new Promise(resolve=>{finishActualDeferred=resolve;}));
+ const actualSettlement=wc.self.__fixture.handle({op:'settle-storage-18373'}).then(x=>{actualSettled=true;return x;});
+ await new Promise(resolve=>setTimeout(resolve,0));assert.equal(actualSettled,false);
+ finishActualDeferred();assert.equal((await actualSettlement).settled,true);
+ report.actualWorkerSettlementWaitsForDeferredPromise=true;
  const legacyFixture=fixture(1100,6000);seedLegacy(legacyFixture);
  for(const [k,v]of disk)workerDisk.set(k,clone(v));
  await wc.self.__fixture.save(legacyFixture);
@@ -263,6 +294,36 @@ function assertHistory(actual,expected){
  for(const {key,value}of workerWrites)if(key.includes(':scorerArchive:')||key.includes(':competitionStats:'))assert(value.length<=128);
  report.actualWorkerPackedHistoryRoundtrip=true;report.workerMigratesLegacyPackedHistory=true;
  report.actualWorkerScorerHistoryRoundtrip=true;
+ // The exact canonical vacation must not decode its entire core world twice.
+ const core=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats'];
+ const overlayWorld=fixture(16,8),overlayRoot=clone(overlayWorld),overlayKeys=[];
+ const vac={format:'GFC_VAC_CHECKPOINT_93',token:'overlay-proof',year:2029,day:17,
+  rootKey:KEY+':v93vac:overlay-proof:root',collections:{}};
+ for(const key of core){const value=overlayRoot[key];delete overlayRoot[key];
+  const chunk=KEY+':v93vac:overlay-proof:'+key+':0';overlayKeys.push(chunk);
+  workerDisk.set(chunk,Object.entries(value));
+  vac.collections[key]={isArray:Array.isArray(value),length:Array.isArray(value)?value.length:0,chunks:1};
+ }
+ const canonical={format:'GFC_SHARDED_171',token:'vacation-'+vac.token,
+  year:2029,day:17,root:clone(overlayRoot),collections:{}};
+ workerDisk.set(KEY+':v93vac:meta',clone(vac));workerDisk.set(vac.rootKey,clone(overlayRoot));
+ workerDisk.set(KEY,clone(canonical));wc.self.__fixture.setWorld(clone(overlayWorld));workerReads.length=0;
+ assert.equal(await wc.self.__fixture.applyVacation(2029,17),true);
+ assert.equal(workerReads.filter(k=>overlayKeys.includes(k)).length,0);
+ assert.deepEqual(clone(wc.self.__fixture.getWorld()),overlayWorld);
+ report.exactVacationCheckpointAvoidsCoreReread=true;
+ const negatives=[];
+ for(const field of ['token','v1903CareerId','userCoachId','user','futbrSaveId','year','day','incompleteWorld']){
+  const altered=clone(canonical),candidate=clone(overlayWorld);
+  if(field==='token')altered.token='another-vacation';
+  else if(field==='incompleteWorld')candidate.players={};
+  else altered.root[field]=field==='year'?2030:field==='day'?18:'different-'+field;
+  workerDisk.set(KEY,altered);wc.self.__fixture.setWorld(candidate);workerReads.length=0;
+  assert.equal(await wc.self.__fixture.applyVacation(2029,17),true);
+  assert.equal(workerReads.filter(k=>overlayKeys.includes(k)).length,core.length,field+' must use legacy fallback');
+  negatives.push(field);
+ }
+ report.vacationOverlayMismatchKeepsLegacyFallback=true;report.vacationOverlayNegativeCases=negatives;
  const stats=clone(api.status());delete stats.owner;report.stats=stats;
  report.runtimeTestHookNotShipped=!source.includes('TEST_ONLY_SAVE_MEMORY_18373');
  report.ok=true;f.clearTimers();process.stdout.write(JSON.stringify(report));

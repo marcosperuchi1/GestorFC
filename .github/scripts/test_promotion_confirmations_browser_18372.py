@@ -97,6 +97,54 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
   this.progress=[{stage:'fixture-ready',snapshot}];
   return this.initial;
  },
+ observeManualStorage373(){
+  if(!window.GestorFC?.memoryStorage18373)return false;
+  const original=v53GetWorker,ids=new WeakMap(),events=[];let seq=0;
+  this.manualStorageProbe={events,idOf:worker=>worker?ids.get(worker)||null:null};
+  v53GetWorker=function(...args){return original.apply(this,args).then(worker=>{
+   if(ids.has(worker))return worker;const id=++seq;ids.set(worker,id);
+   const send=worker.postMessage,terminate=worker.terminate;
+   worker.postMessage=function(message,...rest){
+    if(message?.op==='settle-storage-18373'||message?.op==='prime-manual')
+     events.push({kind:'send',op:message.op,worker:id,pending:!!worker.v18373CheckpointBusy});
+    return send.call(this,message,...rest);
+   };
+   worker.terminate=function(...args){events.push({kind:'terminate',worker:id,
+    pending:!!worker.v18373CheckpointBusy});return terminate.apply(this,args);};
+   return worker;
+  });};return true;
+ },
+ async checkManualCleanFlush373(){
+  const runtime=window.GestorFC?.memoryStorage18373;
+  if(!runtime)return null;
+  const probe=this.manualStorageProbe,worker=v53Worker,workerId=probe?.idOf(worker),
+   before={pending:!!worker?.v18373CheckpointBusy,dirty:!!v52SaveDirty,
+    uiSavePending:!!v52SavePromise,settlements:Number(runtime.status().cleanWorkerSettlements)||0,
+    year:Number(state.year),day:Number(state.day),careerId:String(state.v1903CareerId||''),
+    coachId:String(state.userCoachId||''),user:String(state.user||''),saveId:String(state.futbrSaveId||'')},
+   eventStart=probe?.events.length||0;
+  if(before.dirty)throw Error('Post-match fixture must reach a clean flush without inventing a UI edit.');
+  // Exactly the original clean flush used before a named load. Do not add a
+  // persist, edit flags or wait for a timer to hide a deferred-save race.
+  await v52FlushSave();
+  const manifest=await v52ReadRaw(STORE),root=manifest?.root,
+   events=(probe?.events||[]).slice(eventStart),afterSettlements=Number(runtime.status().cleanWorkerSettlements)||0;
+  if(manifest?.format!=='GFC_SHARDED_171'||Number(manifest.year)!==before.year||Number(manifest.day)!==before.day||
+     Number(root?.year)!==before.year||Number(root?.day)!==before.day||
+     String(root?.v1903CareerId||'')!==before.careerId||String(root?.userCoachId||'')!==before.coachId||
+     String(root?.user||'')!==before.user||String(root?.futbrSaveId||'')!==before.saveId)
+   throw Error('Clean flush returned before the manual checkpoint reached the current career/day.');
+  const sent=events.findIndex(e=>e.kind==='send'&&e.op==='settle-storage-18373'&&e.worker===workerId),
+   released=events.findIndex(e=>e.kind==='terminate'&&e.worker===workerId);
+  if(before.pending&&(sent<0||released<=sent||afterSettlements<=before.settlements||v53Worker===worker))
+   throw Error('A deferred manual save was not settled before releasing its Worker: '+JSON.stringify({before,events,afterSettlements}));
+  this.manualSettlement={ok:true,originalCleanFlush:true,noExtraPersist:true,before,
+   afterSettlements,events,settledBeforeRelease:before.pending?sent>=0&&released>sent:null,
+   currentManifest:{format:manifest.format,year:manifest.year,day:manifest.day,
+    careerId:root.v1903CareerId,coachId:root.userCoachId,user:root.user}};
+  this.progress.push({stage:'manual-clean-flush-verified',report:this.manualSettlement});
+  return this.manualSettlement;
+ },
  start(mode){
   const initial=this.setup(mode);this.done=false;this.result=null;
   (async()=>{
@@ -111,6 +159,7 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
     if(!saveOK||v52SaveDirty)throw Error('Original initial career save did not complete');
     this.progress.push({stage:'initial-fixture-saved'});
     if(mode==='normal'){
+     this.observeManualStorage373();
      E.kickoff(state);E.finishMatch(state,state.live);
      if(state.live?.status!=='finished')throw Error('The original league match did not finish');
      this.progress.push({stage:'real-human-match-finished',fixtureId:state.live.fixtureId,
@@ -119,6 +168,7 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
      if(!sync)throw Error('The original post-match command refused the finished match');
      await sync;
      if(!v552RoundSync.done||v552RoundSync.error)throw Error('The original post-match Worker did not settle');
+     await this.checkManualCleanFlush373();
     }else{
      E.startVacation(state,24,false);
      await v53StartSimulation('vacation',{liveStateNoPreSave:true});
@@ -138,7 +188,8 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
      base:target.base,country:target.country,division:target.division,coachId:target.coachId},
      actualDaysAdvanced:Number(state.day)-before,originalEngineAndWorker:true,
      generatedAfterRealCompletedMatch:true,offerDidNotChangeEmployment:true,
-     superiorClub:true,promotionPausedVacation:mode==='vacation'};
+     superiorClub:true,promotionPausedVacation:mode==='vacation',
+     manualSettlement:this.manualSettlement||null};
    }catch(error){this.result={ok:false,mode,error:String(error),stack:String(error.stack),
      initial,progress:this.progress,snapshot:this.snapshot(),notices:this.notices};}
    finally{this.done=true;}
@@ -305,6 +356,7 @@ def main():
             flags = {
                 'realEngineAndWorkers': normal['originalEngineAndWorker'] and vacation['originalEngineAndWorker'],
                 'normalMatchGeneratesPromotion': normal['generatedAfterRealCompletedMatch'],
+                'manualCleanFlushHonorsDeferredSave': normal.get('manualSettlement') is None or normal['manualSettlement']['ok'],
                 'vacationGeneratesPromotion': vacation['generatedAfterRealCompletedMatch'],
                 'vacationPausesAtOffer': vacation['promotionPausedVacation'],
                 'superiorClubRequired': normal['superiorClub'] and vacation['superiorClub'],
