@@ -158,12 +158,22 @@ Run-Python '.github/scripts/test_native_confirmations_18372.py'
 Run-Python '.github/scripts/test_career_promotion_offers_18372.py'
 Run-Python '.github/scripts/test_contract_preferences_18371.py'
 Run-Python '.github/scripts/test_repeated_dismissal_18371.py'
-Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'
 # Recheck employed vacation return on the final 18.372 lifecycle.
 Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
+# 18.373 runs after the preserved baseline regression stage.
+Run-Python '.github/scripts/set_desktop_version_18373.py'
+Run-Python '.github/scripts/fix_vacation_checkpoint_18373.py'
+Run-Python '.github/scripts/fix_save_memory_runtime_18373.py'
+Run-Python '.github/scripts/fix_jobwait_memory_transfer_18373.py'
+Run-Python '.github/scripts/finalize_long_career_memory_18373.py'
+Run-Python '.github/scripts/test_vacation_checkpoint_18373.py'
+Run-Python '.github/scripts/test_save_memory_runtime_18373.py'
+Run-Python '.github/scripts/test_jobwait_memory_transfer_18373.py'
+Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'
+Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'
 "@.Trim()
 $source = $source.Replace($syncAnchor, $syncSteps)
 $initialAnchor = "Run-Python '.github/scripts/externalize_player_base.py'"
@@ -327,6 +337,15 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'career-promotion-offers-18372-install.json' 'artifacts/career-promotion-offers-18372-install.json'
    Copy-Item 'career-promotion-offers-18372-tests.json' 'artifacts/career-promotion-offers-18372-tests.json'
    Copy-Item 'promotion-confirmations-browser-18372-tests.json' 'artifacts/promotion-confirmations-browser-18372-tests.json'
+   Copy-Item 'desktop-version-18373-install.json' 'artifacts/desktop-version-18373-install.json'
+   Copy-Item 'vacation-checkpoint-18373-install.json' 'artifacts/vacation-checkpoint-18373-install.json'
+   Copy-Item 'vacation-checkpoint-18373-tests.json' 'artifacts/vacation-checkpoint-18373-tests.json'
+   Copy-Item 'save-memory-runtime-18373-install.json' 'artifacts/save-memory-runtime-18373-install.json'
+   Copy-Item 'save-memory-runtime-18373-tests.json' 'artifacts/save-memory-runtime-18373-tests.json'
+   Copy-Item 'jobwait-memory-transfer-18373-install.json' 'artifacts/jobwait-memory-transfer-18373-install.json'
+   Copy-Item 'jobwait-memory-transfer-18373-tests.json' 'artifacts/jobwait-memory-transfer-18373-tests.json'
+   Copy-Item 'long-career-memory-18373-install.json' 'artifacts/long-career-memory-18373-install.json'
+   Copy-Item 'long-career-memory-browser-18373-tests.json' 'artifacts/long-career-memory-browser-18373-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -405,6 +424,15 @@ if (-not $source.Contains("Run-Python '.github/scripts/fix_career_promotion_offe
 if (-not $source.Contains("Run-Python '.github/scripts/test_native_confirmations_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_native_confirmations_18372.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_career_promotion_offers_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_career_promotion_offers_18372.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_promotion_confirmations_browser_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18373.py'")) { throw '18.373 memory gate is missing: set_desktop_version_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_vacation_checkpoint_18373.py'")) { throw '18.373 memory gate is missing: fix_vacation_checkpoint_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_save_memory_runtime_18373.py'")) { throw '18.373 memory gate is missing: fix_save_memory_runtime_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_jobwait_memory_transfer_18373.py'")) { throw '18.373 memory gate is missing: fix_jobwait_memory_transfer_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/finalize_long_career_memory_18373.py'")) { throw '18.373 memory gate is missing: finalize_long_career_memory_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_vacation_checkpoint_18373.py'")) { throw '18.373 memory gate is missing: test_vacation_checkpoint_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_save_memory_runtime_18373.py'")) { throw '18.373 memory gate is missing: test_save_memory_runtime_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_jobwait_memory_transfer_18373.py'")) { throw '18.373 memory gate is missing: test_jobwait_memory_transfer_18373.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_long_career_memory_browser_18373.py'")) { throw '18.373 memory gate is missing: test_long_career_memory_browser_18373.py' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }

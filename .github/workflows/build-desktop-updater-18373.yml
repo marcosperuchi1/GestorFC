@@ -1,0 +1,519 @@
+name: FutBR Windows 18.373 - long-career memory and durable saves
+on:
+  push:
+    branches: [fix/desktop-18373-long-career-memory]
+    paths: ['.github/workflows/build-desktop-updater-18373.yml', '.github/scripts/*18371.py', '.github/scripts/*18372.py', '.github/scripts/*18373.py', '.github/scripts/test_root_gameplay.py', '.github/scripts/build_desktop_season_18310.ps1']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: futbr-desktop-18373-signed-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      FUTBR_MEMORY_HEAP_MB: '1024'
+      FUTBR_MEMORY_RSS_BUDGET_MIB: '3072'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      FUTBR_UPDATE_FEED_URL: ${{ vars.FUTBR_UPDATE_FEED_URL }}
+      FUTBR_UPDATE_ASSET_BASE_URL: ${{ vars.FUTBR_UPDATE_ASSET_BASE_URL }}
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout 18.373
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+        env:
+          PSExecutionPolicyPreference: Bypass
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test security and preserve previous game improvements
+        shell: pwsh
+        run: |
+          python -m py_compile .github/scripts/set_desktop_version_18373.py .github/scripts/fix_vacation_checkpoint_18373.py .github/scripts/test_vacation_checkpoint_18373.py .github/scripts/fix_save_memory_runtime_18373.py .github/scripts/test_save_memory_runtime_18373.py .github/scripts/fix_jobwait_memory_transfer_18373.py .github/scripts/test_jobwait_memory_transfer_18373.py .github/scripts/finalize_long_career_memory_18373.py .github/scripts/memory_probe_18373.py .github/scripts/test_long_career_memory_browser_18373.py .github/scripts/verify_public_update_18373.py .github/scripts/set_desktop_version_18372.py .github/scripts/fix_native_confirmations_18372.py .github/scripts/fix_career_promotion_offers_18372.py .github/scripts/test_native_confirmations_18372.py .github/scripts/test_career_promotion_offers_18372.py .github/scripts/test_promotion_confirmations_browser_18372.py .github/scripts/set_desktop_version_18371.py .github/scripts/fix_contract_preferences_18371.py .github/scripts/fix_repeated_dismissal_18371.py .github/scripts/test_contract_preferences_18371.py .github/scripts/test_repeated_dismissal_18371.py .github/scripts/test_career_transitions_browser_18371.py .github/scripts/fix_vacation_resume_18369.py .github/scripts/test_vacation_resume_18369.py .github/scripts/test_vacation_queue_18369.py .github/scripts/test_vacation_lifecycle_scope_18369.py .github/scripts/test_vacation_resume_browser_18369.py .github/scripts/test_vacation_dismissal_browser_18369.py .github/scripts/set_desktop_version_18370.py .github/scripts/fix_bounded_jobwait_18370.py .github/scripts/test_bounded_jobwait_18370.py .github/scripts/test_jobwait_memory_browser_18370.py .github/scripts/make_desktop_update_release_18373.py .github/scripts/verify_desktop_updater_signature_18373.py .github/scripts/publish_signed_update_r2_18373.py .github/scripts/set_desktop_version_18369.py .github/scripts/make_desktop_update_release_18373.py .github/scripts/verify_desktop_updater_signature_18373.py .github/scripts/publish_signed_update_r2_18373.py .github/scripts/test_unemployed_real_browser_18368.py .github/scripts/fix_unemployed_real_worker_18368.py .github/scripts/test_unemployed_real_worker_18368.py .github/scripts/set_desktop_version_18368.py .github/scripts/make_desktop_update_release_18368.py .github/scripts/verify_desktop_updater_signature_18368.py .github/scripts/publish_signed_update_r2_18368.py .github/scripts/fix_jobwait_real_progress_18367.py .github/scripts/test_jobwait_real_progress_18367.py .github/scripts/set_desktop_version_18367.py .github/scripts/make_desktop_update_release_18367.py .github/scripts/verify_desktop_updater_signature_18367.py .github/scripts/publish_signed_update_r2_18367.py .github/scripts/fix_unemployed_scope_18366.py .github/scripts/test_unemployed_scope_18366.py .github/scripts/set_desktop_version_18366.py .github/scripts/make_desktop_update_release_18366.py .github/scripts/verify_desktop_updater_signature_18366.py .github/scripts/publish_signed_update_r2_18366.py .github/scripts/fix_dismissal_source_18365.py .github/scripts/test_dismissal_source_18365.py .github/scripts/set_desktop_version_18365.py .github/scripts/make_desktop_update_release_18365.py .github/scripts/verify_desktop_updater_signature_18365.py .github/scripts/publish_signed_update_r2_18365.py .github/scripts/fix_vacation_job_handoff_18364.py .github/scripts/test_vacation_job_handoff_18364.py .github/scripts/set_desktop_version_18364.py .github/scripts/make_desktop_update_release_18364.py .github/scripts/verify_desktop_updater_signature_18364.py .github/scripts/publish_signed_update_r2_18364.py .github/scripts/fix_jobwait_state_18363.py .github/scripts/test_jobwait_state_18363.py .github/scripts/set_desktop_version_18363.py .github/scripts/make_desktop_update_release_18363.py .github/scripts/verify_desktop_updater_signature_18363.py .github/scripts/publish_signed_update_r2_18363.py .github/scripts/fix_core_transitions_18362.py .github/scripts/test_core_transitions_18362.py .github/scripts/set_desktop_version_18362.py .github/scripts/make_desktop_update_release_18362.py .github/scripts/verify_desktop_updater_signature_18362.py .github/scripts/publish_signed_update_r2_18362.py .github/scripts/test_vacation_preflight_18360.py .github/scripts/test_vacation_finalize_18360.py .github/scripts/optimize_vacation_finalize_18360.py .github/scripts/set_desktop_version_18360.py .github/scripts/make_desktop_update_release_18360.py .github/scripts/verify_desktop_updater_signature_18360.py .github/scripts/publish_signed_update_r2_18360.py .github/scripts/test_dismissal_preflight_18359.py .github/scripts/test_dismissal_control_18359.py .github/scripts/fix_dismissal_control_18359.py .github/scripts/set_desktop_version_18359.py .github/scripts/make_desktop_update_release_18359.py .github/scripts/verify_desktop_updater_signature_18359.py .github/scripts/publish_signed_update_r2_18359.py .github/scripts/test_dismissal_preflight_18358.py .github/scripts/test_dismissal_button_18358.py .github/scripts/fix_dismissal_button_18358.py .github/scripts/set_desktop_version_18358.py .github/scripts/make_desktop_update_release_18358.py .github/scripts/verify_desktop_updater_signature_18358.py .github/scripts/publish_signed_update_r2_18358.py .github/scripts/test_dismissal_preflight_18357.py .github/scripts/test_dismissal_handoff_18357.py .github/scripts/fix_dismissal_handoff_18357.py .github/scripts/set_desktop_version_18357.py .github/scripts/make_desktop_update_release_18357.py .github/scripts/verify_desktop_updater_signature_18357.py .github/scripts/publish_signed_update_r2_18357.py .github/scripts/test_jobwait_preflight_18356.py .github/scripts/test_jobwait_18356.py .github/scripts/fix_jobwait_18356.py .github/scripts/set_desktop_version_18356.py .github/scripts/make_desktop_update_release_18356.py .github/scripts/verify_desktop_updater_signature_18356.py .github/scripts/publish_signed_update_r2_18356.py .github/scripts/test_job_saveexit_patch_18355.py .github/scripts/test_job_saveexit_18355.py .github/scripts/fix_job_saveexit_18355.py .github/scripts/set_desktop_version_18355.py .github/scripts/make_desktop_update_release_18355.py .github/scripts/verify_desktop_updater_signature_18355.py .github/scripts/publish_signed_update_r2_18355.py .github/scripts/harden_native_save_mirror_18354.py .github/scripts/test_native_save_mirror_18354.py .github/scripts/shard_remaining_archives_18354.py .github/scripts/test_archive_root_shards_18354.py .github/scripts/set_desktop_version_18354.py .github/scripts/make_desktop_update_release_18354.py .github/scripts/verify_desktop_updater_signature_18354.py .github/scripts/publish_signed_update_r2_18354.py .github/scripts/fix_seriec_full_history_18353.py .github/scripts/test_seriec_full_history_18353.py .github/scripts/set_desktop_version_18353.py .github/scripts/make_desktop_update_release_18353.py .github/scripts/verify_desktop_updater_signature_18353.py .github/scripts/publish_signed_update_r2_18353.py .github/scripts/optimize_oomsafe_saves_18352.py .github/scripts/test_oomsafe_saves_18352.py .github/scripts/set_desktop_version_18352.py .github/scripts/make_desktop_update_release_18352.py .github/scripts/verify_desktop_updater_signature_18352.py .github/scripts/publish_signed_update_r2_18352.py .github/scripts/fix_seriec_phases_history_18351.py .github/scripts/test_seriec_phases_history_18351.py .github/scripts/set_desktop_version_18351.py .github/scripts/make_desktop_update_release_18351.py .github/scripts/verify_desktop_updater_signature_18351.py .github/scripts/publish_signed_update_r2_18351.py .github/scripts/fix_calendar_match_retirement_18350.py .github/scripts/test_calendar_match_retirement_18350.py .github/scripts/set_desktop_version_18350.py .github/scripts/make_desktop_update_release_18350.py .github/scripts/verify_desktop_updater_signature_18350.py .github/scripts/publish_signed_update_r2_18350.py .github/scripts/fix_career_isolation_18344.py .github/scripts/test_career_isolation_18344.py .github/scripts/set_desktop_version_18344.py .github/scripts/fix_seriec_champion_18345.py .github/scripts/test_seriec_champion_18345.py .github/scripts/set_desktop_version_18345.py .github/scripts/fix_retirement_vacation_18346.py .github/scripts/test_retirement_vacation_18346.py .github/scripts/set_desktop_version_18346.py .github/scripts/feature_calendar_list_18347.py .github/scripts/test_calendar_list_18347.py .github/scripts/set_desktop_version_18348.py .github/scripts/fix_calendar_nav_version_18348.py .github/scripts/test_calendar_nav_version_18348.py .github/scripts/set_desktop_version_18349.py .github/scripts/optimize_incremental_saves_calendar_18349.py .github/scripts/test_incremental_saves_calendar_18349.py .github/scripts/optimize_season_saves_18343.py .github/scripts/test_season_saves_18343.py .github/scripts/fix_welcome_national_preview_18342.py .github/scripts/test_welcome_national_preview_18342.py .github/scripts/verify_desktop_updater_signature_18349.py .github/scripts/set_desktop_version_18349.py .github/scripts/make_desktop_update_release_18350.py .github/scripts/publish_signed_update_r2_18349.py .github/scripts/fix_initial_nationalities_18340.py .github/scripts/test_initial_nationalities_18340.py .github/scripts/fix_scorers_submit_18340.py .github/scripts/test_scorers_submit_18340.py
+          if ($LASTEXITCODE -ne 0) { throw 'Python syntax error in signed update repair.' }
+          python .github/scripts/test_dismissal_source_18365.py --standalone
+          if ($LASTEXITCODE -ne 0) { throw '18.365 original click, idempotent button and career layout preflight failed.' }
+          python .github/scripts/test_vacation_job_handoff_18364.py --standalone
+          if ($LASTEXITCODE -ne 0) { throw '18.364 fired-vacation Worker to job handoff preflight failed.' }
+          python .github/scripts/test_fast_updater_18361.py
+          if ($LASTEXITCODE -ne 0) { throw '18.361 signed updater frontend and metadata-cache regression failed.' }
+          python .github/scripts/test_vacation_preflight_18360.py
+          if ($LASTEXITCODE -ne 0) { throw '18.360 non-blocking vacation checkpoint and memory regression failed.' }
+          python .github/scripts/test_dismissal_preflight_18359.py
+          if ($LASTEXITCODE -ne 0) { throw '18.359 real Worker-finished dismissal and job-button regression failed.' }
+          python .github/scripts/test_dismissal_preflight_18358.py
+          if ($LASTEXITCODE -ne 0) { throw '18.358 vacation dismissal UI recovery preflight failed.' }
+          python .github/scripts/test_dismissal_preflight_18357.py
+          if ($LASTEXITCODE -ne 0) { throw '18.357 dismissal checkpoint and job-wait preflight failed.' }
+          python .github/scripts/test_jobwait_preflight_18356.py
+          if ($LASTEXITCODE -ne 0) { throw '18.356 job-wait new-season preflight failed.' }
+          python .github/scripts/test_job_saveexit_patch_18355.py
+          if ($LASTEXITCODE -ne 0) { throw '18.355 fast source-patch and coach-offer regression failed.' }
+          python .github/scripts/test_desktop_updater_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy updater behavior regression.' }
+          python .github/scripts/test_competition_history_context_18339.py
+          if ($LASTEXITCODE -ne 0) { throw 'History regression.' }
+      - name: Fail closed unless signing private key is configured
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'The original Tauri signing key is missing; refusing to generate untrusted updates.'
+          }
+      - name: Rust Windows
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Derive and lock public key from the original signing private key
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = Join-Path $env:RUNNER_TEMP 'futbr-updater-public-18354.b64'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- $path
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $path)) { throw 'Cannot derive public key from existing private signer.' }
+          $pub = (Get-Content $path -Raw).Trim()
+          if ([string]::IsNullOrWhiteSpace($pub)) { throw 'Derived public key is empty.' }
+          "FUTBR_UPDATER_PUBLIC_KEY=$pub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FUTBR_DERIVED_PUBKEY_FILE=$path" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host 'Matching Tauri updater public key derived in memory; private key remains secret.'
+      - name: Browser regression prerequisites
+        shell: pwsh
+        run: |
+          python -m pip install playwright psutil
+          if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed' }
+      - name: Single Windows build - all past fixes plus corrected update trust
+        shell: pwsh
+        run: .github/scripts/build_desktop_season_18310.ps1
+      - name: Stage prepared game source for diagnostics
+        if: ${{ failure() && env.FUTBR_PROJECT != '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $diagnosticRoot = Join-Path $env:RUNNER_TEMP 'futbr-source-diagnostic-18373'
+          $preparedRoot = Join-Path $diagnosticRoot 'prepared'
+          $reportRoot = Join-Path $diagnosticRoot 'reports'
+          New-Item -ItemType Directory -Force -Path $preparedRoot,$reportRoot | Out-Null
+          $gameSource = Join-Path $env:FUTBR_PROJECT 'src'
+          if (-not (Test-Path (Join-Path $gameSource 'index.html'))) {
+            throw 'Prepared game source is unavailable for diagnostics.'
+          }
+          # Source and tests only: no signer files, environment dump, native
+          # target directory, credentials, or installer artifacts are included.
+          Copy-Item -LiteralPath $gameSource -Destination (Join-Path $preparedRoot 'src') -Recurse
+          $scriptRoot = Join-Path $diagnosticRoot 'scripts'
+          New-Item -ItemType Directory -Force -Path $scriptRoot | Out-Null
+          $trackedScripts = git ls-files -- '.github/scripts'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate tracked diagnostic scripts.' }
+          foreach ($trackedPath in $trackedScripts) {
+            $relativeScript = $trackedPath.Substring('.github/scripts/'.Length)
+            $scriptTarget = Join-Path $scriptRoot $relativeScript
+            New-Item -ItemType Directory -Force -Path (Split-Path $scriptTarget -Parent) | Out-Null
+            Copy-Item -LiteralPath $trackedPath -Destination $scriptTarget
+          }
+          Get-ChildItem -LiteralPath $env:FUTBR_PROJECT -File -Filter '*-tests.json' |
+            Copy-Item -Destination $reportRoot
+          Get-ChildItem -LiteralPath $env:FUTBR_PROJECT -File -Filter '*-install.json' |
+            Copy-Item -Destination $reportRoot
+          $sourceHash = (Get-FileHash (Join-Path $gameSource 'index.html') -Algorithm SHA256).Hash.ToLowerInvariant()
+          $metadata = [ordered]@{
+            purpose = 'Prepared source diagnostics only; not an installer or release approval'
+            commit = $env:GITHUB_SHA
+            runId = $env:GITHUB_RUN_ID
+            ref = $env:GITHUB_REF_NAME
+            htmlSha256 = $sourceHash
+            utc = [DateTime]::UtcNow.ToString('o')
+          }
+          $metadata | ConvertTo-Json | Set-Content (Join-Path $diagnosticRoot 'manifest.json') -Encoding utf8
+          $entries = Get-ChildItem -LiteralPath $diagnosticRoot -Recurse -File |
+            Sort-Object FullName | ForEach-Object {
+              $relative = [IO.Path]::GetRelativePath($diagnosticRoot, $_.FullName).Replace('\','/')
+              $digest = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$digest  $relative"
+            }
+          $entries | Set-Content (Join-Path $diagnosticRoot 'SHA256SUMS.txt') -Encoding utf8
+          "FUTBR_DIAGNOSTIC_SOURCE=$diagnosticRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Upload prepared source and test diagnostics
+        if: ${{ always() && env.FUTBR_DIAGNOSTIC_SOURCE != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Source-Diagnostics-18.373-${{ github.run_id }}
+          path: ${{ env.FUTBR_DIAGNOSTIC_SOURCE }}/
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
+
+      - name: Package signed candidate for restricted artifact retention
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/make_desktop_update_release_18373.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Missing signed 18.373 NSIS candidate.' }
+          $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          foreach ($file in @('FutBR-Manager-18.373-Windows.exe','FutBR-Manager-18.373-Windows.exe.sig','latest.json','SHA256SUMS.txt')) {
+            if (-not (Test-Path (Join-Path $art $file))) { throw "Missing mandatory signed 18.373 release file: $file" }
+          }
+          $manifest = Get-Content (Join-Path $art 'latest.json') -Raw | ConvertFrom-Json
+          if ($manifest.version -ne '18.373.0') { throw 'Release manifest does not match the compiled 18.373 Windows version.' }
+
+      - name: Upload restricted installer candidate before independent cryptographic verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.373-PRIVATE-CANDIDATE-DO-NOT-DISTRIBUTE
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.373-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.373-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Cryptographically verify installer and gate publication
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .github/scripts/verify_desktop_updater_signature_18373.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Public key does not match installer or release signature.' }
+          $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          $installer = Join-Path $art 'FutBR-Manager-18.373-Windows.exe'
+          $sig = Join-Path $art 'FutBR-Manager-18.373-Windows.exe.sig'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- verify "$env:FUTBR_DERIVED_PUBKEY_FILE" "$installer" "$sig"
+          if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Cryptographic Minisign verification of Windows installer failed.' }
+          $nationalities = Get-Content (Join-Path $art 'initial-nationalities-18340-tests.json') -Raw | ConvertFrom-Json
+          $search = Get-Content (Join-Path $art 'scorers-submit-18340-tests.json') -Raw | ConvertFrom-Json
+          $save = Get-Content (Join-Path $art 'long-career-saves-18338-tests.json') -Raw | ConvertFrom-Json
+          $history = Get-Content (Join-Path $art 'champions-retirement-18322-tests.json') -Raw | ConvertFrom-Json
+          $version = Get-Content (Join-Path $art 'desktop-version-18373-install.json') -Raw | ConvertFrom-Json
+          $welcome = Get-Content (Join-Path $art 'welcome-national-preview-18342-tests.json') -Raw | ConvertFrom-Json
+          $seasonSave = Get-Content (Join-Path $art 'season-save-18343-tests.json') -Raw | ConvertFrom-Json
+          $careerIsolation = Get-Content (Join-Path $art 'career-isolation-18344-tests.json') -Raw | ConvertFrom-Json
+          $serieC = Get-Content (Join-Path $art 'serie-c-champion-18345-tests.json') -Raw | ConvertFrom-Json
+          $retirement = Get-Content (Join-Path $art 'retirement-vacation-18346-tests.json') -Raw | ConvertFrom-Json
+          $calendar = Get-Content (Join-Path $art 'calendar-list-18347-tests.json') -Raw | ConvertFrom-Json
+          $calendarNav = Get-Content (Join-Path $art 'calendar-nav-version-18348-tests.json') -Raw | ConvertFrom-Json
+          $saveFast = Get-Content (Join-Path $art 'incremental-saves-calendar-18349-tests.json') -Raw | ConvertFrom-Json
+          $matchRetire = Get-Content (Join-Path $art 'calendar-retirement-18350-tests.json') -Raw | ConvertFrom-Json
+          $serieC351 = Get-Content (Join-Path $art 'serie-c-phases-history-18351-tests.json') -Raw | ConvertFrom-Json
+          $save352 = Get-Content (Join-Path $art 'oomsafe-save-18352-tests.json') -Raw | ConvertFrom-Json
+          $podium353 = Get-Content (Join-Path $art 'serie-c-full-history-18353-tests.json') -Raw | ConvertFrom-Json
+          $fast361 = Get-Content (Join-Path $art 'fast-updater-18361-tests.json') -Raw | ConvertFrom-Json
+          if (-not $fast361.ok -or $fast361.version -ne '18.361.0' -or -not $fast361.cachedOnlyTrustedMetadata -or -not $fast361.saveBeforeInstall -or -not $fast361.secondHTTPManifestCheckAvoided -or -not $fast361.liveDownloadPercentage -or -not $fast361.signedInstallerRemainsOnlyNativePath -or -not $fast361.noInstallerPrefetch -or -not $fast361.samePerUserInstaller -or -not $fast361.progressDoesNotBypassSave -or -not $fast361.directCDN) { throw '18.361 updater performance or signing trust regression failed.' }
+          $vac360 = Get-Content (Join-Path $art 'vacation-finalize-18360-tests.json') -Raw | ConvertFrom-Json
+          if (-not $vac360.ok -or $vac360.version -ne '18.360.0' -or -not $vac360.manifestCommittedBeforeCleanup -or -not $vac360.rollbackCheckpointRetained -or -not $vac360.immutablePlayerArchivePreserved -or -not $vac360.serializedBackgroundCleanup -or $vac360.batchBoundedAfter2028 -ne 640 -or -not $vac360.workerBackpressurePreserved -or -not $vac360.playerLosslessCodecPreserved -or -not $vac360.nonBlockingUILiveProgress -or -not $vac360.noHeavyRenderPerBatch -or -not $vac360.realDismissal18359Preserved -or $vac360.workerFullWorldExtraSave) { throw '18.360 vacation completion performance and checkpoint safety regression failed.' }
+          $dismiss359 = Get-Content (Join-Path $art 'dismissal-control-18359-tests.json') -Raw | ConvertFrom-Json
+          if (-not $dismiss359.ok -or $dismiss359.version -ne '18.359.0' -or -not $dismiss359.actualFinishedWorkerSignal -or -not $dismiss359.headersReenabledAfterLegacyPaint -or -not $dismiss359.jobWaitClickUnblocked -or -not $dismiss359.noAdvanceWhilePromotionInFlight -or -not $dismiss359.firstWorkerDayUsesSynchronizedWorld -or -not $dismiss359.realOfferModalAppears -or -not $dismiss359.noUnlockOnActiveWorker -or -not $dismiss359.noUnlockOnPartialStream -or -not $dismiss359.nationalCareerProtected -or -not $dismiss359.careerIdentityProtected -or -not $dismiss359.workerErrorsCannotUnlock -or -not $dismiss359.zeroDuplicateWorldSaves) { throw '18.359 Worker-finished dismissal regression not verified.' }
+          $dismiss358 = Get-Content (Join-Path $art 'dismissal-button-18358-tests.json') -Raw | ConvertFrom-Json
+          if (-not $dismiss358.ok -or $dismiss358.version -ne '18.358.0' -or -not $dismiss358.alreadyFinishedVacationUnlocksJobButton -or -not $dismiss358.staleOverlayAndSaverDoNotBlock -or -not $dismiss358.inFlightWorkerProtected -or -not $dismiss358.incompletePlayerWorldProtected -or -not $dismiss358.careerIdentityProtected -or -not $dismiss358.noReleaseBeforeCheckpointSettles -or -not $dismiss358.failedCheckpointUsesLiveMemory -or -not $dismiss358.seasonEndAdvancesToOffers -or -not $dismiss358.seasonEndWithoutDismissalRecoveryWorks -or -not $dismiss358.preservesTurboSimulation) { throw '18.358 dismissal button recovery and real Worker safety test failed.' }
+          $dismiss357 = Get-Content (Join-Path $art 'dismissal-handoff-18357-tests.json') -Raw | ConvertFrom-Json
+          if (-not $dismiss357.ok -or $dismiss357.version -ne '18.357.0' -or -not $dismiss357.endOfVacationCheckpointBeforeJobUnlock -or -not $dismiss357.neverSavesFullWorldTwice -or -not $dismiss357.careerYearDayEmploymentAudited -or -not $dismiss357.fallbackUsesLiveStateSafely -or -not $dismiss357.previousSaveNotReplayed -or -not $dismiss357.inFlightWorkerProtected -or -not $dismiss357.otherCareerProtected -or -not $dismiss357.nationalManagerProtected -or -not $dismiss357.oneAuditOnePromotion) { throw '18.357 dismissal after-sync handoff regression failed.' }
+          $jobs356 = Get-Content (Join-Path $art 'jobwait-season-18356-tests.json') -Raw | ConvertFrom-Json
+          if (-not $jobs356.ok -or $jobs356.version -ne '18.356.0' -or -not $jobs356.screenshot2027DayOneRecovered -or -not $jobs356.bothButtonsReenabled -or -not $jobs356.genuineWorkerProtected -or -not $jobs356.sameSeasonCheckpointAuditPreserved -or -not $jobs356.careerIdProtected -or -not $jobs356.nationalJobProtected -or -not $jobs356.firstDayUsesLiveState -or -not $jobs356.priorCheckpointPreserved) { throw '18.356 unemployed button and safe season rollover regression failed.' }
+          $jobs355 = Get-Content (Join-Path $art 'job-save-exit-18355-tests.json') -Raw | ConvertFrom-Json
+          if (-not $jobs355.ok -or $jobs355.version -ne '18.355.0' -or -not $jobs355.crossSeason -or -not $jobs355.longTermUnemployed -or -not $jobs355.minimumWait -or -not $jobs355.saveWatchdog -or -not $jobs355.checkpointYearDayVerified -or -not $jobs355.doesNotInterruptInFlightSave) { throw '18.355 unemployed offers and save-exit regression failed.' }
+          $mirror354 = Get-Content (Join-Path $art 'native-save-mirror-18354-tests.json') -Raw | ConvertFrom-Json
+          $archive354 = Get-Content (Join-Path $art 'archive-root-shards-18354-tests.json') -Raw | ConvertFrom-Json
+          if (-not $mirror354.ok -or $mirror354.version -ne '18.354.0' -or -not $mirror354.firstCopyOneShardAtTime -or -not $mirror354.incrementalOnlyTwoShards -or -not $mirror354.safeManifestCommitLast -or -not $mirror354.interruptedMirrorKeepsPreviousBackup -or -not $mirror354.validBackupResumedAfterFailure -or -not $archive354.ok -or $archive354.version -ne '18.354.0' -or -not $archive354.allSixRootArchivesSharded -or -not $archive354.legacyRootArchivesStillReadable -or -not $archive354.UIAndWorkerRoundTripAllHistoryTypes -or -not $archive354.noHistoryOrFieldDropped) { throw '18.354: failed 2030+ memory-safe archive and SQLite mirror regression.' }
+          if (-not $podium353.ok -or $podium353.version -ne '18.353.0' -or -not $podium353.runnerAndChampRecordedImmediately -or -not $podium353.seasonDoneNotRequired -or -not $podium353.topScorerTiesPreserved -or -not $podium353.singleLegDoesNotAward -or -not $podium353.oldCurrentFinalRecovered -or -not $podium353.legacy2026ScorerFromArchivedYear -or -not $podium353.legacy2027ScorerFromArchivedYear -or -not $podium353.archivedScorersSurviveArchiveEviction -or -not $podium353.missingViceNotInvented -or -not $podium353.verifiedStoredViceRecovered -or -not $podium353.rolloverDoesNotEraseRunnerOrScorers -or -not $podium353.saveFormatUnchanged) { throw '18.353: Serie C final / runner-up / scorers historical regression failed.' }
+          if (-not $save352.ok -or $save352.version -ne '18.352.0' -or -not $save352.ui.copyOnWrite -or -not $save352.ui.recoverablePrevious -or -not $save352.worker.oldManifestReadable -or -not $save352.worker.workerRecoveryAfterFailure -or -not $save352.worker.allYearsRetained -or -not $save352.doesNotDeleteHistoricalData) { throw '18.352: OOM-safe deep archive or save rollback test failed.' }
+          if (-not $serieC351.ok -or $serieC351.version -ne '18.351.0' -or -not $serieC351.twoGroupPhaseButtonsVisible -or -not $serieC351.onePhaseTabBar -or -not $serieC351.quadSecondTabWorks -or -not $serieC351.genericFirstPhaseTitleBlocked -or -not $serieC351.oneLegDoesNotCrownChampion -or -not $serieC351.twoLegWinnerOnly -or -not $serieC351.aggregateAndPenaltyTieCorrect -or -not $serieC351.currentCompletedSeasonAppearsInHistory -or -not $serieC351.oldArchiveRecoveredOnlyFromStoredData -or -not $serieC351.archivedIncompleteFinalRejected -or -not $serieC351.currentUnfinishedTitleRejected) { throw '18.351 Serie C phase navigation, final and history regression failed.' }
+          if (-not $matchRetire.ok -or $matchRetire.version -ne '18.350.0' -or -not $matchRetire.calendarNamesAndCrestsTouchScore -or -not $matchRetire.managerAccessibleInSquad -or -not $matchRetire.retiredPlayersArchiveNotRendered -or -not $matchRetire.retirementButtonsPreserved -or -not $matchRetire.inGameConfirmationPreserved -or -not $matchRetire.savedRetirementsUntouched -or -not $matchRetire.incrementalSaveEnginePreserved -or -not $matchRetire.scrollOnWholeSeasonPreserved -or -not $matchRetire.installedEditionMatchesVersion) { throw '18.350 calendar matchup / retirement management regression failed.' }
+          if (-not $saveFast.ok -or $saveFast.version -ne '18.349' -or -not $saveFast.ui.historyPreserved -or -not $saveFast.ui.previousCheckpointPreserved -or -not $saveFast.ui.codecGuard -or $saveFast.ui.unchangedSaveChunks -ne 0 -or $saveFast.ui.oneChangedPlayerChunks -ne 1 -or -not $saveFast.worker.crashSafe -or -not $saveFast.worker.codecsSafe -or -not $saveFast.calendar.scrollLimitedOnlyForFullSeason -or -not $saveFast.calendar.accessibleScrollableRegion -or -not $saveFast.calendar.installedEditionEqualsSignedVersion -or -not $saveFast.saveFormatUnchanged) { throw '18.349: lossless incremental save / calendar scroll regressions failed.' }
+          if (-not $calendarNav.ok -or $calendarNav.version -ne '18.348.0' -or -not $calendarNav.installedCodeExecuted -or -not $calendarNav.activeSidebarHasCalendar -or -not $calendarNav.calendarJustAfterCompetitions -or -not $calendarNav.calendarClickOpensList -or -not $calendarNav.noDuplicateNavEntry -or -not $calendarNav.welcomeShowsCorrectVersion -or -not $calendarNav.loginShowsCorrectVersion -or -not $calendarNav.visibleSidebarVersionCorrect -or -not $calendarNav.saveStateUnmodified) { throw '18.349: real active calendar menu or installed edition display failed.' }
+          if (-not $calendar.ok -or -not $calendar.realHTMLFeatureExecuted -or -not $calendar.compactListLayout -or -not $calendar.realCrests -or -not $calendar.next10Default -or -not $calendar.opponentProfileAvailable -or -not $calendar.retirementPageRemoved -or -not $calendar.savedRetirementHistoryUntouched) { throw 'CALENDAR 18.349: list, crests, opponent details and retirement UI regression failed.' }
+          if (-not $retirement.ok -or -not $retirement.delegatedVacationEnablesRetirement -or -not $retirement.humanManualControlPreservedOutsideDelegation -or -not $retirement.exceptionalFormCanDelay -or -not $retirement.outfieldCeilingAge45 -or -not $retirement.goalkeeperCeilingAge47 -or -not $retirement.retirementHistoryRetained -or -not $retirement.multiSeasonOldPlayersEventuallyRetire) { throw 'RETIREMENT 18.346: AI-delegated vacation and aging regression failed.' }
+          if (-not $serieC.ok -or -not $serieC.firstPhaseNoEarlyQualification -or -not $serieC.finalGeneratedWithOldPromotedCache -or -not $serieC.twoLegFinalWinnerOnly -or -not $serieC.firstPhaseLeaderNotChampion -or -not $serieC.wrongCoachTitleRemoved -or -not $serieC.currentHistoricalRowsRepaired) { throw 'SERIE C: final winner, historical titles and early-stage guard regression failed.' }
+          if (-not $careerIsolation.ok -or -not $careerIsolation.originalFlamengoCoachPreserved -or -not $careerIsolation.freshNationalCareerNoFormerClubHistory -or -not $careerIsolation.previousSavedCareerIsolated) { throw 'CAREER ISOLATION: new national career regression failed.' }
+          if (-not $nationalities.ok -or $nationalities.firminoNatCode -ne 'BRA' -or $nationalities.coachNatCode -ne 'USA' -or -not $search.ok -or -not $search.scorers.searchByButton -or -not $search.scorers.searchByEnter -or $search.scorers.searchDuringTyping -or -not $save.ok -or -not $history.ok -or $version.version -ne '18.372.0' -or -not $welcome.ok -or -not $welcome.clubToNationalRendersNational -or -not $welcome.nationChangedWithoutStaleClub -or -not $welcome.returnToClubRestoresPreviouslySelectedClub -or -not $seasonSave.ok -or -not $seasonSave.ui.unchangedChunksReused -or -not $seasonSave.ui.changedHistoryRewritten -or -not $seasonSave.ui.previousSnapshotRemainsRecoverable -or -not $seasonSave.worker.allRowsPersist) {
+            throw 'Game data, search or historical career test failed.'
+          }
+          Write-Host 'PASS: 18.354 bounded live-history shards and crash-safe one-shard SQLite mirroring; 18.353 immediate Serie C champion, runner-up, top scorers and legacy seasons; 18.352 OOM-safe save with eight-year synthetic career; 18.351 Serie C phases, history and final title; 18.350 calendar alignment and retirement manager, signature, legacy careers, 2026-2029 historical archives, SHA256 reuse, atomic rollback and national-start preview.'
+          $core362 = Get-Content (Join-Path $art 'core-transitions-18362-tests.json') -Raw | ConvertFrom-Json
+          if (-not $core362.ok -or -not $core362.outerPromiseRequired -or -not $core362.noEarlyUnlock -or -not $core362.firstUnemployedDayUsesLiveWorld) { throw '18.362 actual Worker state regression failed.' }
+          $job363 = Get-Content (Join-Path $art 'jobwait-state-18363-tests.json') -Raw | ConvertFrom-Json
+          if (-not $job363.ok -or -not $job363.screenshot2027Day42Recovered -or -not $job363.loadedUnemployedCareerRecovered -or -not $job363.realDayfastUsed -or -not $job363.blocksActualWorkerAndSave -or -not $job363.stopButtonAccessible) { throw '18.363 unemployed 2027/42 real click regression failed.' }
+          $handoff364 = Get-Content (Join-Path $art 'vacation-handoff-18364-tests.json') -Raw | ConvertFrom-Json
+          if (-not $handoff364.ok -or -not $handoff364.screenshot2026Day97Handoff -or -not $handoff364.sendsOriginalWorkerPauseEnd -or -not $handoff364.noSecondWorkerUntilOriginalPromise -or -not $handoff364.automaticJobSearchAfterCheckpoint -or -not $handoff364.failedVacationDoesNotStartWorker -or -not $handoff364.wrongCareerCannotAutoSearch) { throw '18.364 fired-during-vacation actual click and Worker handoff regression failed.' }
+          $source365 = Get-Content (Join-Path $art 'dismissal-source-18365-tests.json') -Raw | ConvertFrom-Json
+          if (-not $source365.ok -or -not $source365.primaryNativeClickRouteTested -or -not $source365.dismissedDay29VacationStillRunning -or -not $source365.secondClickDoesNotCancel -or -not $source365.originalCheckpointRequired -or -not $source365.autoStopOnActualDismissalEvent -or -not $source365.careerHistoryReadable -or -not $source365.partialCareerShowsSyncPlaceholder) { throw '18.365 real event and original dismissal Worker test failed.' }
+          $scope366 = Get-Content (Join-Path $art 'scope-repair-18366-tests.json') -Raw | ConvertFrom-Json
+          if (-not $scope366.ok -or -not $scope366.scriptInOriginalLexicalScope -or -not $scope366.detachedControllersRemoved -or -not $scope366.realChromiumBootAndScopeChecked -or -not $scope366.actualDOMClickSendsOriginalWorkerEnd -or -not $scope366.secondDOMClickKeepsRequest -or -not $scope366.postCheckpointStartsJobOnce -or $scope366.stateReferenceErrors -ne 0) { throw '18.366 real Chromium scope, DOM click, worker stop and career regression failed. Prevent release.' }
+           $progress367 = Get-Content (Join-Path $art 'job-progress-18367-tests.json') -Raw | ConvertFrom-Json
+           if (-not $progress367.ok -or -not $progress367.threeRealDaysAdvanced -or -not $progress367.stopsAtOffer -or -not $progress367.dayfastWorker -or -not $progress367.phantomDaysRejected -or -not $progress367.failedWorkerLeavesSafeState -or -not $progress367.stopControlStillWorks) { throw '18.367 actual three-day automatic advance or stalled Worker regression failed. Block publication.' }
+           $worker368 = Get-Content (Join-Path $art 'unemployed-worker-18368-tests.json') -Raw | ConvertFrom-Json
+           if (-not $worker368.ok -or -not $worker368.testedOriginalV53StartSimulation -or -not $worker368.testedOriginalV89RunJobWait -or -not $worker368.realBaseWorkerPostMessage -or -not $worker368.threeSequentialDayfastMessages -or -not $worker368.oneLiveWorldTransfer -or -not $worker368.noFullWorldPreSave -or -not $worker368.allLaterRoundsResident -or -not $worker368.staleDiskReplayForbidden -or -not $worker368.jobOfferStops -or -not $worker368.phantomRoundFails -or -not $worker368.stopActionWorks -or -not $worker368.sourceWorkerIdentityGuard) { throw '18.368 actual original Worker transport, presave or resident-world regression failed. Block release.' }
+           $engine368 = Get-Content (Join-Path $art 'unemployed-browser-18368-tests.json') -Raw | ConvertFrom-Json
+           if (-not $engine368.ok -or -not $engine368.originalEngineRealBrowser -or -not $engine368.originalWorkerExecuted -or -not $engine368.twoRealEngineJornadas -or -not $engine368.twoActualDaysAdvanced -or -not $engine368.careerIdentityPreserved -or -not $engine368.unemployedStayedUnemployed -or -not $engine368.didNotLeaveJobWaitActive -or -not $engine368.testHookNotShipped) { throw '18.368 real Chromium Engine Worker could not advance two days. Prevent unsigned/untested publication.' }
+            $vac369 = Get-Content (Join-Path $art 'vacation-resume-18369-tests.json') -Raw | ConvertFrom-Json
+            if (-not $vac369.ok -or -not $vac369.realOriginalV53StartSimulation -or -not $vac369.nextMatchAfterVacationWorks -or -not $vac369.normalDayAfterVacationWorks -or -not $vac369.noPreSaveBeforeResume -or -not $vac369.noStaleDiskReload -or -not $vac369.noWrongResidentWorker -or -not $vac369.careerIdentityGuard -or -not $vac369.noEarlySyncRelease -or -not $vac369.previousSessionGuard -or -not $vac369.noStrongWorldRetention -or -not $vac369.dispatchConsumesToken -or -not $vac369.failedDispatchPreservesToken -or -not $vac369.newVacationConsumesOldToken) { throw '18.369 nextmatch or normal day still reloads pre-vacation save. BLOCK RELEASE.' }
+            $queue369 = Get-Content (Join-Path $art 'vacation-queue-18369-tests.json') -Raw | ConvertFrom-Json
+            if (-not $queue369.ok -or -not $queue369.originalFinalDrainExecuted -or -not $queue369.vacLiveAckSurvivesPaintException -or -not $queue369.nextMatchSyncSurvivesPaintException -or -not $queue369.finishedPromiseSettlesOnce -or -not $queue369.errorToastCannotLoseRejection -or -not $queue369.appliedMessagesNeverReplayed -or -not $queue369.realDataFailureRejectsWithoutAck -or -not $queue369.dataFailureRoutesToOriginalRecovery -or -not $queue369.queueOwnershipAlwaysReleased -or -not $queue369.staleSessionIgnored -or -not $queue369.nationalJumpPaintFailureKeepsSyncAndSchedulers) { throw '18.369 Worker acknowledgements, queue ownership or completion regression failed. BLOCK RELEASE.' }
+            $national369 = Get-Content (Join-Path $art 'root-gameplay-tests.json') -Raw | ConvertFrom-Json
+            if (-not $national369.ok -or -not $national369.nationaljump_root -or -not $national369.nationaljump_final_handler -or -not $national369.nationaljump_rejects_missing_paint -or -not $national369.nationaljump_rejects_missing_scheduler -or -not $national369.nationaljump_rejects_inactive_handler) { throw '18.369 national-jump active-handler repaint or scheduler regression failed. BLOCK RELEASE.' }
+            $lifecycle369 = Get-Content (Join-Path $art 'vacation-lifecycle-scope-18369-tests.json') -Raw | ConvertFrom-Json
+            if (-not $lifecycle369.ok -or -not $lifecycle369.originalLifecycleFunctionsExecuted -or -not $lifecycle369.lifecycleInsideOriginalPrivateUI -or -not $lifecycle369.employedFinishedCallbackHasPrivateState -or -not $lifecycle369.dismissalUsesSamePrivateWorld -or -not $lifecycle369.outerVacationPromiseSettlesBeforeHandoff -or -not $lifecycle369.controllerWrapperOrderPreserved -or -not $lifecycle369.storageCleanupUsesExplicitScalarBridge -or -not $lifecycle369.careerStateNotExported -or -not $lifecycle369.dismissalFinishedIdentityIsWeak) { throw '18.369 private vacation lifecycle scope or dismissal settlement regression failed. BLOCK RELEASE.' }
+            $dismiss369 = Get-Content (Join-Path $art 'vacation-dismissal-browser-18369-tests.json') -Raw | ConvertFrom-Json
+            if (-not $dismiss369.ok -or -not $dismiss369.originalEngineAndWorker -or -not $dismiss369.testInputOnly -or -not $dismiss369.realDismissalWorkerEvent -or -not $dismiss369.originalLifecycleCompleted -or -not $dismiss369.twoRealJobSearchDaysAfterDismissal -or -not $dismiss369.realEmployedToUnemployedTransition -or -not $dismiss369.testHookNotShipped) { throw '18.369 real dismissal during vacation or subsequent job-search advancement regression failed. BLOCK RELEASE.' }
+            $mem370 = Get-Content (Join-Path $art 'jobwait-memory-18370-tests.json') -Raw | ConvertFrom-Json
+            $memBrowser370 = Get-Content (Join-Path $art 'jobwait-memory-browser-18370-tests.json') -Raw | ConvertFrom-Json
+            if (-not $mem370.ok -or -not $mem370.noUnboundedSaveChain -or -not $mem370.actualPostRoundLoopExecuted -or -not $mem370.immediateOfferCheckpoint -or -not $mem370.rollbackOnFailure) { throw '18.370 bounded save queue validation failed. BLOCK RELEASE.' }
+            if (-not $memBrowser370.ok -or -not $memBrowser370.actualEngine -or -not $memBrowser370.diskCheckpointConfirmed -or -not $memBrowser370.checkpointMatchesReturnedDay -or -not $memBrowser370.noCheckpointFailures) { throw '18.370 real browser did not confirm its final saved day. BLOCK RELEASE.' }
+            $vacBrowser369 = Get-Content (Join-Path $art 'vacation-resume-browser-18369-tests.json') -Raw | ConvertFrom-Json
+            if (-not $vacBrowser369.ok -or -not $vacBrowser369.realOriginalEngine -or -not $vacBrowser369.realVacationWorkerAndStream -or -not $vacBrowser369.realNextMatchAfterManualVacationEnd -or -not $vacBrowser369.realWorkersNotMocked -or -not $vacBrowser369.originalManualEndCommandAccepted -or -not $vacBrowser369.terminalRepaintFailurePreservesOriginalPromise -or -not $vacBrowser369.originalLifecycleHasPrivateState -or -not $vacBrowser369.originalFinalHandlerUsesScopedLifecycle -or -not $vacBrowser369.testHookNotShipped) { throw '18.369 real Chrome vacation end did not advance to next match. BLOCK RELEASE.' }
+            $contracts371 = Get-Content (Join-Path $art 'contract-preferences-18371-tests.json') -Raw | ConvertFrom-Json
+            $dismissals371 = Get-Content (Join-Path $art 'repeated-dismissal-18371-tests.json') -Raw | ConvertFrom-Json
+            $transitions371 = Get-Content (Join-Path $art 'career-transitions-browser-18371-tests.json') -Raw | ConvertFrom-Json
+            if (-not $contracts371.ok -or -not $dismissals371.ok -or -not $transitions371.ok) { throw '18.371 contract preferences or repeated dismissal regression failed. BLOCK RELEASE.' }
+            foreach ($required in @('sourceSimulationMessageExecuted','sourceFinalDrainExecuted','serializedReloadPreservesSettings','manualChoiceWins','otherCareerAndManagerRejected','authoritativeWorkerRenewsOnce','uiDoesNotMutateBeforeSavedWorldLoad','nationalJobDoesNotRenewOldClub','checkpointRootPreserved','noFullWorldCloneAdded')) {
+              if ($contracts371.$required -ne $true) { throw "18.371 contract preference check failed: $required. BLOCK RELEASE." }
+            }
+            foreach ($required in @('originalFunctionsExecuted','oldWorkerRPCSettled','readOnlyCheckDoesNotBlock','retiredWorkerErrorIgnored','onlyRetiredOwnerCanceled','lateReplyIgnored','currentSaveProtected','activeSimulationStreamAndSaveProtected','currentHandoffSurvivesFormerClubCallback','duplicateStartKeepsCurrentOrigin','failedAcceptanceDoesNotReset')) {
+              if ($dismissals371.$required -ne $true) { throw "18.371 repeated dismissal check failed: $required. BLOCK RELEASE." }
+            }
+            if (@($dismissals371.threeEmploymentDismissalCycles).Count -ne 3) { throw '18.371 must validate three employment and dismissal cycles. BLOCK RELEASE.' }
+            foreach ($required in @('realEngineAndWorkers','threeDismissalsSameCareer','threeSuccessfulSearches','boardPreferenceAcrossClubs','actualJobButtonEnabled','actualJobButtonClickHandled','manualPreferencePersistsAfterReload','statusRPCAtEachVacationBoundary','noOrphanedRPCsAfterThirdDismissal','threeDistinctClubs','testHookNotShipped')) {
+              if ($transitions371.$required -ne $true) { throw "18.371 real Engine/Worker career transition check failed: $required. BLOCK RELEASE." }
+            }
+            $confirmations372 = Get-Content (Join-Path $art 'native-confirmations-18372-tests.json') -Raw | ConvertFrom-Json
+            $promotions372 = Get-Content (Join-Path $art 'career-promotion-offers-18372-tests.json') -Raw | ConvertFrom-Json
+            $promotionBrowser372 = Get-Content (Join-Path $art 'promotion-confirmations-browser-18372-tests.json') -Raw | ConvertFrom-Json
+            if ($confirmations372.ok -ne $true -or $promotions372.ok -ne $true -or $promotionBrowser372.ok -ne $true) { throw '18.372 in-game confirmations or employed career promotion regression failed. BLOCK RELEASE.' }
+            foreach ($required in @('superiorClubBeyondLegacyCut','goodAndPoorFormControls','employmentAndNationalGuards','plausibleBoardInterestRequired','domesticDivisionAndForeignQuality','uiListsOnlyReceivedOffers','noEmploymentMutationBeforeAcceptance','oneOfferAndCooldown','sameOfferAndExpiryAfterReload','originalDeferHandlerPreservesExpiry','rejectionCooldownPreserved','seasonBoundaryCooldownUsesOriginalCalendar','compactWorkerDecisionOverlay','otherCareerClubAndDateRejected','originalTakeJobAcceptsCurrentOffer','historyAndPreferencesPreserved','expiredAndWrongCareerOffersRejected','actualAsyncRoundAndVacationFunctionsExecuted','vacationStopsAfterCompletedRound','uiDoesNotDuplicateWorkerOffer','confirmedUserMatchRequired','unemployedMarketPreserved','deterministicSelectivePulse','engineWorkerScopeVerified','overlayAfterCheckpointRestore','expiredOfferCannotFallBackToCandidates','legacyOffersBoundAndAccepted','legacyScopeAndExpiryPreserved','originalStreamAndReaderPersistPromotion','checkpointReusesPlayerChunks','freshRootHistoryWinsOverOldShards','previousManifestPreserved','promotionCheckpointIdentityGuard','atomicCheckpointFailurePreservesSave','durableCommitScopedToNewPromotion')) {
+              if ($promotions372.$required -ne $true) { throw "18.372 employed promotion check failed: $required. BLOCK RELEASE." }
+            }
+            foreach ($required in @('realEngineAndWorkers','normalMatchGeneratesPromotion','vacationGeneratesPromotion','vacationPausesAtOffer','superiorClubRequired','offersShownAutomatically','deferAndRejectRealClicks','offerSurvivesRealSaveReload','promotionAcceptedThroughRealClick','careerAndPreferencesPreserved','inGameDeleteModalRealClicks','noNativeDialogs','testHookNotShipped')) {
+              if ($promotionBrowser372.$required -ne $true) { throw "18.372 real Engine/browser promotion check failed: $required. BLOCK RELEASE." }
+            }
+            foreach ($required in @('inGameDeleteConfirmation','noNativeConfirm','cancelPreservesStorage','escapePreservesStorage','closePreservesStorage','explicitConfirmDeletesOnlySelected','activeDeletionPreservesOtherCareers','singleCommitOnDoubleClick','staleConfirmationRejected','focusManaged','accountChangeRevalidated','storageErrorDoesNotClaimSuccess','originalRouterUsed','escapedCareerName','isolatedFixturesOnly','testHookNotShipped')) {
+              if ($confirmations372.$required -ne $true) { throw "18.372 named-save confirmation check failed: $required. BLOCK RELEASE." }
+            }
+      - name: Upload verified signed installer and integrity reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.373-Windows-Fast-Signed-Updater
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.373-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.373-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/updater-18373-signature-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18349-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18350-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-retirement-18350-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-retirement-18350-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18351-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-phases-history-18351-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-phases-history-18351-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18352-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/oomsafe-save-18352-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/oomsafe-save-18352-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18353-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-full-history-18353-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-full-history-18353-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18362-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/core-transitions-18362-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/core-transitions-18362-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18363-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-state-18363-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-state-18363-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18364-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-handoff-18364-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-handoff-18364-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18365-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-source-18365-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-source-18365-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18366-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scope-repair-18366-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scope-repair-18366-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18367-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/job-progress-18367-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/job-progress-18367-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18368-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-worker-18368-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-worker-18368-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/unemployed-browser-18368-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18369-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18370-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-memory-18370-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-memory-18370-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-memory-browser-18370-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18371-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/contract-preferences-18371-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/contract-preferences-18371-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/repeated-dismissal-18371-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/repeated-dismissal-18371-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-transitions-browser-18371-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18373-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-checkpoint-18373-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-checkpoint-18373-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/save-memory-runtime-18373-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/save-memory-runtime-18373-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-memory-transfer-18373-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-memory-transfer-18373-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-memory-18373-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-memory-browser-18373-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-memory-18373-samples.jsonl
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-memory-18373.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-offer-18373-1.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-offer-18373-2.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-checkpoint-18373-baseline.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-memory-18373-failure.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18372-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/native-confirmations-18372-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/native-confirmations-18372-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-promotion-offers-18372-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-promotion-offers-18372-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/promotion-confirmations-browser-18372-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/promotion-offer-18372.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/delete-confirmation-18372.png
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-18369-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-queue-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/root-gameplay-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-lifecycle-scope-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-resume-browser-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-dismissal-browser-18369-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/fast-updater-18361-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/fast-updater-18361-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18360-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-finalize-18360-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/vacation-finalize-18360-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18359-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-control-18359-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-control-18359-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18358-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-button-18358-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-button-18358-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18357-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-handoff-18357-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/dismissal-handoff-18357-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18356-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-season-18356-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/jobwait-season-18356-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18355-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/job-save-exit-18355-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-version-18354-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/native-save-mirror-18354-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/native-save-mirror-18354-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/archive-root-shards-18354-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/archive-root-shards-18354-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/incremental-saves-calendar-18349-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/incremental-saves-calendar-18349-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-nav-version-18348-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-nav-version-18348-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-list-18347-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/calendar-list-18347-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/retirement-vacation-18346-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/retirement-vacation-18346-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-champion-18345-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/serie-c-champion-18345-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-isolation-18344-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/career-isolation-18344-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/welcome-national-preview-18342-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/welcome-national-preview-18342-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-save-18343-install.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/season-save-18343-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/desktop-update-release-18373.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/initial-nationalities-18340-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/scorers-submit-18340-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/long-career-saves-18338-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/champions-retirement-18322-tests.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish signed 18.373 after complete verification only
+        id: publish_signed_update
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID) -or [string]::IsNullOrWhiteSpace($env:R2_BUCKET) -or [string]::IsNullOrWhiteSpace($env:R2_ACCESS_KEY_ID) -or [string]::IsNullOrWhiteSpace($env:R2_SECRET_ACCESS_KEY)) {
+            Write-Host '::notice::R2 credentials unavailable. Signed installer remains available from GitHub artifact.'
+          } else {
+            python -m pip install boto3
+            if ($LASTEXITCODE -ne 0) { throw 'boto3 installation failed' }
+            python .github/scripts/publish_signed_update_r2_18373.py "$env:FUTBR_PROJECT"
+            if ($LASTEXITCODE -ne 0) { throw 'Publication failed. Latest release manifest remains unchanged until all installer uploads verify.' }
+            'published=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+      - name: Verify public feed, signature and complete installer against this build
+        id: verify_public_update
+        if: ${{ steps.publish_signed_update.outputs.published == 'true' }}
+        shell: pwsh
+        run: |
+          python .github/scripts/verify_public_update_18373.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Published update could not be verified against this signed build. Review the public verification report.' }
+      - name: Upload public update verification report
+        if: ${{ always() && (steps.verify_public_update.outcome == 'success' || steps.verify_public_update.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.373-Public-Update-Verification
+          path: ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18373-tests.json
+          if-no-files-found: error
+          retention-days: 7
+# 18.349 builds on verified 18.348 signed updater. New archive hashes are backward-compatible and never omit records.
+# Do not rotate the signing key or change the save store identifier.
+
+# Preserves 18.347 calendar list and all earlier saves. Active sidebar and visible version validated by 18.349 smoke.
+
+# Worker scope safe: v91 evaluates the delegated retirement predicate locally at rollover.
+
+# Diagnose legacy v91 guard after all prior runtime transformations.
+
+# Verified both baseline and fully optimized retirement paths in smoke workflow 44207847668.
+
+# Calendar injected into original game lexical closure; no isolated script accesses internal NAV.
+
+# Final smoke: 44212620495 validates in-scope navigation, compact fixture list and preserved historical data.
+
+# 18.349: distinguish 3 obligatory atomic manifest/meta writes from content-shard write counts.
+
+# 18.349: validate the visible installed edition is exactly the signed updater version after all patches.
+
+# Re-run with corrected 18.352 Worker checkpoint decoding regression after first harness failure.
+
+# Rerun after validating correct end-of-season rollover fixture in 18.353 podium regression.
+
+# Rebuilt using verified compound V171_SHARDS declaration in Worker.
+
+# Retry after exact scoped post-save event placement invariant (18.354).
+
+# Retry avoid unsafe native legacy BASE and previous checkpoint reads.
+
+# Retry robust compiled UI and Worker historical collection extension.
+
+# Retry correct two-closure history-limit patch for 18.354.
+
+# 18.355 new regression: cross-season unemployed vacancy fallback and save watchdog.
+
+# Pre-build regression now checks updated 18.338 saver anchor; no guessed legacy patch.
+
+# 18.355 verification retry: preserve 18.354 reports, verify 18.355 coach/save tests and cryptographic installer signature.
+
+# 18.356: job search after final-day dismissal; never reuse previous-year Worker checkpoint; verified signed installer gate.
+
+# Rebuild: updated 18.311 regression to recognize preserved vacation + 18.356 unemployed worker live-state routing.
+
+# 18.357: fail-closed after one existing vacation checkpoint; no secondary 200k player/history rewrite, and safe in-memory first job day fallback.
+
+# Trigger after passing 18.357 source preflight, checkpoint ordering, race protection and safe first unemployed day.\n
+# 18.358: release unemployed search after fully completed vacation stream/checkpoint despite stale shell flags, not during active Worker; keep signed updater verification mandatory.
+
+# Release candidate includes the final season-end guard and original-game dayfast fixture; do not publish unless all regression and signature checks complete.
+
+# Rebuild after repository visibility changed to public; hosted Windows runner restored, security and signing gates unchanged.
+
+# 18.359: only the real successful vacation Worker finished event can release the unemployed button; 17.1 promotion remains serialized before the first dayfast.
+
+# 18.360: the already-committed sharded save remains durable while stale cleanup runs asynchronously; 640-player bound protects older seasons without dropping records.
+
+# 18.362: direct Cloudflare CDN, ten-minute official release-metadata cache, native download progress, original Tauri signature checks and crash-safe career saving.
+
