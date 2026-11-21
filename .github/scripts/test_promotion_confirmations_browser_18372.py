@@ -41,6 +41,8 @@ window.__promotion372={done:false,result:null,progress:[],notices:[],
     finished:!!v53Sim?.finished,mode:v53Sim?.mode},modalKind,
    players:Object.keys(state?.players||{}).length,teams:state?.teams?.length||0,
    jobs:(me?.jobs||[]).slice(0,4).map(j=>({...j})),rpc:v53RPC.size,
+   checkpoint:{valid:!!v93VacCheckpointValid,year:v93VacCheckpointYear,day:v93VacCheckpointDay,
+    directLoaderAvailable:typeof window.GestorFC?.v171?.loadDirect==='function'},
    guards:{processing:!!v52Processing,saving:!!v52SavePromise,
     awaitingPromotion:!!v18357AwaitingPromotion,vacationPromise:!!v18359VacationPromise}};
  },
@@ -343,4 +345,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

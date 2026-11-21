@@ -28,6 +28,13 @@ def main():
     take_wrapper=between(s,'const v636BaseTakeJob=E.takeJob;','const v636BaseNextSeason=')
     generator=between(s,'function v636GenerateCoachOffer(s,','function v636CoachOfferModal(')
     defer=between(s,' function deferOpenOffers(){',' const baseModal=modal;')
+    worker_codec=between(s,'const v18191wPlayerFields=',' const V171_FORMAT=')
+    worker_format=between(s,' const V171_FORMAT=',' const v171ShardKey=')
+    worker_reader=between(s,' async function v171DecodeManifest(x){',' \n/* FUTBR_ARCHIVE_COPY_ON_WRITE_18343')
+    archive_reader=between(s,'function v18352ApplyArchivedRow(dst,entry){','const v18343HistoricalKeys=')
+    worker_pack=between(s,' async function v18310PackVacationRows(','const v18310SyncWaiters=')
+    worker_commit=between(s,' async function v18372CommitPromotionCheckpoint(','async function streamVacationWorld125(')
+    worker_stream=between(s,'async function streamVacationWorld125(',' async function simulate(message){')
     ui_available=between(s,'function v56ExceptionalWork(s){','E.availableJobs=v56AvailableJobs;')
     simulate=between(s,' async function simulate(message){',' self.onmessage=event=>')
     assert simulate.index('await v93ApplyVacationCheckpoint(')<simulate.index('E.applyPromotionOfferEnvelope18372(')
@@ -35,6 +42,7 @@ def main():
     assert round_code.count('generatePromotionOffer18372(s,stage,v18117OpeningJob);')==1
     assert 'msg.careerPromotion18372=E.promotionOfferEnvelope18372?.(state)||null;' in s
     assert 'v636CoachOffers:world.v636CoachOffers||[],v636CoachOfferMeta:world.v636CoachOfferMeta||{}' in s
+    assert worker_stream.index('v18372CommitPromotionCheckpoint(')<worker_stream.index("kind:'vac-sync-end'")
     assert s.count('E.recordPromotionRejection18372(state,o);')==2
     assert s.count("esc(o.reason||'')")==2
     assert "const EDITION='18.372.0';" in s
@@ -109,6 +117,96 @@ let unemployedLegacyCalls=0;
 function v636CreateCoachOffer(s,t,reason){unemployedLegacyCalls++;const o={id:'legacy',teamId:t.id,year:s.year,day:s.day,expiresDay:s.day+4,status:'pending',reason};s.v636CoachOffers.push(o);return o;}
 const v56OriginalAvailableJobs=availableJobs;
 const v56ClubOverall=promotionOVR18372,v56Hash=promotionHash18372;
+'''
+    worker_fixture=r'''
+// In-memory atomic storage isolates persistence from transport. The shipped
+// stream writer, packed-player codec and original manifest reader all execute.
+const STORE='promotion-checkpoint-test',V93_VAC_PREFIX=STORE+':v93vac:',V93_VAC_META=V93_VAC_PREFIX+'meta';
+const shards=['players','teams','coaches','schedule','competitions','competitionStats','allTimeStats'];
+const safe=k=>!['__proto__','prototype','constructor'].includes(k);
+let world=null,diskRevision=0,checkpoint=null,session=1,v18117SyncSeq=0;
+let checkpointStorage=new Map(),checkpointWrites=[],checkpointEvents=[],failManifest=false;
+const read=async key=>structuredClone(checkpointStorage.get(key));
+async function v18181RawWriteMany(entries){
+ const batch=structuredClone(entries);
+ if(failManifest&&batch.some(x=>x.key===STORE))throw Error('simulated atomic commit rejection');
+ for(const e of batch)checkpointStorage.set(e.key,e.value);
+ checkpointWrites.push(batch.map(x=>x.key));return true;
+}
+const v93RawWrite=(key,value)=>v18181RawWriteMany([{key,value}]);
+const v93CheckpointKey=(token,key,index)=>V93_VAC_PREFIX+token+':'+key+':'+index;
+const v18117WaitSyncAck=async()=>{};
+const self={postMessage:m=>checkpointEvents.push(structuredClone(m))};
+function setupCheckpointFixture(s){
+ checkpointStorage=new Map();checkpointWrites=[];checkpointEvents=[];failManifest=false;
+ diskRevision=0;world=JSON.parse(JSON.stringify(s));
+ world.players={p1:{id:'p1',name:'A',age:25,contract:3,clubId:world.user},p2:{id:'p2',name:'B',age:24,contract:2,clubId:'better'}};
+ world.history=[{year:2026,kind:'fresh-root-history'}];world.transfers=[{id:'fresh-transfer'}];
+ world.v538CareerArchive={2025:{p1:[{games:14}]}};
+ world.v555CareerArchive={2024:{n:{current:'Current'},p:{p1:'kept'}}};
+ world.scorerArchive=[];world.crestOverrides={current:'crest'};
+ const old={format:'GFC_SHARDED_171',version:1,revision:3,token:'old',year:s.year,day:s.day-1,
+  root:{v1903CareerId:s.v1903CareerId,userCoachId:s.userCoachId,user:s.user,
+   year:s.year,day:s.day-1,v555CareerArchive:world.v555CareerArchive},
+  collections:{v538CareerArchive:{isArray:false,keys:['old-archive']},
+   history:{isArray:true,length:1,keys:['old-history']},
+   transfers:{isArray:true,length:1,keys:['old-transfers']}}};
+ checkpointStorage.set(STORE,structuredClone(old));
+ checkpointStorage.set(STORE+':previous',{format:'previous-retained',token:'older'});
+ checkpointStorage.set('old-archive',Object.entries(world.v538CareerArchive));
+ checkpointStorage.set('old-history',[[0,{kind:'stale-history'}]]);
+ checkpointStorage.set('old-transfers',[[0,{id:'stale-transfer'}]]);
+ return old;
+}
+async function runDurablePromotionTests18372(result){
+ const earned=preparePulse(fixture());generatePromotionOffer18372(earned);
+ earned.vacation.active=false;earned.vacation.paused=true;
+ const old=setupCheckpointFixture(earned),expectedOffer=JSON.stringify(earned.v636CoachOffers);
+ await streamVacationWorld125();
+ const manifest=await read(STORE),loaded=await decode(manifest);
+ assert.equal(manifest.format,V171_FORMAT);assert.equal(manifest.day,earned.day);
+ assert.equal(loaded.v1903CareerId,earned.v1903CareerId);assert.equal(loaded.user,earned.user);
+ assert.equal(loaded.day,earned.day);assert.equal(loaded.year,earned.year);
+ assert.equal(JSON.stringify(loaded.v636CoachOffers),expectedOffer);
+ assert.equal(loaded.v622Settings.renewals,'board');assert.equal(Object.keys(loaded.players).length,2);
+ assert.equal(loaded.players.p1.name,'A');assert.equal(loaded.players.p2.contract,2);
+ assert.equal(loaded.history[0].kind,'fresh-root-history');assert.equal(loaded.transfers[0].id,'fresh-transfer');
+ assert(!manifest.collections.history&&!manifest.collections.transfers);
+ assert.equal(loaded.v538CareerArchive[2025].p1[0].games,14);
+ assert.equal(loaded.v555CareerArchive[2024].p.p1,'kept');
+ assert.deepEqual(manifest.collections.v538CareerArchive,old.collections.v538CareerArchive);
+ assert.deepEqual(await read(STORE+':previous'),old);
+ const commit=checkpointWrites.find(batch=>batch.includes(STORE));
+ assert.deepEqual(commit,[STORE+':previous',STORE,STORE+':meta']);
+ assert(checkpointEvents.findIndex(e=>e.kind==='saved')<checkpointEvents.findIndex(e=>e.kind==='vac-sync-end'));
+ assert(checkpointEvents.some(e=>e.kind==='vac-sync-end'&&e.checkpoint));
+ const meta=await read(V93_VAC_META),root=await read(meta.rootKey),origin={careerId:earned.v1903CareerId,
+  coachId:earned.userCoachId,user:earned.user,year:earned.year,day:earned.day};
+ assert.deepEqual(manifest.collections.players.keys,
+  Array.from({length:meta.collections.players.chunks},(_,i)=>v93CheckpointKey(meta.token,'players',i)));
+ assert.equal(manifest.collections.players.encoding,v18191wPlayerFormat);
+ result.originalStreamAndReaderPersistPromotion=true;result.checkpointReusesPlayerChunks=true;
+ result.freshRootHistoryWinsOverOldShards=true;result.previousManifestPreserved=true;
+ // Identity/date failures never write STORE, and a rejected atomic batch
+ // leaves both durable generations unchanged while the complete UI return survives.
+ for(const change of [m=>m.root.v1903CareerId='other',m=>m.root.user='other-club',m=>m.day=earned.day+1]){
+  const bad=structuredClone(old);change(bad);checkpointStorage.set(STORE,bad);
+  const before=JSON.stringify(await read(STORE));
+  await assert.rejects(()=>v18372CommitPromotionCheckpoint(meta,root,origin));
+  assert.equal(JSON.stringify(await read(STORE)),before);
+ }
+ const failureOld=setupCheckpointFixture(earned),failurePrevious=await read(STORE+':previous');failManifest=true;
+ await streamVacationWorld125();
+ assert.deepEqual(await read(STORE),failureOld);assert.deepEqual(await read(STORE+':previous'),failurePrevious);
+ assert(checkpointEvents.some(e=>e.kind==='save-error'&&/atomic/.test(e.error)));
+ assert(checkpointEvents.some(e=>e.kind==='vac-sync-end'&&!e.checkpoint));
+ assert(!checkpointEvents.some(e=>e.kind==='saved'));
+ result.promotionCheckpointIdentityGuard=true;result.atomicCheckpointFailurePreservesSave=true;
+ const ordinary=JSON.parse(JSON.stringify(earned));ordinary.v636CoachOffers=[];
+ const ordinaryOld=setupCheckpointFixture(ordinary);await streamVacationWorld125();
+ assert.deepEqual(await read(STORE),ordinaryOld);assert(!checkpointWrites.some(batch=>batch.includes(STORE)));
+ result.durableCommitScopedToNewPromotion=true;
+}
 '''
     tests=r'''
 (async()=>{
@@ -241,10 +339,11 @@ const v56ClubOverall=promotionOVR18372,v56Hash=promotionHash18372;
  const chances=fixture(),accepted=[];
  for(let d=12;d<80;d++){chances.day=d;const a=promotionPulse18372(chances),b=promotionPulse18372(chances);assert.deepEqual(a,b);accepted.push(a.roll<a.chance);}
  assert(accepted.some(Boolean)&&accepted.some(x=>!x));result.deterministicSelectivePulse=true;
+ await runDurablePromotionTests18372(result);
  result.noFullWorldClone=true;console.log(JSON.stringify(result));
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
 '''
-    program=prefix+helpers+jobs+settings+start_job+dismiss+take+ledger+round_code+middle+tracker+take_wrapper+generator+ui_available+defer+tests
+    program=prefix+helpers+jobs+settings+start_job+dismiss+take+ledger+round_code+middle+tracker+take_wrapper+generator+ui_available+defer+worker_fixture+worker_codec+worker_format+archive_reader+worker_reader+worker_pack+worker_commit+worker_stream+tests
     with tempfile.NamedTemporaryFile('w',suffix='.cjs',encoding='utf-8',delete=False) as f:
         f.write(program);temp=f.name
     try:

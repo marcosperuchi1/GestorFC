@@ -183,6 +183,58 @@ function v18372ShowPromotionAfterReturn(){
 }
 '''
 
+WORKER_CHECKPOINT = r'''
+ /* FUTBR_PROMOTION_DURABLE_CHECKPOINT_18372
+    The active Worker already wrote every vacation chunk. Publish only its
+    manifest; the old out-of-scope UI wrapper cannot make this save durable. */
+ async function v18372CommitPromotionCheckpoint(meta,root,origin){
+  if(!origin||meta?.format!=='GFC_VAC_CHECKPOINT_93'||!meta.token||!root||
+     !origin.careerId||String(root.v1903CareerId||'')!==origin.careerId||
+     String(root.userCoachId||'')!==origin.coachId||String(root.user||'')!==origin.user||
+     root.userEmployed!==true||Number(root.year)!==origin.year||Number(root.day)!==origin.day||
+     Number(meta.year)!==origin.year||Number(meta.day)!==origin.day)
+   throw Error('O checkpoint da proposta divergiu da carreira atual. O save anterior foi preservado.');
+  if(!(root.v636CoachOffers||[]).some(o=>o?.status==='pending'&&
+     o.promotion18372?.careerId===origin.careerId&&o.promotion18372.coachId===origin.coachId&&
+     o.promotion18372.fromClubId===origin.user&&Number(o.year)===origin.year&&
+     Number(o.day)===origin.day&&Number(o.expiresDay)>=origin.day))
+   throw Error('O checkpoint não contém a proposta vigente que encerrou as férias.');
+  const old=await read(STORE),same=old?.format===V171_FORMAT&&
+   String(old.root?.v1903CareerId||'')===origin.careerId&&
+   String(old.root?.userCoachId||'')===origin.coachId&&String(old.root?.user||'')===origin.user;
+  if(old&&(!same||Number(old.year)>origin.year||
+     Number(old.year)===origin.year&&Number(old.day)>origin.day))
+   throw Error('O save atual não pertence ao mesmo vínculo ou já está adiante da proposta.');
+  const collections={},nextRoot={...(same?old.root||{}:{}),...root};
+  for(const key of V171_SHARDS){
+   const spec=meta.collections?.[key];
+   if(spec){
+    const count=Number(spec.chunks);
+    if(!Number.isInteger(count)||count<0)throw Error('Índice de blocos da proposta inválido.');
+    collections[key]={isArray:!!spec.isArray,length:Number(spec.length)||0,
+     keys:Array.from({length:count},(_,i)=>v93CheckpointKey(meta.token,key,i)),
+     ...(spec.encoding?{encoding:spec.encoding}:null)};
+   }else if(Object.prototype.hasOwnProperty.call(root,key)){
+    // Fresh root history/transfers take precedence over any old shard.
+    delete collections[key];
+   }else if(same&&old.collections?.[key])collections[key]=old.collections[key];
+   else if(world?.[key]!=null)nextRoot[key]=world[key];
+  }
+  for(const key of shards)if(!collections[key])
+   throw Error('Checkpoint da proposta incompleto: '+key+'.');
+  const saved={at:Date.now(),year:origin.year,day:origin.day,
+   revision:Math.max(Number(old?.revision)||0,diskRevision)+1,format:V171_FORMAT},
+   manifest={format:V171_FORMAT,version:1,revision:saved.revision,token:'promotion-'+meta.token,
+    at:saved.at,year:saved.year,day:saved.day,root:nextRoot,collections};
+  // Same atomic batch primitive used by the normal Worker save. No player
+  // serialization, second world or extra collection write is required.
+  await v18181RawWriteMany([{key:STORE+':previous',value:old||null},
+   {key:STORE,value:manifest},{key:STORE+':meta',value:saved}]);
+  diskRevision=saved.revision;checkpoint=null;
+  return {...saved,bytes:0,ms:0,storage:'promotion checkpoint manifest',promotion18372:true};
+ }
+'''
+
 
 def patch(s):
     if MARK in s:
@@ -215,6 +267,22 @@ def patch(s):
            '  E.applyPromotionOfferEnvelope18372(world,message.careerPromotion18372);\n  // FUTBR_MANAGER_PREFERENCES_WORKER_18371:', 'decisions applied after saved/checkpoint restoration')
     s=once(s,'v636CareerTracker:world.v636CareerTracker||null,v636CoachCareer:world.v636CoachCareer||[]};',
            'v636CareerTracker:world.v636CareerTracker||null,v636CoachCareer:world.v636CoachCareer||[],v636CoachOffers:world.v636CoachOffers||[],v636CoachOfferMeta:world.v636CoachOfferMeta||{}};', 'live offer metadata follows actual Worker state')
+    s=once(s,'async function streamVacationWorld125(destructive=true,skipCheckpoint=false){',
+           WORKER_CHECKPOINT+'\nasync function streamVacationWorld125(destructive=true,skipCheckpoint=false){', 'publish the existing checkpoint inside the active Worker')
+    old=' if(!world)return;\n const started=performance.now(),finalDay=world.day,finalYear=world.year,collections=[...shards],root={};'
+    new=""" if(!world)return;
+ const promotionOrigin18372=!skipCheckpoint&&!world.vacation?.active&&world.vacation?.paused&&
+  (world.v636CoachOffers||[]).some(o=>o?.status==='pending'&&Number(o.day)===Number(world.day)&&E.validPromotionOffer18372(world,o))?
+  {careerId:String(world.v1903CareerId||''),coachId:String(world.userCoachId||''),user:String(world.user||''),year:Number(world.year),day:Number(world.day)}:null;
+ const started=performance.now(),finalDay=world.day,finalYear=world.year,collections=[...shards],root={};"""
+    s=once(s,old,new,'capture valid promotion identity before progressive world release')
+    old=' if(checkpointMeta)try{await v93RawWrite(V93_VAC_META,checkpointMeta);checkpointOK=true;}catch(e){checkpointError(e);}'
+    new=""" if(checkpointMeta)try{
+  await v93RawWrite(V93_VAC_META,checkpointMeta);
+  if(promotionOrigin18372){const saved=await v18372CommitPromotionCheckpoint(checkpointMeta,root,promotionOrigin18372);self.postMessage({kind:'saved',session,...saved});}
+  checkpointOK=true;
+ }catch(e){checkpointError(e);if(promotionOrigin18372)self.postMessage({kind:'save-error',session,error:e?.message||String(e)});}"""
+    s=once(s,old,new,'commit earned invitation before vacation sync-end and finished')
     old='state.v636CoachOfferMeta.rejected[o.teamId]=Number(state.day);'
     if s.count(old)!=2:raise RuntimeError('18.372 expected both original rejection handlers')
     s=s.replace(old,'E.recordPromotionRejection18372(state,o);'+old)
@@ -256,6 +324,7 @@ def main():
     report={'ok':True,'version':'18.372.0','sharedEnginePromotionMarket':True,
             'realCompletedRoundHook':True,'vacationPausesForProposal':True,
             'currentOfferAcceptance':True,'compactDecisionOverlay':True,
+            'durablePromotionCheckpoint':True,'reusesWrittenVacationChunks':True,
             'unemployedMarketPreserved':True,'noFullWorldClone':True}
     (root/'career-promotion-offers-18372-install.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report))
