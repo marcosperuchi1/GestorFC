@@ -22,6 +22,21 @@ window.__repeat371={done:false,result:null,progress:[],
   v622Settings(state).renewals=value;
   if(typeof v18371CommitSettings==='function')v18371CommitSettings(state);
  },
+ reloadIdentity(s){return {careerId:String(s?.v1903CareerId||''),
+  coachId:String(s?.userCoachId||''),user:String(s?.user||''),
+  userEmployed:s?.userEmployed,year:Number(s?.year),day:Number(s?.day),
+  players:Object.keys(s?.players||{}).length,teams:s?.teams?.length||0,
+  schedule:s?.schedule?.length||0,renewals:v622Settings(s).renewals};},
+ playerLinkSignature(s,id='p1808'){
+  const player=s?.players?.[id],occurrences=[];
+  for(const team of s?.teams||[])for(const collection of ['roster','academy','proReserve']){
+   const members=team?.[collection];if(!Array.isArray(members))continue;
+   members.forEach((member,index)=>{
+    if(member===id)occurrences.push({team:String(team.id),collection,index});
+   });
+  }
+  return {id,exists:!!player,clubId:player?.clubId??null,occurrences};
+ },
  snapshot(){return {day:state?.day,year:state?.year,user:state?.user,employed:state?.userEmployed,
   career:String(state?.v1903CareerId||''),coachId:String(state?.userCoachId||''),
   vacationActive:!!state?.vacation?.active,
@@ -164,11 +179,26 @@ window.__repeat371={done:false,result:null,progress:[],
      }
     }
     // Use the original Worker storage reader after the third real checkpoint.
-    // Do not retain the former full world while loading its saved replacement.
+    // Keep a compact audit, then replace the current world with its saved state.
     this.progress.push({stage:'loading-saved-career',snapshot:this.snapshot()});
+    const reloadAudit={before:this.reloadIdentity(state),
+      playerLinksBefore:this.playerLinkSignature(state)};
     const loaded=await v53Call('load',{key:STORE});
     if(!loaded)throw Error('The three-club career did not exist on disk');
-    state=E.validate(loaded);saved=state;
+    // Match loadSelected's current production loader: check its required
+    // collections, then install the decoded state. The obsolete v4 import
+    // validator is not called by that loader and must not be added here.
+    if(!loaded.players||!loaded.teams||!loaded.schedule||!loaded.competitions)
+     throw Error('The reloaded save is missing a required production collection');
+    reloadAudit.after=this.reloadIdentity(loaded);
+    reloadAudit.playerLinksAfter=this.playerLinkSignature(loaded);
+    reloadAudit.sameIdentityAndCounts=JSON.stringify(reloadAudit.before)===JSON.stringify(reloadAudit.after);
+    reloadAudit.samePlayerLinks=JSON.stringify(reloadAudit.playerLinksBefore)===JSON.stringify(reloadAudit.playerLinksAfter);
+    this.progress.push({stage:'reload-invariants-checked',audit:reloadAudit});
+    if(!reloadAudit.sameIdentityAndCounts||!reloadAudit.samePlayerLinks)
+     throw Error('Reload changed career identity, employment, calendar, counts, setting or player links: '+JSON.stringify(reloadAudit));
+    if(loaded.vacation){loaded.vacation.active=false;loaded.vacation.paused=true;}
+    state=loaded;saved=loaded;
     const reloaded=this.snapshot();
     this.progress.push({stage:'saved-career-reloaded',snapshot:reloaded});
     if(String(state.v1903CareerId)!==career||String(state.userCoachId)!==coachId||
@@ -186,11 +216,13 @@ window.__repeat371={done:false,result:null,progress:[],
      actualJobButtonEnabled:searches.every(x=>x.click.enabledAtClick),
      actualJobButtonClickHandled:searches.every(x=>x.click.actualDOMClick&&x.click.handlerCalls>=1),
      manualPreferencePersistsAfterReload:reloaded.preference.renewals==='manual',
+     reloadIdentityAndCollectionCountsPreserved:reloadAudit.sameIdentityAndCounts,
+     reloadPlayerLinksPreserved:reloadAudit.samePlayerLinks,
      statusRPCAtEachVacationBoundary:boundaryChecks.length===3&&boundaryChecks.every(x=>x.settled),
      noOrphanedRPCsAfterThirdDismissal:v53RPC.size===0,
      testHookNotShipped:true};
     if(!Object.values(flags).every(Boolean))throw Error('Real career regression invariant failed: '+JSON.stringify(flags));
-    this.result={ok:true,version:'18.371.0',...flags,boundaryChecks,initial,career,coachId,usedClubs,
+    this.result={ok:true,version:'18.371.0',...flags,boundaryChecks,reloadAudit,initial,career,coachId,usedClubs,
      threeDistinctClubs:new Set(usedClubs).size===3,
      originalBoardDismissalEvents:dismissalEvents,
      originalEngineWorkerAndClickRouting:true,managerSettingPreservedAcrossThreeClubs:true,
