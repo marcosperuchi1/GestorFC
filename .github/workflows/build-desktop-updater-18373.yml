@@ -27,6 +27,9 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
+      - name: Hold candidate after failed 2029 integration
+        shell: pwsh
+        run: throw '18.373 candidate held until Worker-return and dirty-save regressions are corrected and verified.'
       - name: Checkout 18.373
         uses: actions/checkout@v4
       - name: Python
