@@ -54,7 +54,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FutBR-Public-Updater-18.371-Verification-${{ github.run_id }}
+          name: FutBR-Public-Updater-18.371-Verification-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/public-updater-18371-source.json
             ${{ runner.temp }}/public-updater-18371.json

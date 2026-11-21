@@ -36,6 +36,7 @@ MIN_INSTALLER_BYTES = 40_000_000
 MAX_INSTALLER_BYTES = 200_000_000
 WAIT_SECONDS = 35 * 60
 POLL_SECONDS = 30
+JOB_METADATA_WAIT_SECONDS = 120
 
 
 def require(condition, message):
@@ -94,20 +95,31 @@ def wait_build(output):
 
     attempt = run.get("run_attempt")
     require(isinstance(attempt, int) and attempt > 0, "Missing successful build attempt")
-    jobs = github_json(prefix + "/attempts/" + str(attempt) + "/jobs?per_page=100")
-    require(jobs.get("total_count") == len(jobs.get("jobs", [])), "Incomplete build job list")
-    successful = [job for job in jobs["jobs"] if job.get("conclusion") == "success"]
-    gated = []
-    for job in successful:
-        steps = job.get("steps", [])
-        crypto = [step for step in steps if step.get("name") == CRYPTO_STEP]
-        upload = [step for step in steps if step.get("name") == ARTIFACT_STEP]
-        if (len(crypto) == len(upload) == 1
-                and crypto[0].get("conclusion") == upload[0].get("conclusion") == "success"
-                and crypto[0]["number"] < upload[0]["number"]):
-            gated.append(job)
-    require(len(gated) == 1,
-            "No unique successful job verified the signature before uploading the artifact")
+    # The run endpoint can report completion before the jobs endpoint reflects
+    # the final step conclusions. Wait for that metadata; never skip the gate.
+    job_deadline = time.monotonic() + JOB_METADATA_WAIT_SECONDS
+    while True:
+        jobs = github_json(prefix + "/attempts/" + str(attempt) + "/jobs?per_page=100")
+        observed_jobs = jobs.get("jobs", [])
+        complete = jobs.get("total_count") == len(observed_jobs)
+        successful = [job for job in observed_jobs if job.get("conclusion") == "success"]
+        gated = []
+        for job in successful:
+            steps = job.get("steps", [])
+            crypto = [step for step in steps if step.get("name") == CRYPTO_STEP]
+            upload = [step for step in steps if step.get("name") == ARTIFACT_STEP]
+            if (len(crypto) == len(upload) == 1
+                    and crypto[0].get("conclusion") == upload[0].get("conclusion") == "success"
+                    and crypto[0]["number"] < upload[0]["number"]):
+                gated.append(job)
+        if complete and len(gated) == 1:
+            break
+        require(time.monotonic() < job_deadline,
+                "No complete job list with one successful cryptographic gate after waiting for metadata consistency")
+        print(json.dumps({"buildJobMetadataPending": True,
+                          "jobsObserved": len(observed_jobs), "jobsExpected": jobs.get("total_count"),
+                          "matchingSuccessfulJobs": len(gated)}), flush=True)
+        time.sleep(min(10, max(0, job_deadline - time.monotonic())))
     artifacts = github_json(prefix + "/artifacts?per_page=100")
     require(artifacts.get("total_count") == len(artifacts.get("artifacts", [])),
             "Incomplete build artifact list")
