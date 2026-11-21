@@ -1,0 +1,55 @@
+name: FutBR 18.371 - reproduce consecutive career dismissals
+on:
+  push:
+    branches: [diagnose/career-transitions-18371]
+    paths: ['.github/workflows/diagnose-career-transitions-18371.yml', '.github/scripts/test_career_transitions_browser_18371.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-career-transitions-18371-diagnostic
+  cancel-in-progress: true
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download exact verified prepared source
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14672603574
+          run-id: 44822411846
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/futbr-transitions-baseline
+          merge-multiple: true
+      - name: Apply current published 18.370 memory patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/futbr-transitions-baseline/prepared"
+          python .github/scripts/fix_bounded_jobwait_18370.py "$root"
+          python .github/scripts/test_bounded_jobwait_18370.py "$root"
+      - name: Install browser driver
+        run: python -m pip install playwright
+      - name: Reproduce first, second and third dismissals in one career
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/futbr-transitions-baseline/prepared"
+          python .github/scripts/test_career_transitions_browser_18371.py "$root"
+      - name: Preserve reproduction evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Career-Transitions-18371-Baseline-${{ github.run_id }}
+          path: ${{ runner.temp }}/futbr-transitions-baseline/prepared/career-transitions-browser-18371-tests.json
+          if-no-files-found: warn
+          retention-days: 7
