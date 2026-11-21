@@ -32,7 +32,9 @@ window.__namedMemory373={
    careerId:m.root?.v1903CareerId,coachId:m.root?.userCoachId,user:m.root?.user,
    saveId:m.root?.futbrSaveId,employed:m.root?.userEmployed,
    collections:Object.fromEntries(Object.entries(m.collections||{}).map(([k,v])=>
-    [k,{chunks:v.keys?.length||0,nested:v.nested||null,encoding:v.encoding||null}]))}:null;
+    [k,{chunks:v.keys?.length||0,nested:v.nested||null,encoding:v.encoding||null,
+      hashFormat:v.archiveHash||null,hashes:v.hashes?.length||0,
+      unhashableChunks:(v.hashes||[]).filter(h=>h===null).length}]))}:null;
  }
 };
 '''
@@ -268,6 +270,7 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
     if(!stopped||state.vacation.active||!state.userEmployed||v53Sim.active||v53Sim.syncing)
      throw Error('Original manual vacation end did not return a complete employed career');
     this.assertHistory('Vacation cycle '+cycle);
+    const playerWritesBeforeExit=window.GestorFC.memoryStorage18373.status().playerChunksWritten;
     if(cycle===2){
      // Exercise the dirty save-and-exit path too, while keeping renewals delegated.
      v622Settings(state).offerPopup=!v622Settings(state).offerPopup;
@@ -290,6 +293,7 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
      throw Error('Returning to the menu retained active world/Worker/save references: '+JSON.stringify(this.snapshot()));
     this.result={ok:true,cycle,before,beforeExit:this.beforeExit,manualStop:true,
      actualSaveAndExitControls:true,dirtySavePath:cycle===2,elapsedMs:performance.now()-began,
+     playerChunksWrittenDuringExit:window.GestorFC.memoryStorage18373.status().playerChunksWritten-playerWritesBeforeExit,
      manifest,named:window.__namedMemory373.snapshot(),memory:window.GestorFC.memoryStorage18373.status()};
    }catch(error){this.result={ok:false,error:String(error),stack:String(error.stack),snapshot:this.snapshot()};}
    finally{if(timer)clearInterval(timer);this.done=true;this.working=false;}
@@ -313,7 +317,7 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
 def inject_hooks(html: str) -> str:
     for marker in ('FUTBR_VACATION_DURABLE_CHECKPOINT_18373',
                    'memoryStorage18373', 'jobWaitMemory18373',
-                   'FUTBR_VACATION_BOUNDED_BOOT_18373'):
+                   'FUTBR_VACATION_BOUNDED_BOOT_18373', 'FUTBR_PLAYER_CHECKPOINT_REUSE_18373'):
         assert marker in html, 'Missing production correction: ' + marker
     assert 'TEST_ONLY_LONG_CAREER_MEMORY_18373' not in html
     anchor = 'G.namedSaves125={list:'
@@ -443,6 +447,8 @@ def main():
                 'zeroFullWorldVacationTransfers': len(t['vacationBoots']) == 4 and all(not boot['hasState'] for boot in t['vacationBoots']),
                 'exactCheckpointVacationBoots': all(boot['loadSaved'] and boot['exactCheckpoint'] and not boot['staleOverlay'] for boot in t['vacationBoots']) and result['vacationBoot']['checkpoints'] == 4,
                 'completeUiPreservedAtVacationBoot': all(boot['uiPlayers'] == result['initial']['players'] for boot in t['vacationBoots']),
+                'unchangedPlayerChunksReusedOnSaveExit': all(c['saveAndExit']['playerChunksWrittenDuringExit'] == 0 for c in result['cycles']),
+                'canonicalPlayerCheckpoints': all(m['collections']['players']['hashFormat'] == 'sha256-player-packed-json-v1' and m['collections']['players']['hashes'] == m['collections']['players']['chunks'] > 0 for m in [result['initialManifest'], *[c['saveAndExit']['manifest'] for c in result['cycles']]]),
                 'zeroRpcWholeWorldReloads': t['rpcWorldLoads'] == 0,
                 'workerSoleWorldOwnerDuringSearch': all(any(s['cycle'] == cycle and s['phase'] == 'worker' for s in t['ownerSamples']) for cycle in (1, 2)) and all(s['players'] == 0 and s['packedYears'] == 0 for s in t['ownerSamples'] if s['phase'] == 'worker') and all(day['uiPlayers'] == 0 for day in t['jobDays']),
                 'completeWorldReturnedWithoutRecovery': all(c['search']['owner']['recoveries'] == 0 for c in result['cycles']),

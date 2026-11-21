@@ -326,6 +326,9 @@ def main():
         between(source, ' const V171_FORMAT=', ' const v171ShardKey='),
         function(source, 'v18352ApplyArchivedRow'),
     ]
+    if '/* FUTBR_PLAYER_CHECKPOINT_REUSE_18373_WORKER' in source:
+        sections.append(between(source, '/* FUTBR_PLAYER_CHECKPOINT_REUSE_18373_WORKER',
+                                'const v18343HistoricalKeys=new Set(['))
     for name in ('v18373PackedArchiveRows', 'v18373StructuredArchiveRows', 'v18373ApplyArchivePath',
                  'v18343Fingerprint', 'v18373WriteHistoryCollection', 'v18373WriteCheckpointHistories',
                  'v18373ReleaseWorkerGraph'):

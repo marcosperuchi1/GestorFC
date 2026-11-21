@@ -17,6 +17,7 @@ def finalize(source: str) -> tuple[str, dict]:
         'FUTBR_JOBWAIT_SINGLE_OWNER_18373',
         'FUTBR_JOBWAIT_PARTIAL_UI_GUARDS_18373',
         'FUTBR_VACATION_BOUNDED_BOOT_18373',
+        'FUTBR_PLAYER_CHECKPOINT_REUSE_18373',
         'FUTBR_CAREER_PROMOTION_OFFERS_18372',
         'FUTBR_NATIVE_CONFIRMATIONS_18372_BEGIN',
     ]
@@ -24,7 +25,8 @@ def finalize(source: str) -> tuple[str, dict]:
         if marker not in source:
             raise RuntimeError('18.373 integrated source is missing ' + marker)
     for marker in ['TEST_ONLY_LONG_CAREER_MEMORY_18373', 'TEST_ONLY_NAMED_MEMORY_18373',
-                   'TEST_ONLY_PROMOTION_FLOW_18372', 'TEST_ONLY_NATIVE_CONFIRMATIONS_18372']:
+                   'TEST_ONLY_PROMOTION_FLOW_18372', 'TEST_ONLY_NATIVE_CONFIRMATIONS_18372',
+                   'TEST_ONLY_PLAYER_CHECKPOINT_REUSE_18373']:
         if marker in source:
             raise RuntimeError('A test fixture must never be shipped: ' + marker)
     if "const EDITION='18.373.0';" not in source:
@@ -60,10 +62,11 @@ def finalize(source: str) -> tuple[str, dict]:
     parsed = json.loads(check.stdout)
     return source, {
         'ok': True, 'version': '18.373.0',
-        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:7]),
+        'allMemoryCorrectionsIntegrated': all(marker in source for marker in markers[:8]),
         'actualCareerScopeVerified': True,
-        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[7:]),
+        'priorCareerAndDialogCorrectionsPreserved': all(marker in source for marker in markers[8:]),
         'vacationBoundedBootIntegrated': 'msg.vacationBoot18373=v18373VacationBoot;msg.vacationCheckpoint=false;' in source,
+        'playerCheckpointReuseIntegrated': 'sha256-player-packed-json-v1' in source,
         'historicalRolloverWriterInstalled': 'await v18373WriteCheckpointHistories(world,old,meta.token)' in source,
         'testHooksExcluded': True,
         'editionUpdated': "const EDITION='18.373.0';" in source,

@@ -28,9 +28,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate vacation boot patch and regression syntax
+      - name: Validate memory patches and regression syntax
         shell: bash
-        run: python -m py_compile .github/scripts/fix_vacation_memory_boot_18373.py .github/scripts/test_vacation_memory_boot_18373.py
+        run: python -m py_compile .github/scripts/fix_vacation_memory_boot_18373.py .github/scripts/test_vacation_memory_boot_18373.py .github/scripts/fix_player_checkpoint_reuse_18373.py .github/scripts/test_player_checkpoint_reuse_18373.py .github/scripts/memory_probe_18373.py
       - name: Exact prepared source with prior verified repairs
         uses: actions/download-artifact@v4
         with:
@@ -82,11 +82,13 @@ jobs:
           python .github/scripts/fix_save_memory_runtime_18373.py "$project_root"
           python .github/scripts/fix_jobwait_memory_transfer_18373.py "$project_root"
           python .github/scripts/fix_vacation_memory_boot_18373.py "$project_root"
+          python .github/scripts/fix_player_checkpoint_reuse_18373.py "$project_root"
           python .github/scripts/finalize_long_career_memory_18373.py "$project_root"
           python .github/scripts/test_vacation_checkpoint_18373.py "$project_root"
           python .github/scripts/test_save_memory_runtime_18373.py "$project_root"
           python .github/scripts/test_jobwait_memory_transfer_18373.py "$project_root"
           python .github/scripts/test_vacation_memory_boot_18373.py "$project_root"
+          python .github/scripts/test_player_checkpoint_reuse_18373.py "$project_root"
       - name: Real 2029 dismissal, job search, vacation, save exit and reload under memory limits
         shell: bash
         run: |

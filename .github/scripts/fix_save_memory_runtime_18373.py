@@ -112,6 +112,9 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
   coachAutosavesConfirmed:0,coachAutosaveRetries:0,coachAutosavesAfterOlderWriter:0,
   chunksWritten:0,chunksReused:0,playerChunksWritten:0,
   maxRowsPerChunk:0,maxEncodedChunkBytes:0,maxTransactionChunks:0,
+  fingerprintCalls:0,fingerprintInputBytes:0,fingerprintBufferAllocations:0,
+  fingerprintAllocatedBytes:0,fingerprintRetainedBytes:0,fingerprintFallbacks:0,
+  maxFingerprintBufferBytes:0,
   lastSaveMs:0,lastLoadMs:0,lastMode:'',workerReleases:0,cachePurges:0,
   failed:0,cleanupFailed:0,lastError:'',lastHeapMiB:null};
  let mutation=0,writeTicket=0,owner=null,loading=false,explicitEnsure=null;
@@ -232,6 +235,36 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
    tx.onabort=()=>reject(tx.error||Error('O checkpoint mudou durante o salvamento.'));
   });
  }
+ // Hashing also visits unchanged shards. Allocating two full UTF-8 buffers
+ // per shard used to accumulate native backing storage during a large save.
+ // There is one writer, and it awaits each digest before reusing this scratch.
+ // Oversized inputs remain supported through one disposable encode; the
+ // retention ceiling applies only to scratch memory, never to saved data.
+ const FINGERPRINT_RETAIN_BYTES=4*1024*1024;
+ let fingerprintEncoder=null,fingerprintScratch=null;
+ function fingerprintInput(text){
+  fingerprintEncoder??=new TextEncoder();
+  if(typeof fingerprintEncoder.encodeInto==='function'&&text.length<=FINGERPRINT_RETAIN_BYTES){
+   let capacity=fingerprintScratch?.byteLength||0;
+   const needed=Math.max(65536,text.length);
+   while(capacity<needed)capacity=Math.min(FINGERPRINT_RETAIN_BYTES,Math.max(65536,capacity*2));
+   for(;;){
+    if(!fingerprintScratch||fingerprintScratch.byteLength<capacity){
+     fingerprintScratch=new Uint8Array(capacity);stats.fingerprintBufferAllocations++;
+     stats.fingerprintAllocatedBytes+=capacity;stats.fingerprintRetainedBytes=capacity;
+     stats.maxFingerprintBufferBytes=Math.max(stats.maxFingerprintBufferBytes,capacity);
+    }
+    const encoded=fingerprintEncoder.encodeInto(text,fingerprintScratch);
+    if(encoded.read===text.length)return fingerprintScratch.subarray(0,encoded.written);
+    if(capacity>=FINGERPRINT_RETAIN_BYTES)break;
+    capacity=Math.min(FINGERPRINT_RETAIN_BYTES,capacity*2);
+   }
+  }
+  const bytes=fingerprintEncoder.encode(text);stats.fingerprintFallbacks++;
+  stats.fingerprintBufferAllocations++;stats.fingerprintAllocatedBytes+=bytes.byteLength;
+  stats.maxFingerprintBufferBytes=Math.max(stats.maxFingerprintBufferBytes,bytes.byteLength);
+  return bytes;
+ }
  async function fingerprint(rows){
   let text;
   try{text=JSON.stringify(rows,(k,v)=>{
@@ -240,9 +273,11 @@ UI_RUNTIME = r'''/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN
       v&&typeof v==='object'&&(v instanceof ArrayBuffer||ArrayBuffer.isView(v)||
        v instanceof Map||v instanceof Set))throw Error('non-JSON');return v;
   });}catch(e){return null;}
-  stats.maxEncodedChunkBytes=Math.max(stats.maxEncodedChunkBytes,new TextEncoder().encode(text).byteLength);
+  let input=fingerprintInput(text);text=null;
+  stats.fingerprintCalls++;stats.fingerprintInputBytes+=input.byteLength;
+  stats.maxEncodedChunkBytes=Math.max(stats.maxEncodedChunkBytes,input.byteLength);
   if(!globalThis.crypto?.subtle)return null;
-  const digest=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  const digest=await globalThis.crypto.subtle.digest('SHA-256',input);input=null;
   return Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('');
  }
  function applyLegacyArchive(dst,entry){

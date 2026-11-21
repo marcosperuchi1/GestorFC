@@ -1,8 +1,9 @@
 """Bounded test-only browser memory observation; no game objects are retained.
 
-Call mark() from the Playwright thread. Only process RSS is sampled in the
-background thread. RSS is the sum of process working sets, so shared pages can
-be counted more than once. It is deliberately reported separately from V8 heap.
+Call mark() from the Playwright thread. RSS keeps its fast sampling thread;
+optional USS/PSS/private counters use a separate thread at most once a second.
+RSS sums can count shared pages more than once. Detailed sums include coverage
+counts and are observations, never substitutes for the unchanged RSS budget.
 """
 from __future__ import annotations
 
@@ -56,6 +57,9 @@ class MemoryProbe18373:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = None
+        self._process_memory_thread = None
+        self._process_memory_interval = 1.0
+        self._sampling_closed = False
         self._started = time.monotonic()
         self._stage = "boot"
         self._count = 0
@@ -63,6 +67,14 @@ class MemoryProbe18373:
         self._omitted_samples = 0
         self._peak_rss = 0
         self._peak_private = 0
+        self._peak_rss_sample = None
+        self._process_peaks = {}
+        self._process_memory_count = 0
+        self._process_memory_attached = 0
+        self._latest_process_memory = None
+        self._process_memory_peaks = {}
+        self._process_memory_errors = []
+        self._process_memory_failures = 0
         self._max_processes = 0
         self._first_rss = None
         self._last_rss = None
@@ -74,8 +86,103 @@ class MemoryProbe18373:
 
     def _error(self, message):
         with self._lock:
-            if len(self._errors) < 20:
+            if not self._sampling_closed and len(self._errors) < 20:
                 self._errors.append(str(message)[:500])
+
+    def _process_memory_error(self, message):
+        # Optional OS counters may be unsupported or permission-restricted.
+        # Such a failure must not change the original RSS/heap gate semantics.
+        message = str(message)[:500]
+        with self._lock:
+            if self._sampling_closed:
+                return
+            self._process_memory_failures += 1
+            if message not in self._process_memory_errors and len(self._process_memory_errors) < 20:
+                self._process_memory_errors.append(message)
+
+    def _remember_processes(self, rows, *, detailed=False):
+        """Update scalar peaks while holding self._lock; retain no Process objects."""
+        for row in rows:
+            pid = row["pid"]
+            peak = self._process_peaks.setdefault(pid, {
+                "pid": pid, "name": None, "type": "unknown",
+                "rssSamples": 0, "detailedSamples": 0, "peakRssBytes": 0})
+            peak["type"] = self._roles.get(pid, peak["type"])
+            if row.get("name"):
+                peak["name"] = row["name"]
+            peak["detailedSamples" if detailed else "rssSamples"] += 1
+            for field in ("rssBytes", "ussBytes", "pssBytes", "privateBytes"):
+                if field in row:
+                    target = "peak" + field[0].upper() + field[1:]
+                    peak[target] = max(peak.get(target, 0), row[field])
+
+    def _sample_process_memory(self):
+        started = time.monotonic()
+        with self._lock:
+            stage = self._stage
+            roles = dict(self._roles)
+            names = {pid: row["name"] for pid, row in self._process_peaks.items()}
+        try:
+            processes = {self.browser_pid: self._process}
+            for child in self._process.children(recursive=True):
+                processes[child.pid] = child
+            rows = []
+            for process in processes.values():
+                try:
+                    try:
+                        info = process.memory_full_info()
+                    except (psutil.Error, OSError, AttributeError, NotImplementedError) as error:
+                        self._process_memory_error(
+                            "Detailed counters unavailable for PID " + str(process.pid) + ": " + str(error))
+                        info = process.memory_info()
+                    row = {"pid": int(process.pid), "type": roles.get(process.pid, "unknown"),
+                           "rssBytes": int(info.rss)}
+                    name = names.get(process.pid)
+                    if not name:
+                        try:
+                            name = str(process.name())[:100]
+                        except (psutil.Error, OSError):
+                            name = None
+                    if name:
+                        row["name"] = name
+                    for source, target in (("uss", "ussBytes"), ("pss", "pssBytes"),
+                                           ("private", "privateBytes")):
+                        value = getattr(info, source, None)
+                        if value is not None:
+                            row[target] = int(value)
+                    rows.append(row)
+                except psutil.NoSuchProcess:
+                    continue
+                except (psutil.Error, OSError) as error:
+                    self._process_memory_error("Process memory read failed: " + str(error))
+            ended = time.monotonic()
+            sample = {"seconds": round(ended - self._started, 3),
+                      "startedSeconds": round(started - self._started, 3),
+                      "stage": stage, "durationMs": round((ended - started) * 1000, 1),
+                      "processes": len(rows), "enumeratedProcesses": len(processes),
+                      "rssBytes": sum(row["rssBytes"] for row in rows),
+                      "perProcess": rows}
+            for field in ("ussBytes", "pssBytes", "privateBytes"):
+                covered = [row[field] for row in rows if field in row]
+                sample[field] = sum(covered) if covered else None
+                sample[field.removesuffix("Bytes") + "Processes"] = len(covered)
+            with self._lock:
+                if self._sampling_closed:
+                    return
+                self._process_memory_count += 1
+                self._latest_process_memory = sample
+                self._remember_processes(rows, detailed=True)
+                for field in ("ussBytes", "pssBytes", "privateBytes"):
+                    previous = self._process_memory_peaks.get(field)
+                    if sample[field] is not None and (previous is None or sample[field] > previous[field]):
+                        self._process_memory_peaks[field] = sample
+                if self._peak_rss_sample is not None:
+                    nearby = self._peak_rss_sample.get("nearbyProcessMemory")
+                    peak_time = self._peak_rss_sample["seconds"]
+                    if nearby is None or abs(sample["seconds"] - peak_time) < abs(nearby["seconds"] - peak_time):
+                        self._peak_rss_sample["nearbyProcessMemory"] = sample
+        except (psutil.Error, OSError) as error:
+            self._process_memory_error("Detailed process observation failed: " + str(error))
 
     def _sample_rss(self):
         try:
@@ -83,18 +190,34 @@ class MemoryProbe18373:
             for child in self._process.children(recursive=True):
                 processes[child.pid] = child
             rss = private = count = 0
+            rows = []
             for process in processes.values():
                 try:
                     info = process.memory_info()
                     rss += int(info.rss)
                     private += int(getattr(info, "private", 0))
                     count += 1
+                    row = {"pid": int(process.pid), "rssBytes": int(info.rss)}
+                    if getattr(info, "private", None) is not None:
+                        row["privateBytes"] = int(info.private)
+                    rows.append(row)
                 except psutil.NoSuchProcess:
                     # A Worker or renderer may finish between enumeration and read.
                     continue
             elapsed = round(time.monotonic() - self._started, 3)
             with self._lock:
+                if self._sampling_closed:
+                    return
                 self._count += 1
+                self._remember_processes(rows)
+                if self._peak_rss_sample is None or rss > self._peak_rss:
+                    self._peak_rss_sample = {"seconds": elapsed, "stage": self._stage,
+                                             "rssBytes": rss, "processes": count,
+                                             "perProcess": [dict(row,
+                                                 name=self._process_peaks[row["pid"]]["name"],
+                                                 type=self._process_peaks[row["pid"]]["type"])
+                                                 for row in rows],
+                                             "nearbyProcessMemory": self._latest_process_memory}
                 self._peak_rss = max(self._peak_rss, rss)
                 self._peak_private = max(self._peak_private, private)
                 self._max_processes = max(self._max_processes, count)
@@ -103,6 +226,11 @@ class MemoryProbe18373:
                 self._last_rss = rss
                 sample = {"seconds": elapsed, "stage": self._stage,
                           "rssBytes": rss, "processes": count}
+                # Attach each slow scalar snapshot once, rather than repeating
+                # stale USS/PSS values on every fast RSS row.
+                if self._process_memory_count > self._process_memory_attached:
+                    sample["processMemory"] = self._latest_process_memory
+                    self._process_memory_attached = self._process_memory_count
                 if len(self._samples) < 24000:
                     self._samples.append(sample)
                 else:
@@ -120,6 +248,14 @@ class MemoryProbe18373:
         while not self._stop.wait(self.interval):
             self._sample_rss()
 
+    def _run_process_memory(self):
+        while not self._stop.is_set():
+            started = time.monotonic()
+            self._sample_process_memory()
+            delay = max(0.0, self._process_memory_interval - (time.monotonic() - started))
+            if self._stop.wait(delay):
+                return
+
     def start(self):
         if self._thread is not None:
             raise RuntimeError("Memory probe already started")
@@ -127,6 +263,9 @@ class MemoryProbe18373:
         self._thread = threading.Thread(target=self._run,
                                         name="futbr-18373-browser-rss", daemon=True)
         self._thread.start()
+        self._process_memory_thread = threading.Thread(
+            target=self._run_process_memory, name="futbr-18373-process-memory", daemon=True)
+        self._process_memory_thread.start()
         return self
 
     def mark(self, page, stage: str):
@@ -168,9 +307,14 @@ class MemoryProbe18373:
             self._thread.join(timeout=2)
             if self._thread.is_alive():
                 self._error("RSS sampler did not stop within two seconds")
+        if self._process_memory_thread is not None:
+            self._process_memory_thread.join(timeout=2)
+            if self._process_memory_thread.is_alive():
+                self._process_memory_error("Detailed process sampler did not stop within two seconds")
         self._sample_rss()
         budget = self.rss_budget_mib * 1024 * 1024 if self.rss_budget_mib else None
         with self._lock:
+            self._sampling_closed = True
             within_budget = budget is None or self._peak_rss <= budget
             self._finished = {
                 "ok": self._count >= 2 and bool(self._heap) and not self._errors and within_budget and self.old_space_argument_verified,
@@ -183,6 +327,17 @@ class MemoryProbe18373:
                 "finalRssBytes": self._last_rss,
                 "maxProcessCount": self._max_processes,
                 "peakPrivateBytesWhenAvailable": self._peak_private,
+                "processMemorySampleIntervalMs": round(self._process_memory_interval * 1000),
+                "processMemorySampleCount": self._process_memory_count,
+                "peakUssBytesWhenAvailable": (self._process_memory_peaks.get("ussBytes") or {}).get("ussBytes"),
+                "peakPssBytesWhenAvailable": (self._process_memory_peaks.get("pssBytes") or {}).get("pssBytes"),
+                "processMemoryScope": "Optional OS counters, sampled separately; sums cover only the counted processes. USS is unique resident memory, PSS weights shared pages, and Windows private bytes are private commit, not RSS.",
+                "peakRssProcessSample": self._peak_rss_sample,
+                "processMemoryPeakSamples": dict(self._process_memory_peaks),
+                "processMemoryPeaks": [dict(row) for row in self._process_peaks.values()],
+                "finalProcessMemorySample": self._latest_process_memory,
+                "processMemoryReadFailures": self._process_memory_failures,
+                "processMemoryErrors": list(self._process_memory_errors),
                 "rssScope": "Chromium process tree RSS sum; shared pages may be counted more than once",
                 "heapScope": "UI V8 isolate; Worker heap is included only in process RSS",
                 "requestedOldSpaceLimitMiB": self.heap_limit_mib,

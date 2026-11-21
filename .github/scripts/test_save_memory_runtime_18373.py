@@ -16,7 +16,10 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),crypto=r
 const source=fs.readFileSync(process.argv[1],'utf8'),KEY='gestor_fc_mundo_v205_clean';
 const marker='/* FUTBR_SAVE_MEMORY_RUNTIME_18373_BEGIN',end='/* FUTBR_SAVE_MEMORY_RUNTIME_18373_END */';
 assert(source.includes(marker),'runtime installed');
-const runtime=source.slice(source.indexOf(marker),source.indexOf(end)+end.length);
+let runtime=source.slice(source.indexOf(marker),source.indexOf(end)+end.length);
+const fingerprintHook='globalThis.__fingerprintFixture={hash:fingerprint,bytes:fingerprintInput};\n';
+assert.equal(runtime.split(' G.memoryStorage18373={').length,2);
+runtime=runtime.replace(' G.memoryStorage18373={',fingerprintHook+' G.memoryStorage18373={');
 const playerStart=source.indexOf('const v18191uPlayerFields='),playerEnd=source.indexOf('// 5.3: one authoritative simulation',playerStart);
 const playerCodec=source.slice(playerStart,playerEnd);
 const coachStart=source.indexOf('function v93ScheduleCoachDecisionSave(delay=60000){');
@@ -31,6 +34,7 @@ const disk=new Map(),events=[],rpc=[],toasts=[];
 let failWrite=0,writes=0,failCommit=false,transactionMax=0,largestPackedRows=0,largestPackedBytes=0;
 let largestScorerRows=0,largestScorerBytes=0,largestCompetitionRows=0;
 let duringWrite=null,duringFingerprint=null,beforeCommit=null;
+const digestBuffers=new WeakSet();let distinctDigestBuffers=0,digestBackingBytes=0,digestInputBytes=0;
 // Fire the actual long-delay callback at a deterministic storage boundary.
 // UI yielding and real compression/fingerprints still use the normal event loop.
 const longTimers=new Map();
@@ -68,7 +72,10 @@ const storage={directStorage:true,
  removeMany:async ks=>{events.push({kind:'cleanup',keys:[...ks]});for(const k of ks)disk.delete(k);}
 };
 const context={console,performance,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,
- crypto:{subtle:{digest:async(...args)=>{const result=await crypto.webcrypto.subtle.digest(...args);
+ crypto:{subtle:{digest:async(...args)=>{
+  const input=args[1],buffer=input.buffer||input;digestInputBytes+=input.byteLength;
+  if(!digestBuffers.has(buffer)){digestBuffers.add(buffer);distinctDigestBuffers++;digestBackingBytes+=buffer.byteLength;}
+  const result=await crypto.webcrypto.subtle.digest(...args);
   if(duringFingerprint){const hook=duringFingerprint;duringFingerprint=null;hook();}return result;}}},
  ArrayBuffer,Map,Set,WeakMap,Date,Math,JSON,Promise,structuredClone,Uint8Array,
  btoa,atob,setTimeout:testSetTimeout,clearTimeout:testClearTimeout,queueMicrotask,
@@ -425,8 +432,48 @@ function assertHistory(actual,expected){
   negatives.push(field);
  }
  report.vacationOverlayMismatchKeepsLegacyFallback=true;report.vacationOverlayNegativeCases=negatives;
+ // Every real UI save above used the exact installed hash function. Observe
+ // the actual BufferSources given to WebCrypto, without keeping them alive or
+ // forcing GC. The former implementation allocated twice the input bytes;
+ // the reusable implementation allocates only a few geometrically grown
+ // scratch buffers even when thousands of unchanged chunks are visited.
+ const fp=context.__fingerprintFixture,normalFingerprintStats=clone(api.status());
+ assert(normalFingerprintStats.fingerprintCalls>1000);
+ assert.equal(digestInputBytes,normalFingerprintStats.fingerprintInputBytes);
+ assert(digestBackingBytes<digestInputBytes/20,'scratch backing must be far smaller than cumulative inputs');
+ assert(normalFingerprintStats.fingerprintAllocatedBytes<digestInputBytes/20);
+ report.reusableFingerprintBacking=true;
+ report.fingerprintAllocationAudit={calls:normalFingerprintStats.fingerprintCalls,
+  inputBytes:digestInputBytes,legacyDoubleEncodeBytes:2*digestInputBytes,
+  distinctDigestBuffers,digestBackingBytes,
+  allocatedBytes:normalFingerprintStats.fingerprintAllocatedBytes,
+  retainedBytes:normalFingerprintStats.fingerprintRetainedBytes,
+  allocationReduction:1-normalFingerprintStats.fingerprintAllocatedBytes/(2*digestInputBytes)};
+ const malformed=['','ASCII\0NUL','ação 漢字 😀','\ud800','\udfff','a\ud800b\udfffc','\ud800\udfff'];
+ for(const text of malformed){
+  assert.deepEqual(Buffer.from(fp.bytes(text)),Buffer.from(new TextEncoder().encode(text)));
+  const rows=[['edge',{text,zero:0,no:false,empty:null}]];
+  assert.equal(await fp.hash(rows),crypto.createHash('sha256').update(JSON.stringify(rows),'utf8').digest('hex'));
+ }
+ report.legacyUtf8HashesUnchanged=true;report.malformedUnicodeAndNulPreserved=true;
+ // A field beyond reusable capacity is still hashed faithfully. This is a
+ // scratch-retention policy, not a save-size/data limit.
+ const retainedBeforeLarge=api.status().fingerprintRetainedBytes;
+ const largeText='😀'.repeat(1024*1024+17)+'\0\ud800';
+ const largeRows=[['large',{text:largeText}]],largeExpected=crypto.createHash('sha256')
+  .update(JSON.stringify(largeRows),'utf8').digest('hex');
+ const beforeLarge=api.status();assert.equal(await fp.hash(largeRows),largeExpected);
+ const afterLarge=api.status();assert(afterLarge.fingerprintFallbacks>beforeLarge.fingerprintFallbacks);
+ assert(afterLarge.maxFingerprintBufferBytes>4*1024*1024);
+ assert(afterLarge.fingerprintRetainedBytes<=4*1024*1024);
+ assert(afterLarge.fingerprintRetainedBytes>=retainedBeforeLarge);
+ assert.equal(await fp.hash([['small','after oversized input']]),
+  crypto.createHash('sha256').update(JSON.stringify([['small','after oversized input']])).digest('hex'));
+ for(const value of [undefined,NaN,Infinity,1n,new Map(),new Uint8Array(1)])assert.equal(await fp.hash([['unsupported',value]]),null);
+ report.oversizedFingerprintSupportedWithoutRetainingBuffer=true;
+ report.unsupportedFingerprintStillDisablesReuse=true;
  const stats=clone(api.status());delete stats.owner;report.stats=stats;
- report.runtimeTestHookNotShipped=!source.includes('TEST_ONLY_SAVE_MEMORY_18373');
+ report.runtimeTestHookNotShipped=!source.includes('TEST_ONLY_SAVE_MEMORY_18373')&&!source.includes('__fingerprintFixture');
  report.ok=true;f.clearTimers();process.stdout.write(JSON.stringify(report));
 })().catch(error=>{f.clearTimers();console.error(error.stack);process.exit(1);});
 '''
