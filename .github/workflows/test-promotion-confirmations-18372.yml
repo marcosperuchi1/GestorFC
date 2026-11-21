@@ -1,0 +1,78 @@
+name: FutBR 18.372 - game confirmations and employed career promotions
+on:
+  push:
+    branches: [fix/desktop-18372-promotions-confirmations]
+    paths: ['.github/workflows/test-promotion-confirmations-18372.yml', '.github/scripts/*18372.py', '.github/scripts/*18371.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-18372-promotion-confirmations-browser
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout promotion and confirmation corrections
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exact 18.369 production game source with prior verified repairs
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14672603574
+          run-id: 44822411846
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/futbr-source-18369
+          merge-multiple: true
+      - name: Apply prior verified lifecycle repairs and new 18.372 corrections
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18369/prepared"
+          test -s "$project_root/src/index.html"
+          python .github/scripts/fix_bounded_jobwait_18370.py "$project_root"
+          python .github/scripts/test_bounded_jobwait_18370.py "$project_root"
+          python .github/scripts/fix_contract_preferences_18371.py "$project_root"
+          python .github/scripts/fix_repeated_dismissal_18371.py "$project_root"
+          python .github/scripts/test_contract_preferences_18371.py "$project_root"
+          python .github/scripts/test_repeated_dismissal_18371.py "$project_root"
+          python .github/scripts/fix_native_confirmations_18372.py "$project_root"
+          python .github/scripts/fix_career_promotion_offers_18372.py "$project_root"
+          python .github/scripts/test_native_confirmations_18372.py "$project_root"
+          python .github/scripts/test_career_promotion_offers_18372.py "$project_root"
+          python .github/scripts/test_contract_preferences_18371.py "$project_root"
+          python .github/scripts/test_repeated_dismissal_18371.py "$project_root"
+      - name: Install Chrome driver
+        shell: bash
+        run: |
+          python -m pip install playwright
+          python -m playwright install chromium
+      - name: Real saved-career deletion modal and employed promotion offers
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18369/prepared"
+          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
+      - name: Save validation reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.372-Promotion-Confirmations-Real-Engine-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/futbr-source-18369/prepared/*18372*json
+            ${{ runner.temp }}/futbr-source-18369/prepared/artifacts/promotion-offer-18372.png
+            ${{ runner.temp }}/futbr-source-18369/prepared/artifacts/delete-confirmation-18372.png
+            ${{ runner.temp }}/futbr-source-18369/prepared/artifacts/promotion-confirmation-failure-18372.png
+            ${{ runner.temp }}/futbr-source-18369/prepared/*18371*json
+            ${{ runner.temp }}/futbr-source-18369/prepared/jobwait-memory-18370-tests.json
+          if-no-files-found: warn
+          retention-days: 7

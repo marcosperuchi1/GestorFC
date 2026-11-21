@@ -151,7 +151,15 @@ Run-Python '.github/scripts/fix_repeated_dismissal_18371.py'
 Run-Python '.github/scripts/test_contract_preferences_18371.py'
 Run-Python '.github/scripts/test_repeated_dismissal_18371.py'
 Run-Python '.github/scripts/test_career_transitions_browser_18371.py'
-# Recheck employed vacation return on the final 18.371 lifecycle.
+Run-Python '.github/scripts/set_desktop_version_18372.py'
+Run-Python '.github/scripts/fix_native_confirmations_18372.py'
+Run-Python '.github/scripts/fix_career_promotion_offers_18372.py'
+Run-Python '.github/scripts/test_native_confirmations_18372.py'
+Run-Python '.github/scripts/test_career_promotion_offers_18372.py'
+Run-Python '.github/scripts/test_contract_preferences_18371.py'
+Run-Python '.github/scripts/test_repeated_dismissal_18371.py'
+Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'
+# Recheck employed vacation return on the final 18.372 lifecycle.
 Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
@@ -313,6 +321,12 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item 'repeated-dismissal-18371-install.json' 'artifacts/repeated-dismissal-18371-install.json'
    Copy-Item 'repeated-dismissal-18371-tests.json' 'artifacts/repeated-dismissal-18371-tests.json'
    Copy-Item 'career-transitions-browser-18371-tests.json' 'artifacts/career-transitions-browser-18371-tests.json'
+   Copy-Item 'desktop-version-18372-install.json' 'artifacts/desktop-version-18372-install.json'
+   Copy-Item 'native-confirmations-18372-install.json' 'artifacts/native-confirmations-18372-install.json'
+   Copy-Item 'native-confirmations-18372-tests.json' 'artifacts/native-confirmations-18372-tests.json'
+   Copy-Item 'career-promotion-offers-18372-install.json' 'artifacts/career-promotion-offers-18372-install.json'
+   Copy-Item 'career-promotion-offers-18372-tests.json' 'artifacts/career-promotion-offers-18372-tests.json'
+   Copy-Item 'promotion-confirmations-browser-18372-tests.json' 'artifacts/promotion-confirmations-browser-18372-tests.json'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
@@ -385,6 +399,12 @@ if (-not $source.Contains("Run-Python '.github/scripts/fix_repeated_dismissal_18
 if (-not $source.Contains("Run-Python '.github/scripts/test_contract_preferences_18371.py'")) { throw '18.371 career transition gate is missing: test_contract_preferences_18371.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_repeated_dismissal_18371.py'")) { throw '18.371 career transition gate is missing: test_repeated_dismissal_18371.py' }
 if (-not $source.Contains("Run-Python '.github/scripts/test_career_transitions_browser_18371.py'")) { throw '18.371 career transition gate is missing: test_career_transitions_browser_18371.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/set_desktop_version_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: set_desktop_version_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_native_confirmations_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: fix_native_confirmations_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/fix_career_promotion_offers_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: fix_career_promotion_offers_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_native_confirmations_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_native_confirmations_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_career_promotion_offers_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_career_promotion_offers_18372.py' }
+if (-not $source.Contains("Run-Python '.github/scripts/test_promotion_confirmations_browser_18372.py'")) { throw '18.372 promotion and confirmation gate is missing: test_promotion_confirmations_browser_18372.py' }
 '@
 $marker = '$tempScript = Join-Path $env:RUNNER_TEMP'
 if ([regex]::Matches($text, [regex]::Escape($marker)).Count -ne 1) { throw 'Pipeline original mudou; revisar integracao.' }
