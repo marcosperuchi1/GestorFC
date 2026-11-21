@@ -66,7 +66,8 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
  worldAudit(){return {identity:this.identity(),
   collections:Object.fromEntries(['players','teams','coaches','schedule','competitions',
    'competitionStats','allTimeStats','v555CareerArchive','v538CareerArchive','scorerArchive',
-   'retiredPlayers','retirementHistory','v622Settings','v636CoachCareer']
+   'retiredPlayers','retirementHistory','retirements','history','internationalHistory',
+   'v735NationalArchive','transfers','crestOverrides','v622Settings','v636CoachCareer']
    .map(k=>[k,this.digest(state?.[k]??null)]))};},
  identity(){return {career:String(state?.v1903CareerId||''),coachId:String(state?.userCoachId||''),
   club:String(state?.user||''),year:Number(state?.year)||0,day:Number(state?.day)||0,
@@ -125,6 +126,18 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
   const baseToast=toast;toast=(...args)=>{this.notices.push(args.map(String).join(' '));return baseToast(...args);};
   this.phase='creating-2029-fixture';
   state=E.createCareer({club:'t0',manager:'Carreira longa sob teste',seed:183732029,difficulty:'normal'});
+  // Later calendars require the preceding continental titleholders. Supply
+  // valid historical inputs from each real competition's own participants;
+  // never bypass or weaken the original allocation/qualification assertions.
+  const titleholders=[],usedChampions=new Set();
+  for(const c of Object.values(state.competitions||{})){
+   if(!['UEFA','CONMEBOL','CONCACAF','AFC','CAF','OFC'].includes(c.conf))continue;
+   const champion=(c.participants||[]).find(id=>!usedChampions.has(id)&&E.team(state,id));
+   if(champion){titleholders.push({year:2028,id:c.id,name:c.name,conf:c.conf,champion});usedChampions.add(champion);}
+  }
+  const lib=titleholders.find(x=>x.id==='lib'),sud=titleholders.find(x=>x.id==='sud');
+  if(!lib||!sud||lib.champion===sud.champion)throw Error('The real catalog could not supply distinct prior CONMEBOL champions');
+  state.internationalHistory=titleholders;
   state.year=2029;E.setupSeason(state); // The actual calendar builder, including the 2029 Club World Cup.
   state.v1903CareerId='memory-integration-18373-2029';state.live=null;
   state.vacation.active=false;state.vacation.paused=true;
@@ -160,7 +173,8 @@ window.__longCareer373={done:false,result:null,phase:'startup',progress:[],notic
   saved=null;view='career';saveOK=true;v52SavePromise=null;v52SaveDirty=false;v52PendingState=null;
   v53Sim.active=false;v53Sim.starting=false;v53Sim.syncing=false;v53Sim.patching=false;v53Sim.finished=null;
   this.observeWorkers();this.initial={...this.identity(),counts,history:this.historyDigest(),
-   fixtureInputs:'Original full world and 2029 calendar; synthetic 2026–2028 history in real schemas',
+   fixtureInputs:'Original full world and 2029 calendar; synthetic 2026–2028 statistics and valid 2028 continental titleholders in real schemas',
+   previousContinentalChampions:titleholders,
    priorSeasonsActuallySimulated:false,authAndOuterShellIsolated:true};
   if(this.initial.players<180000||this.initial.teams<5000||counts.packedRecords<400000||counts.scorerRecords<90000)
    throw Error('Long-career fixture is unexpectedly small: '+JSON.stringify(this.initial));

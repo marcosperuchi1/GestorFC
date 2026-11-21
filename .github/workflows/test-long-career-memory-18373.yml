@@ -82,18 +82,18 @@ jobs:
           python .github/scripts/test_vacation_checkpoint_18373.py "$project_root"
           python .github/scripts/test_save_memory_runtime_18373.py "$project_root"
           python .github/scripts/test_jobwait_memory_transfer_18373.py "$project_root"
-      - name: Preserve real promotion and confirmation flow on the final 18.373 runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          project_root="$RUNNER_TEMP/futbr-source-18373/prepared"
-          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
       - name: Real 2029 dismissal, job search, vacation, save exit and reload under memory limits
         shell: bash
         run: |
           set -euo pipefail
           project_root="$RUNNER_TEMP/futbr-source-18373/prepared"
           python .github/scripts/test_long_career_memory_browser_18373.py "$project_root"
+      - name: Preserve real promotion and confirmation flow on the final 18.373 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_root="$RUNNER_TEMP/futbr-source-18373/prepared"
+          python .github/scripts/test_promotion_confirmations_browser_18372.py "$project_root"
       - name: Save validation reports and memory measurements
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
