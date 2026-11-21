@@ -1,0 +1,62 @@
+name: Verify public FutBR 18.371 matches the signed build
+
+on:
+  push:
+    branches: [verify/public-updater-18371]
+    paths:
+      - '.github/workflows/verify-public-updater-18371.yml'
+      - '.github/scripts/verify_public_updater_18371.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: futbr-public-updater-verification-18371
+  cancel-in-progress: true
+
+jobs:
+  verify-public-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Checkout the isolated verifier
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Wait for the exact Windows build and cryptographic verification
+        id: source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python3 .github/scripts/verify_public_updater_18371.py wait-build
+          --output "$RUNNER_TEMP/public-updater-18371-source.json"
+
+      - name: Read the verified installer artifact from the exact build
+        uses: actions/download-artifact@v4
+        with:
+          name: FutBR-Manager-18.371-Windows-Fast-Signed-Updater
+          repository: ${{ github.repository }}
+          run-id: 44845753178
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/futbr-18371-verified-build
+
+      - name: Compare the public feed, signature and complete executable
+        run: >-
+          python3 .github/scripts/verify_public_updater_18371.py verify-public
+          --source "$RUNNER_TEMP/public-updater-18371-source.json"
+          --artifact-dir "$RUNNER_TEMP/futbr-18371-verified-build"
+          --output "$RUNNER_TEMP/public-updater-18371.json"
+
+      - name: Keep the public verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Public-Updater-18.371-Verification-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/public-updater-18371-source.json
+            ${{ runner.temp }}/public-updater-18371.json
+          if-no-files-found: warn
+          retention-days: 7
