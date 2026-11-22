@@ -1,0 +1,74 @@
+name: Preflight FutBR 18.376 signed version and integration gates
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18376-font-settings]
+    paths: [.github/workflows/preflight-version-18376.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Restore approved 18.374 game
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/art /tmp/game/src /tmp/game/src-tauri
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          SRC=$(find /tmp/art -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/game/src/index.html
+      - name: Prepare synthetic updater signing config for version transition only
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64,json,os
+          from pathlib import Path
+          raw=b'Ed'+bytes(range(8))+bytes(range(32))
+          assert len(raw)==42
+          pub=b'untrusted comment: integration test only\n'+base64.b64encode(raw)+b'\n'
+          key=base64.b64encode(pub).decode()
+          cfg={'version':'18.374.0','bundle':{'createUpdaterArtifacts':True},
+               'plugins':{'updater':{'pubkey':key,
+               'endpoints':['https://download.futbrmanager.com.br/updates/latest.json']}}}
+          Path('/tmp/game/src-tauri/tauri.conf.json').write_text(json.dumps(cfg),encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('FUTBR_UPDATER_PUBLIC_KEY='+key+'\n')
+          print('Synthetic signing config: exact key identity and updater endpoint validated; no production key used')
+          PY
+      - name: Apply exact 18.375 updates and validate prior release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+          python .github/scripts/set_desktop_version_18375.py /tmp/game
+          python .github/scripts/validate_support_release_18375.py /tmp/game
+      - name: Apply 18.376 font fix and verify production version transition
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/fix_font_settings_18376.py /tmp/game
+          python -m pip -q install playwright
+          python -m playwright install chromium
+          python .github/scripts/test_font_settings_18376.py /tmp/game
+          python .github/scripts/set_desktop_version_18376.py /tmp/game
+          python .github/scripts/validate_font_settings_release_18376.py /tmp/game
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.376-Settings-Version-Preflight
+          path: |
+            /tmp/game/desktop-version-18376-install.json
+            /tmp/game/font-settings-release-18376-tests.json
+            /tmp/game/font-settings-18376-tests.json
+          retention-days: 7
