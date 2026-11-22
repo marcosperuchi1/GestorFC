@@ -1,0 +1,35 @@
+name: Build FutBR support attachment page 18.375 candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: ['.github/workflows/build-support-site-18375.yml']
+permissions: {contents: read}
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Fetch current production support page and apply isolated patch
+        run: |
+          mkdir -p site
+          curl -fLsS --compressed https://futbrmanager.com.br/suporte.html -o site/suporte.html
+          python .github/scripts/improve_support_site_18375.py site/suporte.html
+      - name: Verify unchanged support authorization and file constraints
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('site/suporte.html').read_text()
+          for required in ('FUTBR_SUPPORT_ATTACHMENTS_18375','support_tickets','support_messages','support_attachments','futbr-support','5242880','v375MountTicket','v375Upload'):
+           if required not in s:raise AssertionError('Missing '+required)
+          if 'service_role' in s:raise AssertionError('Never place service role in frontend')
+          print('PASS: support attachments integrated into live support controller')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Support-Page-18.375-STAGING-NOT-PUBLISHED
+          path: site/suporte.html
+          retention-days: 7
