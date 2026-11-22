@@ -1,0 +1,73 @@
+name: Diagnose FutBR 18.377 historical scorers and window permissions
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18377-history-window-obs]
+    paths: [.github/workflows/inspect-historical-window-18377.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve approved 18.374 complete game HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/approved /tmp/futbr
+          gh run download 44968669984 -R marcosperuchi1/GestorFC \
+            -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/approved
+          src=$(find /tmp/approved -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$src"
+          gzip -dc "$src" > /tmp/futbr/game.html
+          cat FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part* > /tmp/futbr/base.zip
+      - name: Diagnose season archive production and preserved series
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('/tmp/futbr/game.html').read_text(encoding='utf8')
+          print('APPROVED GAME SOURCE',len(s))
+          patterns=[
+           'function archiveCurrent(', 'async function archiveCurrent(',
+           'scorerArchive.push','scorerArchive=','scorerArchive:',
+           's.scorerArchive', 'world.scorerArchive',
+           'function v18220Collect(', 'function v18220RowsSource(',
+           'function v18220Merge(','function v18220CompetitionAllowed(',
+           'function historyStore','storeHistorySeason(',
+           'competitionHistoryRanking','competitionStats=',
+           'v615-ranking-scroll','.v622-settings-grid{','.v622-setting-card{',
+           '.v622-settings-page{','v625-settings-page','v625-settings-grid',
+          ]
+          for term in patterns:
+           mm=list(re.finditer(re.escape(term),s))
+           print('\n##',term,'COUNT',len(mm))
+           for match in mm[-min(6,len(mm)):]:
+            pos=match.start()
+            print('AT',pos,repr(s[max(0,pos-350):pos+1100].replace('\n',' ')[:1450]))
+          print('\n## HISTORICAL DATA STORAGE MARKERS')
+          for needle in ('scorerArchive','historicalTopScorers','archiveCurrent','competitionStats','seasonStats'):
+           print(needle,'occurrences',s.count(needle))
+          PY
+      - name: Inspect Tauri packaged ACL and window behavior
+        shell: bash
+        run: |
+          python - <<'PY'
+          import zipfile
+          z=zipfile.ZipFile('/tmp/futbr/base.zip')
+          files=z.namelist()
+          print('ZIP FILES',len(files))
+          selected=[p for p in files if p.lower().endswith(('capabilities/default.json','capabilities/default.toml','tauri.conf.json','tauri.conf.json5','src/lib.rs','src/main.rs','src-tauri/cargo.toml'))]
+          for p in selected:
+           raw=z.read(p).decode('utf-8-sig','replace')
+           print('##',p,'size',len(raw))
+           if p.lower().endswith('lib.rs'):
+            print('snippets', [(x,raw[max(0,x-400):x+700]) for x in [raw.find('setup('),raw.find('plugin(')] if x!=-1][:3])
+           else:print(raw[:11000])
+          PY
