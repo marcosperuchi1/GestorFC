@@ -4,12 +4,15 @@ on:
   push:
     branches: [fix/desktop-18377-history-window-obs]
     paths: [.github/workflows/inspect-history-detail-18377.yml]
-permissions: {contents: read, actions: read}
+permissions:
+  contents: read
+  actions: read
 jobs:
   inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    env: {GH_TOKEN: ${{ github.token }}}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - name: Recover approved source and print precise functions
