@@ -4,7 +4,7 @@ on:
     branches: [fix/desktop-18378-money-autoupdate]
     paths:
       - '.github/workflows/build-desktop-updater-18378.yml'
-      - '.github/workflows/test-history-window-18377.yml'
+      - '.github/workflows/preflight-18378.yml'
       - '.github/scripts/*18378.py'
       - '.github/scripts/build_desktop_support_18378.ps1'
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: futbr-18377-windows-candidate
+  group: futbr-18378-windows-candidate
   cancel-in-progress: true
 jobs:
   build:
@@ -48,7 +48,7 @@ jobs:
       - name: Derive current public key from private signer
         shell: pwsh
         run: |
-          $path = Join-Path $env:RUNNER_TEMP 'futbr-18377-pubkey.b64'
+          $path = Join-Path $env:RUNNER_TEMP 'futbr-18378-pubkey.b64'
           cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- $path
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $path)) { throw 'Signer public key derivation failed' }
           $pub = (Get-Content $path -Raw).Trim()
@@ -101,7 +101,7 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
             ${{ env.FUTBR_PROJECT }}/artifacts/support-release-18375-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/updater-18378-signature-tests.json
-            ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18377-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18378-tests.json
             ${{ env.FUTBR_PROJECT }}/font-settings-18376-tests.json
             ${{ env.FUTBR_PROJECT }}/font-settings-release-18376-tests.json
             ${{ env.FUTBR_PROJECT }}/history-window-release-18377-tests.json
