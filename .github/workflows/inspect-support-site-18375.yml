@@ -32,6 +32,13 @@ jobs:
            for m in list(re.finditer(re.escape(term),s))[:3]:
             print(s[max(0,m.start()-180):m.end()+360].replace('\n',' ')[:600])
           print('LOCAL RESOURCES')
-          for resource in re.findall(r'(?:src|href)=["\']([^"\']+)',s):
-           if not resource.startswith(('http:','https:','#','mailto:')):print(resource[:180])
+          for label,filepath in [('support','/tmp/futbr-support.html'),('home','/tmp/futbr-home.html')]:
+           doc=Path(filepath).read_text(encoding='utf8')
+           print('PAGE',label,'bytes',len(doc))
+           paths=set(re.findall(r'(?:src|href)=["\\']([^"\\']+)',doc))
+           paths.update(re.findall(r'url\\(\\s*["\\']?([^\\)"\\']+)',doc))
+           for resource in sorted(paths):
+            if not resource.startswith(('http:','https:','#','mailto:','data:','javascript:')):
+             print('ASSET',label,resource[:200])
+
           PY
