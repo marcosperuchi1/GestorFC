@@ -1,0 +1,97 @@
+name: Validate FutBR 18.377 historical scorers and OBS window mode
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18377-history-window-obs]
+    paths:
+      - .github/workflows/test-history-window-18377.yml
+      - .github/scripts/fix_legacy_scorers_18377.py
+      - .github/scripts/fix_window_capture_18377.py
+      - .github/scripts/test_historical_scorers_18377.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Extract verified 18.374 game plus original Tauri capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/art /tmp/game/src /tmp/game/src-tauri/capabilities
+          gh run download 44968669984 -R marcosperuchi1/GestorFC \
+            -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          src=$(find /tmp/art -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$src"
+          gzip -dc "$src" > /tmp/game/src/index.html
+          cat FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part* > /tmp/base.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          z=zipfile.ZipFile('/tmp/base.zip')
+          p=pathlib.Path('/tmp/game/src-tauri/capabilities/default.json')
+          p.write_bytes(z.read('FutBR_Manager_Desktop_RC1/src-tauri/capabilities/default.json'))
+          PY
+      - name: Reinstall source-approved 18.375 and 18.376 interface changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+          python .github/scripts/fix_font_settings_18376.py /tmp/game
+      - name: Apply historical scorer recovery and authorized window mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/fix_legacy_scorers_18377.py /tmp/game
+          python .github/scripts/fix_window_capture_18377.py /tmp/game
+      - name: Exercise actual ranker with 2026 records in a 2033 career
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/test_historical_scorers_18377.py /tmp/game
+      - name: Validate Tauri capability, OBS guidance, typography and all JS
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,sys,subprocess
+          from pathlib import Path
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf8')
+          a=json.loads(Path('/tmp/game/src-tauri/capabilities/default.json').read_text())
+          assert a['windows']==['main']
+          assert 'core:default' in a['permissions']
+          assert 'core:window:allow-set-fullscreen' in a['permissions']
+          assert 'core:window:allow-is-fullscreen' in a['permissions']
+          for mark in ('FUTBR_SCORER_HISTORY_RECOVERY_18377','FUTBR_WINDOW_OBS_HELP_18377','FUTBR_FONT_SETTINGS_18376',
+                       'Captura de janela','Windows 10/11 (1903+)','.v622-settings-page .panel-body'):
+           assert mark in s,mark
+          scripts,_=extract_executable_scripts(s)
+          assert len(scripts)>=129,len(scripts)
+          test=subprocess.run(['node','-e',
+            'const vm=require("vm"),fs=require("fs");JSON.parse(fs.readFileSync(0,"utf8")).forEach((s,i)=>new vm.Script(s,{filename:"script-"+i+".js"}));'],
+            input=json.dumps(scripts),text=True,capture_output=True,timeout=120)
+          assert test.returncode==0,test.stderr[-3000:]
+          print(json.dumps({'ok':True,'nativeWindowPermission':True,
+            'captureGuidance':True,'sourceScripts':len(scripts),
+            'fontSettingsCompacted':True,'noAdditionalWorldCopies':True}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.377-History-OBS-ACL-Regression
+          path: |
+            /tmp/game/historical-scorers-18377-tests.json
+            /tmp/game/history-scorers-18377-install.json
+            /tmp/game/window-capture-18377-install.json
+          if-no-files-found: error
+          retention-days: 14
