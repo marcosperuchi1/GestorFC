@@ -31,20 +31,20 @@ jobs:
           import re
           s=open('/tmp/futbr374/source.html',encoding='utf8').read()
           print('SOURCE BYTES',len(s))
-          patterns=[
-           r'function [A-Za-z\d_]*(?:buy|Buy|Transfer|transfer|negoti|Negot|Offer|offer|Sign|sign)[A-Za-z\d_]*\s*\(',
-           r'(?:const|let) (?:LANG|LANGUAGES|translations|LOCALE|LABEL|i18n)\s*=',
-           r'function [A-Za-z\d_]*(?:language|Language|Translate|translate|Calendar|calendar|Settings|settings)[A-Za-z\d_]*\s*\(',
-           r'function (?:render|renderPage|calendarPage|settingsPage|clubPage)\s*\(',
-           r'Modelo de desafio financeiro',
-           r'Negociar contratação',
-           r'data-club="',
+          terms=[
+           ('buy function','function buy(s,id,bid,wage,years){',2600),
+           ('transfer modal',"modalHead('Negociar contratação'",1800),
+           ('translator control','function control(place){',1900),
+           ('translation module',"let locale='pt-BR'",2200),
+           ('calendar list', 'FUTBR_CALENDAR_LIST_18347',1800),
+           ('settings page','function v622SettingsPage(){',1700),
+           ('language restore','fbr-language-control',1200),
+           ('buy wraps','buy=function',1600)
           ]
-          for p in patterns:
-           print('\n### PATTERN',p)
-           found=list(re.finditer(p,s,re.I))
-           print('matches',len(found))
-           for m in found[:14]:
-            print('--- offset',m.start(),'---')
-            print(s[max(0,m.start()-190):min(len(s),m.end()+380)].replace('\n',' ')[:600])
+          for label,term,span in terms:
+           print('### '+label+' matches '+str(s.count(term)))
+           for m in list(re.finditer(re.escape(term),s))[-3:]:
+            print('OFFSET',m.start())
+            print(s[max(0,m.start()-350):m.start()+span].replace('\\n',' ')[:span+350])
+
           PY
