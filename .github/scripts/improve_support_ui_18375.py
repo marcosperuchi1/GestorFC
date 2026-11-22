@@ -19,7 +19,7 @@ v375Style.textContent=`
 .v375-row button,.v375-dialog select,.v375-close{background:var(--panel-soft,#334953);border:1px solid var(--line,#53646d);color:inherit;border-radius:8px;padding:8px;cursor:pointer}
 .v375-help{display:inline-flex;align-items:center;justify-content:center;font-size:12px;min-width:18px;height:18px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:50%;margin-left:6px;cursor:help}
 `;document.head.appendChild(v375Style);
-function v375RemoveStrayText(){for(const n of [...document.body.childNodes])if(n.nodeType===Node.TEXT_NODE&&/^\\s*(?:(?:\\\\n|\\/n)\\s*)+$/.test(n.nodeValue||''))n.remove();}
+function v375RemoveStrayText(){for(const n of [...document.body.childNodes]){if(n.nodeType!==Node.TEXT_NODE)continue;const raw=(n.nodeValue||'').trim();if(raw&&!raw.replaceAll('/n','').replaceAll(String.fromCharCode(92)+'n','').trim())n.remove();}}
 async function v375Fullscreen(set){const w=window.__TAURI__?.window?.getCurrentWindow?.();if(w?.setFullscreen)return w.setFullscreen(set);if(set&&document.documentElement.requestFullscreen)return document.documentElement.requestFullscreen();if(!set&&document.fullscreenElement&&document.exitFullscreen)return document.exitFullscreen();throw Error('Modo janela indisponível neste ambiente.');}
 function v375Close(){if(v375Dialog)v375Dialog.remove();v375Dialog=null;}
 function v375Open(){
