@@ -1,0 +1,44 @@
+name: Inspect FutBR support site frontend
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: ['.github/workflows/inspect-support-site-18375.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch public support site without credentials
+        shell: bash
+        run: |
+          curl -fLsS --compressed https://futbrmanager.com.br/suporte.html -o /tmp/futbr-support.html
+          curl -fLsS --compressed https://futbrmanager.com.br/ -o /tmp/futbr-home.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/futbr-support.html').read_text(encoding='utf8')
+          print('Support HTML bytes',len(s))
+          patterns=[
+           'id="ticketForm"','id="newTicketForm"','id="loginForm"','type="file"',
+           'support_tickets','support_messages','support_attachments','futbr-support',
+           '.createClient(','.storage.from(','.from("support_tickets")',
+           'async function','addEventListener("submit"', "addEventListener('submit'"
+          ]
+          for term in patterns:
+           print('###',term,'count',s.count(term))
+           for m in list(re.finditer(re.escape(term),s))[:3]:
+            print(s[max(0,m.start()-180):m.end()+360].replace('\n',' ')[:600])
+          print('LOCAL RESOURCES')
+          for label,filepath in [('support','/tmp/futbr-support.html'),('home','/tmp/futbr-home.html')]:
+           doc=Path(filepath).read_text(encoding='utf8')
+           print('PAGE',label,'bytes',len(doc))
+           paths=set(re.findall(r'(?:src|href)=["\\']([^"\\']+)',doc))
+           paths.update(re.findall(r'url\\(\\s*["\\']?([^\\)"\\']+)',doc))
+           for resource in sorted(paths):
+            if not resource.startswith(('http:','https:','#','mailto:','data:','javascript:')):
+             print('ASSET',label,resource[:200])
+
+          PY

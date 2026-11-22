@@ -1,0 +1,50 @@
+name: Inspect FutBR 18.374 source anchors for tickets 4-13
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: ['.github/workflows/inspect-support-18375.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previously verified 18.374 prepared source
+        shell: bash
+        run: |
+          mkdir -p /tmp/futbr374
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/futbr374
+          find /tmp/futbr374 -maxdepth 2 -type f | head -50
+          SRC=$(find /tmp/futbr374 -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/futbr374/source.html
+      - name: Print bounded source excerpts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          s=open('/tmp/futbr374/source.html',encoding='utf8').read()
+          print('SOURCE BYTES',len(s))
+          terms=[
+           ('buy function','function buy(s,id,bid,wage,years){',2600),
+           ('transfer modal',"modalHead('Negociar contratação'",1800),
+           ('translator control','function control(place){',1900),
+           ('translation module',"let locale='pt-BR'",2200),
+           ('calendar list', 'FUTBR_CALENDAR_LIST_18347',1800),
+           ('settings page','function v622SettingsPage(){',1700),
+           ('language restore','fbr-language-control',1200),
+           ('buy wraps','buy=function',1600)
+          ]
+          for label,term,span in terms:
+           print('### '+label+' matches '+str(s.count(term)))
+           for m in list(re.finditer(re.escape(term),s))[-3:]:
+            print('OFFSET',m.start())
+            print(s[max(0,m.start()-350):m.start()+span].replace('\\n',' ')[:span+350])
+
+          PY

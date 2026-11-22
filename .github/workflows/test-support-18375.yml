@@ -1,0 +1,110 @@
+name: Validate FutBR support tickets 18.375 candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: ['.github/workflows/test-support-18375.yml', '.github/scripts/validate_support_release_18375.py']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Ensure inert crest and roster scripts are never parsed as JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          example=('<script type="application/octet-stream">{"source":"crest","palette":["#123"]}</script>'
+                   '<script type="application/json">{"players":[1,2]}</script>'
+                   '<script type="module">export const x=1;</script>'
+                   '<script>const valid=1;</script>')
+          scripts,excluded=extract_executable_scripts(example)
+          assert len(scripts)==2 and all('{"' not in js for js in scripts),(len(scripts),excluded)
+          assert excluded=={'application/octet-stream':1,'application/json':1},excluded
+          print('PASS: binary and JSON embedded data excluded; JavaScript preserved')
+          PY
+      - name: Restore the exact approved 18.374 game from CI
+        shell: bash
+        run: |
+          mkdir -p /tmp/art /tmp/game/src
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          SRC=$(find /tmp/art -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/game/src/index.html
+      - name: Install candidate market and accessibility changes
+        shell: bash
+        run: |
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+      - name: Validate installed JavaScript and source anchors
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re,subprocess
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf8')
+          for mark in ('FUTBR_CALENDAR_TRANSLATIONS_18375','FUTBR_TRANSFER_INTEREST_18375','FUTBR_SUPPORT_UI_18375'):
+              assert s.count(mark)==1,(mark,s.count(mark))
+          assert s.index('transferInterest18375(s,p,t,from,wage)')<s.index('executeTransfer(s,id,from,t,bid,wage,years)')
+          assert 'FUTBR_UNEMPLOYED_CALENDAR_18374' in s
+          import sys
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          scripts, excluded=extract_executable_scripts(s)
+          # Inspecting 15+ MB compiled game without executing the world database.
+          js='const vm=require("vm");const fs=require("fs");JSON.parse(fs.readFileSync(0,"utf8")).forEach((x,i)=>new vm.Script(x,{filename:"inline-"+i+".js"}));'
+          out=subprocess.run(['node','-e',js],input=json.dumps(scripts),text=True,capture_output=True,timeout=120)
+          if out.returncode:raise RuntimeError(out.stderr[-7000:])
+          print(json.dumps({'ok':True,'scriptsParsed':len(scripts),'bytes':len(s),'noAdditionalWorldClone':True}))
+          PY
+      - name: Exercise actual Engine transfer interest rules
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf8')
+          start=s.index('const Engine = (() => {')
+          end=s.index("if(typeof module!=='undefined'&&module.exports)module.exports=Engine;",start)
+          engine=s[start:end]
+          tests=r"""
+          const E=Engine;
+          const star={id:'ronaldo',pos:'ATA',age:34,star:true,wage:120000,skills:{att:94,pas:94,def:40,pace:90,gk:10}};
+          const poor={id:'remo',base:58,division:2,country:'bra'};
+          const elite={id:'champions',base:94,division:1,country:'bra'};
+          const from={id:'alnassr',base:86,division:1,country:'sau'};
+          const s={seed:18375,year:2028,day:50,v1903CareerId:'test'};
+          const rejected=E.transferInterest18375(s,star,poor,from,100000000);
+          const comparable=E.transferInterest18375(s,star,elite,from,300000);
+          if(rejected.ok||!rejected.reason.includes('reputação'))throw Error('Star signed for weak lower-division club');
+          if(comparable.reason.includes('reputação'))throw Error('Sportingly comparable club incorrectly blocked');
+          const again=E.transferInterest18375(s,star,poor,from,100000000);
+          if(JSON.stringify(rejected)!==JSON.stringify(again))throw Error('Acceptance result not stable');
+          if(!s.seed||star.clubId||poor.roster)throw Error('Pure policy mutated state');
+          console.log(JSON.stringify({ok:true,starRejectedAtUnderdog:true,eliteNotHardBlocked:true,deterministic:true}));
+          """
+          Path('/tmp/test-realism.js').write_text('const WorldCatalog={countries:[],clubs:[]},BundledRosters={};\n'+engine+'\n'+tests,encoding='utf8')
+          PY
+          node /tmp/test-realism.js
+
+# Rerun after source insertion anchor fix.
+
+# Test after in-scope closure insertion correction.
+
+# Anchor correction recheck.
+
+# Validate corrected orphan-newline handling.
+
+# Final candidate validation after UI and owner-only attachment corrections.

@@ -1,0 +1,86 @@
+name: FutBR Windows 18.375 - support tickets candidate
+on:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths:
+      - '.github/workflows/build-support-desktop-18375.yml'
+      - '.github/workflows/test-support-18375.yml'
+      - '.github/scripts/*18375.py'
+      - '.github/scripts/build_desktop_support_18375.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-18375-windows-candidate
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      FUTBR_MEMORY_HEAP_MB: '1024'
+      FUTBR_MEMORY_RSS_BUDGET_MIB: '3072'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm patch and signing environment
+        shell: pwsh
+        run: |
+          python -c "import glob,py_compile; [py_compile.compile(p,doraise=True) for p in glob.glob('.github/scripts/*18375.py')]"
+          if ($LASTEXITCODE -ne 0) { throw 'Python syntax invalid' }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Original Tauri signer unavailable' }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Derive current public key from private signer
+        shell: pwsh
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'futbr-18375-pubkey.b64'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- $path
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $path)) { throw 'Signer public key derivation failed' }
+          $pub = (Get-Content $path -Raw).Trim()
+          "FUTBR_UPDATER_PUBLIC_KEY=$pub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FUTBR_DERIVED_PUBKEY_FILE=$path" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install browser regression prerequisites
+        shell: pwsh
+        run: |
+          python -m pip install playwright psutil
+          if ($LASTEXITCODE -ne 0) { throw 'Playwright install failed' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium install failed' }
+      - name: Build 18.375 after all previously validated game corrections
+        shell: pwsh
+        run: .github/scripts/build_desktop_support_18375.ps1
+      - name: Package signed update candidate
+        shell: pwsh
+        run: |
+          python .github/scripts/make_desktop_update_release_18375.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot package signed installer' }
+      - name: Verify signature and fail closed
+        shell: pwsh
+        run: |
+          python .github/scripts/verify_desktop_updater_signature_18375.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Signed update verification failed' }
+          $root = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- verify "$env:FUTBR_DERIVED_PUBKEY_FILE" (Join-Path $root 'FutBR-Manager-18.375-Windows.exe') (Join-Path $root 'FutBR-Manager-18.375-Windows.exe.sig')
+          if ($LASTEXITCODE -ne 0) { throw 'Minisign verification failed' }
+      - name: Keep verified installer in GitHub Actions; do not publish automatically
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.375-Signed-Candidate-Not-Published
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.375-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.375-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/support-release-18375-tests.json
+          if-no-files-found: error
+          retention-days: 7
