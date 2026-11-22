@@ -1,0 +1,113 @@
+name: Publish verified FutBR Manager 18.375 signed Windows update
+on:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: [.github/workflows/publish-support-update.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-publish-18375-signed-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: \${{ github.token }}
+      TAURI_SIGNING_PRIVATE_KEY: \${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: \${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      R2_ACCOUNT_ID: \${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: \${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: \${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: \${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_UPDATE_PREFIX: updates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify source build completed successfully on the exact pinned revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/marcosperuchi1/GestorFC/actions/runs/44977954599 \
+            --jq '{status,conclusion,head_sha,head_branch,name}' > build-proof.json
+          gh api repos/marcosperuchi1/GestorFC/actions/runs/44977954599/artifacts \
+            --jq '[.artifacts[]|{id,name,expired}]' > artifact-proof.json
+          python - <<'PY'
+          import json
+          build=json.load(open('build-proof.json'))
+          expected='41637b66de2dfc3f251bbf557e722a4dd46f276d'
+          assert build['status']=='completed' and build['conclusion']=='success', build
+          assert build['head_sha']==expected and build['head_branch']=='fix/support-tickets-4-13-18375', build
+          assert build['name']=='FutBR Windows 18.375 - support tickets candidate', build
+          artifacts=json.load(open('artifact-proof.json'))
+          assert any(a['id']==14737742455 and a['name']=='FutBR-18.375-Signed-Candidate-Not-Published' and not a['expired'] for a in artifacts),artifacts
+          print('Verified exact 18.375 signed build, passing job and artifact provenance')
+          PY
+      - name: Download the exact signed installer produced by verified run
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14737742455
+          run-id: 44977954599
+          github-token: \${{ github.token }}
+          path: release/artifacts
+          merge-multiple: true
+      - name: Validate installer SHA256, version, signature and candidate reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/publish_verified_candidate.py stage release
+      - name: Derive original Minisign public key from installed signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$R2_ACCOUNT_ID" && test -n "$R2_BUCKET"
+          test -n "$R2_ACCESS_KEY_ID" && test -n "$R2_SECRET_ACCESS_KEY"
+          cargo run --release --quiet \
+            --manifest-path .github/tools/derive_tauri_pubkey/Cargo.toml \
+            -- "$RUNNER_TEMP/futbr-18375-original-pubkey.txt"
+          test -s "$RUNNER_TEMP/futbr-18375-original-pubkey.txt"
+      - name: Cryptographically verify actual installer against original key
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --release --quiet \
+            --manifest-path .github/tools/derive_tauri_pubkey/Cargo.toml \
+            -- verify "$RUNNER_TEMP/futbr-18375-original-pubkey.txt" \
+            release/artifacts/FutBR-Manager-18.375-Windows.exe \
+            release/artifacts/FutBR-Manager-18.375-Windows.exe.sig
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          sha=json.loads(Path('release/artifacts/publish-stage-18375.json').read_text())['sha256']
+          Path('release/artifacts/cryptographic-signature-verified.txt').write_text(sha)
+          print('Original configured signing key verified the published candidate cryptographically')
+          PY
+      - name: Publish immutable signed assets and update latest.json last
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip -q install boto3
+          python .github/scripts/publish_verified_candidate.py publish release
+      - name: Download and compare the entire public installer and both metadata files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/verify_public_update_18375.py release
+      - name: Retain provenance and public-release verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.375-Public-Update-Verification
+          path: |
+            build-proof.json
+            artifact-proof.json
+            release/artifacts/publish-stage-18375.json
+            release/artifacts/updater-18375-signature-tests.json
+            release/artifacts/public-updater-18375-tests.json
+          if-no-files-found: warn
+          retention-days: 14
