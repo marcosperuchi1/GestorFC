@@ -49,7 +49,10 @@ def main(root):
    page=browser.new_page(viewport={'width':1500,'height':950})
    errors=[]
    page.on('pageerror',lambda e:errors.append(str(e)))
-   page.add_init_script("localStorage.setItem('futbr-display-18375', JSON.stringify({scale:125}));")
+   page.add_init_script("""if (!sessionStorage.getItem('v376-initialized')) {
+     localStorage.setItem('futbr-display-18375', JSON.stringify({scale:125}));
+     sessionStorage.setItem('v376-initialized', 'true');
+   }""")
    page.goto(f'http://127.0.0.1:{srv.server_port}/',wait_until='load')
    page.locator('#v376-display-card').wait_for(timeout=10000)
    assert not errors, errors
