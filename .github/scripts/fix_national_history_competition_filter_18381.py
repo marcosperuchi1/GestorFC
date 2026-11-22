@@ -63,7 +63,7 @@ def main():
  end=html.index('function v18322NationalScorers(',start)
  block=html[start:end]
  block=change_once(block,
-   "   const options=[...new Set(h.map(x=>String(x.id||'')))].filter(Boolean).sort();",
+   "  const options=[...new Set(h.map(x=>String(x.id||'')))].filter(Boolean).sort();",
    "   const options=v18381CompetitionOptions(root,h);\\n   const selection=v18381CompetitionSelection(root,h,f.competition);".replace('\\n','\n'),
    'old options from edition IDs')
  block=change_once(block,
