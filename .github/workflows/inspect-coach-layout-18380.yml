@@ -1,4 +1,4 @@
-name: Inspect coach title cards and club grouped trophies for FutBR 18.380
+name: Inspect coach trophy grouping implementation and scorer CSS for FutBR 18.380
 on:
   workflow_dispatch:
   push:
@@ -70,24 +70,22 @@ jobs:
           python .github/scripts/test_scorer_identity_18379.py /tmp/game
           python .github/scripts/set_desktop_version_18379.py /tmp/game
           python .github/scripts/validate_scorer_identity_release_18379.py /tmp/game
-      - name: Locate coach trophy page, club grouped reference, and scorer column CSS
+      - name: Inspect actual club trophy grouping and coach titles renderer
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
           s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          for needle in ['Histórico nesta carreira','Histórico na carreira','ponto(s) de bônus','pontos de bônus','Títulos','TROFÉUS','Troféus','Troféu','Taças','Taca','trophies','trophy-groups','title-group','titles', 'v538-scorer-club','v18379-club-entry','v18379-club-links']:
-           matches=list(re.finditer(re.escape(needle),s,re.I))
-           print('\n====',repr(needle),'matches=',len(matches))
-           for m in matches[-4:]:
-            a=m.start(); before=750 if needle.lower() not in ['histórico nesta carreira','ponto(s) de bônus','titles','títulos','trophies','taças'] else 2200
-            after=1200 if needle.lower() not in ['histórico nesta carreira','ponto(s) de bônus','titles','títulos','trophies','taças'] else 3400
-            print('POS',a,'SNIPPET',repr(s[max(0,a-before):a+after]))
-          for pattern in [r'function\s+[a-zA-Z0-9_$]*[Cc]oach[a-zA-Z0-9_$]*\s*\(',
-                          r'function\s+[a-zA-Z0-9_$]*[Tt]roph[a-zA-Z0-9_$]*\s*\(',
-                          r'function\s+[a-zA-Z0-9_$]*[Tt]itle[a-zA-Z0-9_$]*\s*\(']:
+          for name in ['v59ClubGallery','v59ClubHonors','v126CoachHonors','v126CoachTitles','v51TrophyCard']:
+           find=list(re.finditer(r'function\s+'+name+r'\s*\(',s))
+           print('\n==== FUNCTION',name,'COUNT',len(find))
+           for match in find[-2:]:
+            p=match.start()
+            print('AT',p,'SOURCE',repr(s[p:p+6800]))
+          for pattern in [r'\.v538-scorer-club\s*\{',r'\.v126-honors\s*\{',r'\.v126-honor\s*\{',r'\.v126-honor-year\s*\{',r'\.v59-[a-z0-9-]*(?:group|trophy|honor)[a-z0-9-]*\s*\{']:
            matches=list(re.finditer(pattern,s))
-           print('\nFUNCTIONS',pattern,'COUNT',len(matches))
-           for m in matches[-55:]:print(m.start(),m.group(0))
+           print('\n==== CSS',pattern,'COUNT',len(matches))
+           for match in matches[-4:]:
+            p=match.start();print('AT',p,'RULE',repr(s[max(0,p-200):p+850]))
           PY
