@@ -39,7 +39,7 @@ jobs:
       - name: Confirm patch and signing environment
         shell: pwsh
         run: |
-          python -c "import glob,py_compile; [py_compile.compile(p,doraise=True) for p in glob.glob('.github/scripts/*18375.py')+glob.glob('.github/scripts/*18377.py')]"
+          python -c "import glob,py_compile; [py_compile.compile(p,doraise=True) for p in glob.glob('.github/scripts/*18375.py')+glob.glob('.github/scripts/*18376.py')+glob.glob('.github/scripts/*18377.py')]"
           if ($LASTEXITCODE -ne 0) { throw 'Python syntax invalid' }
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Original Tauri signer unavailable' }
       - uses: dtolnay/rust-toolchain@stable
@@ -102,7 +102,7 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/support-release-18375-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/updater-18377-signature-tests.json
             ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18377-tests.json
-            ${{ env.FUTBR_PROJECT }}/font-settings-18377-tests.json
+            ${{ env.FUTBR_PROJECT }}/font-settings-18376-tests.json
             ${{ env.FUTBR_PROJECT }}/font-settings-release-18376-tests.json
             ${{ env.FUTBR_PROJECT }}/history-window-release-18377-tests.json
             ${{ env.FUTBR_PROJECT }}/historical-scorers-18377-tests.json
