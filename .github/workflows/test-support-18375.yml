@@ -87,3 +87,5 @@ jobs:
 # Anchor correction recheck.
 
 # Validate corrected orphan-newline handling.
+
+# Final candidate validation after UI and owner-only attachment corrections.
