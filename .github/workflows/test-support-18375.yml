@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [fix/support-tickets-4-13-18375]
-    paths: ['.github/workflows/test-support-18375.yml']
+    paths: ['.github/workflows/test-support-18375.yml', '.github/scripts/validate_support_release_18375.py']
 permissions:
   contents: read
   actions: read
@@ -19,6 +19,22 @@ jobs:
         with: {node-version: '22'}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
+      - name: Ensure inert crest and roster scripts are never parsed as JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          example=('<script type="application/octet-stream">{"source":"crest","palette":["#123"]}</script>'
+                   '<script type="application/json">{"players":[1,2]}</script>'
+                   '<script type="module">export const x=1;</script>'
+                   '<script>const valid=1;</script>')
+          scripts,excluded=extract_executable_scripts(example)
+          assert len(scripts)==2 and all('{"' not in js for js in scripts),(len(scripts),excluded)
+          assert excluded=={'application/octet-stream':1,'application/json':1},excluded
+          print('PASS: binary and JSON embedded data excluded; JavaScript preserved')
+          PY
       - name: Restore the exact approved 18.374 game from CI
         shell: bash
         run: |
@@ -44,7 +60,10 @@ jobs:
               assert s.count(mark)==1,(mark,s.count(mark))
           assert s.index('transferInterest18375(s,p,t,from,wage)')<s.index('executeTransfer(s,id,from,t,bid,wage,years)')
           assert 'FUTBR_UNEMPLOYED_CALENDAR_18374' in s
-          scripts=[b for a,b in re.findall(r'<script\\b([^>]*)>([\\s\\S]*?)</script>',s,re.I) if b.strip() and not re.search(r'type\\s*=\\s*["\\\'](?:application/(?:json|ld\\+json)|importmap)',a,re.I)]
+          import sys
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          scripts, excluded=extract_executable_scripts(s)
           # Inspecting 15+ MB compiled game without executing the world database.
           js='const vm=require("vm");const fs=require("fs");JSON.parse(fs.readFileSync(0,"utf8")).forEach((x,i)=>new vm.Script(x,{filename:"inline-"+i+".js"}));'
           out=subprocess.run(['node','-e',js],input=json.dumps(scripts),text=True,capture_output=True,timeout=120)
