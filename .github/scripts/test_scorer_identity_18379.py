@@ -15,6 +15,13 @@ def main():
  base=html[begin:end]
  begin=html.index("/* FUTBR_SCORER_HISTORY_RECOVERY_18377",end)
  end=html.index("window.GestorFC.render=render;",begin)
+ # In 18.380+ the new coach-honors wrapper shares this script scope but is
+ # intentionally not part of the isolated 18.379 scorer regression fixture.
+ # End the extraction before that wrapper; the 18.380 features have a separate
+ # browser regression with the correct coach-profile dependencies.
+ newer_patch=html.find("/* FUTBR_COACH_HONORS_INLINE_SCORERS_18380",begin,end)
+ if newer_patch>=0:
+  end=newer_patch
  patched=html[begin:end]
  assert base.count('v18220Esc(v18379CleanScorerName(row.name))')==2
  for marker in ["FUTBR_SCORER_IDENTITY_18379","v18379FindClub","v18379HistoricalPlayerClubs"]:
