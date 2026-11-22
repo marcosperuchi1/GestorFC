@@ -1,0 +1,50 @@
+name: Inspect FutBR 18.374 source anchors for tickets 4-13
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/support-tickets-4-13-18375]
+    paths: ['.github/workflows/inspect-support-18375.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previously verified 18.374 prepared source
+        shell: bash
+        run: |
+          mkdir -p /tmp/futbr374
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/futbr374
+          find /tmp/futbr374 -maxdepth 2 -type f | head -50
+          SRC=$(find /tmp/futbr374 -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/futbr374/source.html
+      - name: Print bounded source excerpts
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          s=open('/tmp/futbr374/source.html',encoding='utf8').read()
+          print('SOURCE BYTES',len(s))
+          patterns=[
+           r'function [A-Za-z\d_]*(?:buy|Buy|Transfer|transfer|negoti|Negot|Offer|offer|Sign|sign)[A-Za-z\d_]*\s*\(',
+           r'(?:const|let) (?:LANG|LANGUAGES|translations|LOCALE|LABEL|i18n)\s*=',
+           r'function [A-Za-z\d_]*(?:language|Language|Translate|translate|Calendar|calendar|Settings|settings)[A-Za-z\d_]*\s*\(',
+           r'function (?:render|renderPage|calendarPage|settingsPage|clubPage)\s*\(',
+           r'Modelo de desafio financeiro',
+           r'Negociar contratação',
+           r'data-club="',
+          ]
+          for p in patterns:
+           print('\n### PATTERN',p)
+           found=list(re.finditer(p,s,re.I))
+           print('matches',len(found))
+           for m in found[:14]:
+            print('--- offset',m.start(),'---')
+            print(s[max(0,m.start()-190):min(len(s),m.end()+380)].replace('\n',' ')[:600])
+          PY
