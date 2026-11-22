@@ -33,3 +33,5 @@ jobs:
           name: FutBR-Support-Page-18.375-STAGING-NOT-PUBLISHED
           path: site/suporte.html
           retention-days: 7
+
+# Final candidate validation after UI and owner-only attachment corrections.
