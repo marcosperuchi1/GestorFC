@@ -65,10 +65,10 @@ def main():
  uiStart=s.index('FUTBR_CLUB_MANAGEMENT_UI_18374')
  scriptEnd=s.index('</script>',uiStart)
  segment=s[uiStart:scriptEnd]
- endings=list(re.finditer(r'\\n\\}\\)\\(\\);\\s*$',segment))
- if len(endings)!=1:raise RuntimeError('UI closure could not be identified safely: '+str(len(endings)))
- anchorIndex=uiStart+endings[0].start()
- s=s[:anchorIndex]+'\\n'+UI+s[anchorIndex:]
+ position=segment.rfind('\n})();')
+ if position<0:raise RuntimeError('Final in-scope IIFE closure not found')
+ anchorIndex=uiStart+position
+ s=s[:anchorIndex]+'\n'+UI+s[anchorIndex:]
  # Compile the inserted JS fragment before touching the source.
  check=subprocess.run(['node','--check','-'],input=UI,text=True,capture_output=True)
  if check.returncode:raise RuntimeError(check.stderr)
