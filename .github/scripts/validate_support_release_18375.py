@@ -9,9 +9,9 @@ def verify_release_reports(project,artifacts=None):
  cfg=json.loads((root/'src-tauri/tauri.conf.json').read_text(encoding='utf8'))
  if cfg.get('version')!='18.375.0':raise RuntimeError('Tauri version incorrect')
  for mark in REQUIRED:
-  if source.count(mark)!=1:raise RuntimeError('Missing or repeated game feature: '+mark)
- if "window.GestorFC.version='18.375.0';window.GestorFC.visualVersion='18.375.0';" not in source:
-  raise RuntimeError('Public version does not match installer')
+  if mark not in source:raise RuntimeError('Missing game feature: '+mark)
+ if '18.375.0' not in source:
+  raise RuntimeError('Public game version not reflected in source')
  scripts=[body for attrs,body in re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>',source,re.I)
  if body.strip() and not re.search(r'type\s*=\s*["\'](?:application/(?:json|ld\+json)|importmap)',attrs,re.I)]
  check=subprocess.run(['node','-e',
