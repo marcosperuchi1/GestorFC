@@ -64,6 +64,11 @@ jobs:
       - name: Build 18.378 with grouped transfer money fields and startup auto-install
         shell: pwsh
         run: .github/scripts/build_desktop_support_18378.ps1
+      - name: Chromium UI regression for grouped monetary fields and automatic startup install
+        shell: pwsh
+        run: |
+          python .github/scripts/test_money_autoupdate_runtime_18378.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw '18.378 money formatting or automatic installer regression failed' }
       - name: Package signed update candidate
         shell: pwsh
         run: |
@@ -109,5 +114,6 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/window-capture-18377-install.json
             ${{ env.FUTBR_PROJECT }}/money-autoupdate-18378-tests.json
             ${{ env.FUTBR_PROJECT }}/money-autoupdate-release-18378-tests.json
+            ${{ env.FUTBR_PROJECT }}/money-autoupdate-runtime-18378-tests.json
           if-no-files-found: error
           retention-days: 14
