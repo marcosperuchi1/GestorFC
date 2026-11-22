@@ -1,0 +1,79 @@
+name: Inspect FutBR 18.378 original transfer inputs and updater startup
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18378-money-autoupdate]
+    paths: [.github/workflows/inspect-transfer-updater-18378.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Restore approved complete game and its original Tauri ACL
+        shell: bash
+        run: |
+          mkdir -p /tmp/art /tmp/game/src /tmp/game/src-tauri/capabilities
+          gh run download 44968669984 -R marcosperuchi1/GestorFC \
+           -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          src=$(find /tmp/art -name 'prepared-source-18374.html.gz'|head -1)
+          test -n "$src"
+          gzip -dc "$src" > /tmp/game/src/index.html
+          cat FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part* > /tmp/base.zip
+          python - <<'PY'
+          import zipfile,base64,json,os
+          from pathlib import Path
+          z=zipfile.ZipFile('/tmp/base.zip')
+          Path('/tmp/game/src-tauri/capabilities/default.json').write_bytes(z.read('FutBR_Manager_Desktop_RC1/src-tauri/capabilities/default.json'))
+          raw=b'Ed'+bytes(range(8))+bytes(range(32))
+          key=base64.b64encode(b'untrusted comment: synthetic testing only\n'+base64.b64encode(raw)+b'\n').decode()
+          cfg={'version':'18.374.0','bundle':{'createUpdaterArtifacts':True},'plugins':{'updater':{'pubkey':key,'endpoints':['https://download.futbrmanager.com.br/updates/latest.json']}}}
+          Path('/tmp/game/src-tauri/tauri.conf.json').write_text(json.dumps(cfg))
+          with open(os.environ['GITHUB_ENV'],'a') as env:env.write('FUTBR_UPDATER_PUBLIC_KEY='+key+'\n')
+          PY
+      - name: Apply and validate the already-approved 18.375 and 18.376 fixes
+        shell: bash
+        run: |
+          python -m pip -q install playwright
+          python -m playwright install chromium
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+          python .github/scripts/set_desktop_version_18375.py /tmp/game
+          python .github/scripts/validate_support_release_18375.py /tmp/game
+          python .github/scripts/fix_font_settings_18376.py /tmp/game
+          python .github/scripts/test_font_settings_18376.py /tmp/game
+          python .github/scripts/set_desktop_version_18376.py /tmp/game
+          python .github/scripts/validate_font_settings_release_18376.py /tmp/game
+      - name: Test 2026 historical leaderboard, Tauri ACL and final signed app version
+        shell: bash
+        run: |
+          python .github/scripts/fix_legacy_scorers_18377.py /tmp/game
+          python .github/scripts/fix_window_capture_18377.py /tmp/game
+          python .github/scripts/test_historical_scorers_18377.py /tmp/game
+          python .github/scripts/set_desktop_version_18377.py /tmp/game
+          python .github/scripts/validate_history_window_release_18377.py /tmp/game
+      - name: Inspect native transfer form and signed updater UI
+        shell: bash
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
+          keys=[r'id=["\\\x27]bid-value',r'id=["\\\x27]bid-wage',r'function showBuy\\(',r'function buy\\(',r'function v375NegotiateHints\\(',r'FUTBR_FAST_SIGNED_UPDATER_18361',r'<script id="futbr-desktop-update-ui-18339"',r'prepareSignedUpdate18339',r'function renderBuy\\(']
+          for key in keys:
+           items=list(re.finditer(key,s,re.I))
+           print('==== KEY:',key,'COUNT',len(items))
+           for match in items[:2]:
+            at=match.start()
+            print('AT',at,'SNIPPET',repr(s[max(0,at-1800):at+2500]))
+          PY
