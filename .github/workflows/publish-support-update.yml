@@ -36,6 +36,8 @@ jobs:
             --jq '{status,conclusion,head_sha,head_branch,name}' > build-proof.json
           gh api repos/marcosperuchi1/GestorFC/actions/runs/44977954599/artifacts \
             --jq '[.artifacts[]|{id,name,expired}]' > artifact-proof.json
+          gh api repos/marcosperuchi1/GestorFC/actions/runs/44977954561 \
+            --jq '{status,conclusion,head_sha,head_branch,name}' > integration-proof.json
           python - <<'PY'
           import json
           build=json.load(open('build-proof.json'))
@@ -43,6 +45,10 @@ jobs:
           assert build['status']=='completed' and build['conclusion']=='success', build
           assert build['head_sha']==expected and build['head_branch']=='fix/support-tickets-4-13-18375', build
           assert build['name']=='FutBR Windows 18.375 - support tickets candidate', build
+          integration=json.load(open('integration-proof.json'))
+          assert integration['status']=='completed' and integration['conclusion']=='success', integration
+          assert integration['head_sha']==expected and integration['head_branch']=='fix/support-tickets-4-13-18375', integration
+          assert integration['name']=='Validate FutBR support tickets 18.375 candidate', integration
           artifacts=json.load(open('artifact-proof.json'))
           assert any(a['id']==14737742455 and a['name']=='FutBR-18.375-Signed-Candidate-Not-Published' and not a['expired'] for a in artifacts),artifacts
           print('Verified exact 18.375 signed build, passing job and artifact provenance')
@@ -106,6 +112,7 @@ jobs:
           path: |
             build-proof.json
             artifact-proof.json
+            integration-proof.json
             release/artifacts/publish-stage-18375.json
             release/artifacts/updater-18375-signature-tests.json
             release/artifacts/public-updater-18375-tests.json
