@@ -2,7 +2,7 @@ name: FutBR 18.374 - career offers, club management and season rollover
 on:
   push:
     branches: [fix/desktop-18374-career-club-season]
-    paths: ['.github/scripts/*18374.py', '.github/workflows/test-career-club-season-18374.yml', '.github/scripts/*18373.py', '.github/scripts/*18372.py', '.github/scripts/*18371.py']
+    paths: ['.github/scripts/*18374.py', '.github/workflows/test-career-club-season-18374.yml', '.github/workflows/build-desktop-updater-18374.yml', '.github/scripts/build_desktop_season_18310.ps1', '.github/scripts/*18373.py', '.github/scripts/*18372.py', '.github/scripts/*18371.py']
   workflow_dispatch:
 permissions:
   contents: read

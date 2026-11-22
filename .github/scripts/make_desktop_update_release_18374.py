@@ -38,7 +38,7 @@ def main() -> None:
     file_url = base + "/" + INSTALLER_NAME
     manifest = {
         "version": VERSION,
-        "notes": "18.374: Corrige propostas após demissões no fim da temporada, amplia a gestão e a evolução da estrutura dos clubes e otimiza a virada para 2029. Mantém os históricos, os saves e as preferências do treinador.",
+        "notes": "18.374: Corrige propostas após demissões no fim da temporada e preserva a decisão de adiar uma proposta ao salvar e sair. Amplia a gestão para oito áreas com até doze níveis, projetos de melhoria e planos de gestão. Otimiza a virada para 2029, preservando históricos, saves e preferências do treinador.",
         "platforms": {
             "windows-x86_64": {
                 "signature": sig,

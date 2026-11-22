@@ -12,6 +12,7 @@ from pathlib import Path
 VERSION = "18.374.0"
 MARKERS = (
     "FUTBR_UNEMPLOYED_CALENDAR_18374",
+    "FUTBR_COACH_DECISION_CHECKPOINT_18374",
     "FUTBR_CLUB_MANAGEMENT_18374",
     "FUTBR_CLUB_MANAGEMENT_UI_18374",
     "FUTBR_SEASON_RANK_BATCH_18374",
@@ -53,6 +54,8 @@ def main() -> None:
             raise RuntimeError("Engine correction is outside the actual Engine: " + marker)
     if not ui_start < source.index("FUTBR_CLUB_MANAGEMENT_UI_18374") < ui_end:
         raise RuntimeError("Club management UI is outside the active game closure")
+    if not ui_start < source.index("FUTBR_COACH_DECISION_CHECKPOINT_18374") < ui_end:
+        raise RuntimeError("Coach decision checkpoint guard is outside the active game closure")
     scripts = [body for attrs, body in re.findall(r"<script\b([^>]*)>([\s\S]*?)</script>", source, flags=re.I)
                if body.strip() and not re.search(r"type\s*=\s*['\"](?:application/(?:json|ld\+json|octet-stream)|importmap)", attrs, re.I)]
     check = subprocess.run(

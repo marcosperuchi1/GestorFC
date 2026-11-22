@@ -194,6 +194,49 @@ def patch(source: str) -> str:
     source = once(source, 's.v636CoachOffers.push(offer);s.v636CoachOfferMeta.lastOfferDay=day;',
                   's.v636CoachOffers.push(offer);s.v636CoachOfferMeta.lastOfferDay=day;s.v636CoachOfferMeta.lastOfferYear=year;',
                   'promotion issuing year')
+
+    # A delayed coach autosave does not mark the world dirty immediately.
+    # Explicit Save/Exit must verify the tiny decision payload as well as the
+    # date, without serializing players/history or defeating the 18.373 writer.
+    a = source.index('async function ensureSaved(){')
+    b = source.index('\n/* FUTBR_LONG_CAREER_SAVE_18338_END */', a)
+    named = source[a:b]
+    named = once(named, "  const matches=x=>x?.format===FORMAT", r'''  /* FUTBR_COACH_DECISION_CHECKPOINT_18374
+     A deferred/rejected offer can precede its ten-second autosave. Compare
+     only the small offer/clock data; the complete world remains in shards. */
+  const decisions18374=s=>JSON.stringify([s?.v636CoachOffers||[],s?.v636CoachOfferMeta||{}]);
+  const decisionsMatch18374=x=>decisions18374(x?.root)===decisions18374(state);
+  const matches=x=>x?.format===FORMAT''', 'named coach decision signature')
+    named = once(named, 'const clean=matches(x)&&saveOK',
+                 'const clean=matches(x)&&decisionsMatch18374(x)&&saveOK', 'named clean decisions')
+    named = once(named, '''    const p=persist(false);
+    await v52FlushSave();
+    await p;
+    if(v52SavePromise)await v52SavePromise;''', r'''    // Join an existing writer instead of invalidating its generation just
+    // because the user requested Save/Exit. It may already contain the choice.
+    if(v52SavePromise){
+     await v52SavePromise;x=await get(BASE).catch(()=>null);
+     if(matches(x)&&decisionsMatch18374(x)&&saveOK&&!v52SaveDirty&&!v52SavePromise&&!v168DeferredRolloverSave)return;
+    }
+    for(let attempt18374=0;attempt18374<2;attempt18374++){
+     const p=persist(false);
+     await v52FlushSave();
+     await p;
+     if(v52SavePromise)await v52SavePromise;
+     x=await get(BASE).catch(()=>null);
+     // A choice made after root was captured needs one subsequent checkpoint.
+     // Genuine dirty edits and write failures retain the original strict gate.
+     if(!matches(x)||!saveOK||v52SaveDirty||v52SavePromise||decisionsMatch18374(x))break;
+    }''', 'named writer join and bounded decision followup')
+    named = once(named, 'if(!matches(x)||!saveOK||v52SaveDirty||v52SavePromise)',
+                 'if(!matches(x)||!decisionsMatch18374(x)||!saveOK||v52SaveDirty||v52SavePromise)',
+                 'named final decision verification')
+    named = once(named, '  // A successful explicit save also finishes a 16.8 deferred rollover.',
+                 '''  // This explicit checkpoint includes the choice; do not rewrite it again
+  // when the older delayed notification fires after Save/Exit.
+  clearTimeout(v93CoachSaveTimer);v93CoachSaveTimer=0;
+  // A successful explicit save also finishes a 16.8 deferred rollover.''', 'named confirmed timer settlement')
+    source = source[:a] + named + source[b:]
     return source
 
 
@@ -206,6 +249,7 @@ def main() -> None:
               'activeAndLegacyGeneratorsDelegated': source.count('return E.generateUnemployedOffer18374(s,E.availableJobs(s),t=>v636ClubOVR(s,t));') == 3,
               'existingStuckSavesSupported': True, 'boundedEligibleOfferWait': 8,
               'datedRejectionCooldowns': True, 'dismissalCalendarRecorded': True,
+              'explicitCoachDecisionsVerifiedBeforeExit': 'FUTBR_COACH_DECISION_CHECKPOINT_18374' in source,
               'compactJobWaitTransportUnchanged': 'FUTBR_JOBWAIT_SINGLE_OWNER_18373' in source}
     if not all(v for v in report.values()):
         raise RuntimeError('18.374 job market installation is incomplete')

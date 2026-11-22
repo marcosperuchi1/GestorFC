@@ -29,7 +29,7 @@ window.__seasonOffers374={done:false,result:null,phase:'startup',progress:[],exp
    id:o.id,teamId:o.teamId,year:o.year,day:o.day,expiresDay:o.expiresDay,status:o.status}))};},
  shell(){
   const app=document.getElementById('app');if(!app)return;
-  app.innerHTML='<main style="padding:32px"><h1>Carreira de teste · 2031</h1>'+
+  app.innerHTML='<main id="v555-page" style="padding:32px"><h1>Carreira de teste · 2031</h1>'+
    '<p>Treinador livre desde o encerramento de 2030. Calendário e mercado originais.</p>'+
    button('v89-job-wait','Até o fim / proposta','primary','id="season-jobwait-374"')+
    button('v636-open-job-offers','Propostas','secondary','id="season-offers-374"')+
@@ -149,7 +149,7 @@ window.__seasonOffers374={done:false,result:null,phase:'startup',progress:[],exp
     const close=document.querySelector('#modal-root [data-action="close"]');if(close)close.click();
     await new Promise(r=>setTimeout(r,60));
     const offers=(state.v636CoachOffers||[]).map(o=>({id:o.id,teamId:o.teamId,year:o.year,day:o.day,expiresDay:o.expiresDay,status:o.status}));
-    if(!offers.length)throw Error('Deferring removed the offer');
+    if(!offers.length||offers.some(o=>o.status!=='deferred'))throw Error('Original close action did not defer the offer');
     this.expected={world:window.__longCareer373.worldAudit(),offers,meta:JSON.stringify(state.v636CoachOfferMeta)};
     render();document.getElementById('season-exit-374').click();
     const confirm=document.querySelector('#modal-root [data-action="futbr125-save-and-exit"]');
@@ -290,6 +290,7 @@ def main() -> None:
                 'oldDismissalHistoryPreserved': result['search']['oldDismissalStampPreserved'],
                 'automaticOfferModal': result['search']['automaticOfferModal'],
                 'offerAndDatedClockSurviveNamedReload': result['reload']['datedClockPreserved'],
+                'immediateDeferralSurvivesSaveExitReload': all(o['status'] == 'deferred' for o in result['reload']['offers']),
                 'twentySavedCollectionsPreserved': result['reload']['twentyCollectionsPreserved'],
                 'realOfferAcceptedAndSaved': result['accepted']['actualOfferAcceptance'] and result['accepted']['manifest']['user'] == result['accepted']['identity']['club'],
                 'boardRenewalsFollowNewClub': result['accepted']['identity']['renewals'] == 'board',

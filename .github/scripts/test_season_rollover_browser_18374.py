@@ -28,7 +28,7 @@ window.__rollover374={phase:'startup',notices:[],finished:false,result:null,prep
   employed:state?.userEmployed,career:state?.v1903CareerId,players:Object.keys(state?.players||{}).length,
   teams:state?.teams?.length||0,renewals:state?v622Settings(state).renewals:null};},
  snapshot(){return {phase:this.phase,finished:this.finished,identity:this.identity(),prepareMs:this.prepareMs,engineMs:this.engineMs,
-  sim:{active:v53Sim.active,starting:v53Sim.starting,syncing:v53Sim.syncing},creating:v53Creating,
+  sim:{active:v53Sim.active,starting:v53Sim.starting,syncing:v53Sim.syncing,patching:v53Sim.patching},creating:v53Creating,
   search:v89JobWait.active,offers:(state?.v636CoachOffers||[]).filter(o=>o.status==='pending'),notices:this.notices.slice(-4)};},
  shell(){const app=document.getElementById('app');if(!app)return;
   app.innerHTML='<main style="padding:32px"><h1>Virada de temporada · teste completo</h1>'+button('next-season','Próxima temporada','primary','id="rollover-next-374"')+
@@ -105,11 +105,20 @@ window.__rollover374={phase:'startup',notices:[],finished:false,result:null,prep
  },
  startSearch(){this.phase='after-rollover-job-search';this.finished=false;this.searchStartDay=Number(state.day)||0;
   const b=document.getElementById('rollover-job-374');if(!b||b.disabled)throw Error('Job search control blocked after season rollover');b.click();},
- searchAudit(){const offers=(state.v636CoachOffers||[]).filter(o=>o.status==='pending');return {
-  ok:offers.length>0&&!v89JobWait.active&&!v53Sim.active&&!v53Sim.starting&&!v53Sim.syncing,
-  identity:this.identity(),offers,days:Number(state.day)-this.searchStartDay,rounds:E.unemployedRounds18374?.(state),
-  owner:window.GestorFC.jobWaitMemory18373?.status?.(),renewals:v622Settings(state).renewals,
-  historiesPresent:!!state.v555CareerArchive?.[2026]&&!!state.v555CareerArchive?.[2027]&&!!state.v555CareerArchive?.[2028]};}
+ searchAudit(){
+  // The bounded 18.373 handoff deliberately clears state while reconstructing
+  // the full world. A polling observation must wait through that interval.
+  const owner=window.GestorFC.jobWaitMemory18373?.status?.(),storage=window.GestorFC.memoryStorage18373?.status?.(),
+   identity=this.identity(),offers=(state?.v636CoachOffers||[]).filter(o=>o.status==='pending'),
+   fullWorld=!!state&&!state.v18373JobWaitPartial&&identity.players>150000&&identity.teams===this.before.teams&&
+    Array.isArray(state.schedule)&&state.schedule.length>0,
+   idle=!v89JobWait.active&&!v53Sim.active&&!v53Sim.starting&&!v53Sim.syncing&&!v53Sim.patching&&!v125VacIncoming,
+   ownershipReleased=owner?.phase==='idle'&&!owner.ownsWorld&&storage?.owner===null&&!storage.loading;
+  return {ok:fullWorld&&idle&&ownershipReleased&&offers.length>0,fullWorld,idle,ownershipReleased,
+   identity,offers,days:state?Number(state.day)-this.searchStartDay:null,
+   rounds:fullWorld?E.unemployedRounds18374?.(state):null,owner,
+   renewals:fullWorld?v622Settings(state).renewals:null,
+   historiesPresent:!!state?.v555CareerArchive?.[2026]&&!!state?.v555CareerArchive?.[2027]&&!!state?.v555CareerArchive?.[2028]};}
 };
 '''
 
@@ -163,6 +172,7 @@ def run(pw,root:Path,html:str,mode:str) -> dict:
             else:raise TimeoutError('No job offer after rollover: '+json.dumps(page.evaluate('() => window.__rollover374.snapshot()')))
             result['jobSearch']=a
             assert 0<=a['days']<=8 and a['historiesPresent'] and a['renewals']=='board'
+            assert a['fullWorld'] and a['idle'] and a['ownershipReleased']
             assert a['owner']['recoveries']==0 and a['identity']['players']>150000
             page.screenshot(path=str(root/'artifacts/season-rollover-offer-18374.png'))
         assert not dialogs and not crashes

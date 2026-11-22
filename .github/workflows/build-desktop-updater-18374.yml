@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: futbr-desktop-18374-signed-build
   cancel-in-progress: true
 jobs:
   build:
-    # Release remains held until the integrated Linux behavior checks pass.
-    if: ${{ false }}
+    # Compile in parallel. The exact-commit Linux gate below still blocks publication.
     runs-on: windows-latest
     timeout-minutes: 120
     env:
@@ -187,6 +187,14 @@ jobs:
             ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 1
+      - name: Require Linux integration success on this exact commit
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/verify_linux_integration_18374.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Linux integration for this exact commit has not passed. Publication is blocked.' }
+
       - name: Cryptographically verify installer and gate publication
         shell: pwsh
         run: |

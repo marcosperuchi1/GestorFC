@@ -189,6 +189,110 @@ process.stdout.write(JSON.stringify(report));
 '''
 
 
+SAVE_DECISION_CASES = r'''
+(async()=>{
+ const report={ok:false},s=fixture(1030,40);s.year=2031;s.day=34;f.set(s);seedLegacy(s);
+ const pending=()=>{s.v636CoachOffers=[{id:'job-2031-34',teamId:'t2',year:2031,day:34,
+  expiresDay:48,status:'pending',seen:false}];s.v636CoachOfferMeta={lastOfferYear:2031,lastOfferDay:34,
+  rejected:{},unemployed18374:{lastOffer:{year:2031,day:34,seasonLength:139}}};};
+ const defer=()=>{const o=s.v636CoachOffers[0];o.status='deferred';o.seen=true;o.deferredDay=s.day;
+  return f.scheduleCoach();};
+ const matches=m=>{assert.deepEqual(clone(m.root.v636CoachOffers),s.v636CoachOffers);
+  assert.deepEqual(clone(m.root.v636CoachOfferMeta),s.v636CoachOfferMeta);};
+ pending();await flushChange();
+ const oldRoot=clone(disk.get(KEY));assert.notEqual(oldRoot.root,s);
+ defer();const beforeOld=api.status(),oldResult=await f.ensurePrior374();
+ assert.equal(oldResult.root.v636CoachOffers[0].status,'pending');
+ assert.equal(disk.get(KEY).root.v636CoachOffers[0].status,'pending');
+ assert.equal(api.status().fullSaves,beforeOld.fullSaves);
+ report.legacyImmediateDeferralCheckpointBugReproduced=true;
+ const before=api.status(),saved=await f.ensureNamed();matches(saved);
+ assert.equal(saved.root.v636CoachOffers[0].status,'deferred');
+ assert.equal(api.status().fullSaves,before.fullSaves+1);
+ assert.equal(api.status().playerChunksWritten,before.playerChunksWritten);
+ assert.deepEqual(clone(saved.collections.players.keys),oldRoot.collections.players.keys);
+ assert.equal(f.coachTimer(),0);matches({root:await loader.loadDirect()});
+ report.immediateOfferDeferralSavedBeforeTimer=true;report.decisionOnlySaveReusesPlayerChunks=true;
+ const durableToken=saved.token,cleanBefore=api.status();f.scheduleCoach();
+ Object.defineProperty(s.players,'toJSON',{configurable:true,value(){throw Error('Whole player world serialized by a decision check');}});
+ assert.equal((await f.ensureNamed()).token,durableToken);delete s.players.toJSON;
+ assert.equal(api.status().fullSaves,cleanBefore.fullSaves);assert.equal(f.coachTimer(),0);
+ report.unchangedDecisionCheckpointReused=true;report.decisionComparisonDoesNotSerializeWorld=true;
+ // Rejection metadata is part of the same small durable choice payload.
+ s.v636CoachOffers=[];s.v636CoachOfferMeta.rejected.t2=34;
+ s.v636CoachOfferMeta.unemployed18374.rejected={t2:{year:2031,day:34,seasonLength:139}};
+ f.scheduleCoach();matches(await f.ensureNamed());matches({root:await loader.loadDirect()});
+ report.offerRejectionAndDatedMetaSaved=true;
+
+ // The storage boundary snapshots root before waiting for transaction commit,
+ // as IndexedDB does. A real choice after that snapshot must get one followup.
+ pending();await flushChange();const duringBefore=api.status();s.unknownRoot.writer='new';f.setDirty();
+ beforeCommit=async()=>{defer();};const during=await f.ensureNamed();matches(during);
+ assert.equal(api.status().fullSaves,duringBefore.fullSaves+2);
+ assert.equal(api.status().failed,duringBefore.failed);
+ assert.equal(api.status().playerChunksWritten,duringBefore.playerChunksWritten);
+ assert.equal(f.coachTimer(),0);
+ report.offerDecisionDuringWriterGetsFollowupCheckpoint=true;
+
+ // Save/Exit can itself arrive during an older writer. Joining must not
+ // increment mutation and invalidate it; the post-choice writer runs once.
+ pending();await flushChange();const olderBefore=api.status();s.unknownRoot.writer='older';f.setDirty();
+ let enter,release,resolved=false;
+ const entered=new Promise(r=>{enter=r;}),barrier=new Promise(r=>{release=r;});
+ beforeCommit=async()=>{enter();await barrier;};const older=f.flush();await entered;defer();
+ const explicit=f.ensureNamed().then(m=>{resolved=true;return m;});
+ await new Promise(r=>setTimeout(r,0));assert.equal(resolved,false);release();await older;
+ matches(await explicit);assert.equal(api.status().fullSaves,olderBefore.fullSaves+2);
+ assert.equal(api.status().failed,olderBefore.failed);assert.equal(f.pending().dirty,false);
+ report.explicitDecisionSaveJoinsOlderWriter=true;
+
+ // A writer that already captured the decision satisfies the explicit save;
+ // do not schedule another complete save just because a timer was pending.
+ pending();await flushChange();defer();f.setDirty();const joinBefore=api.status();
+ let enterNew,releaseNew;const enteredNew=new Promise(r=>{enterNew=r;}),barrierNew=new Promise(r=>{releaseNew=r;});
+ beforeCommit=async()=>{enterNew();await barrierNew;};const newer=f.flush();await enteredNew;
+ const joined=f.ensureNamed();releaseNew();await newer;matches(await joined);
+ assert.equal(api.status().fullSaves,joinBefore.fullSaves+1);assert.equal(api.status().failed,joinBefore.failed);
+ assert.equal(f.coachTimer(),0);report.decisionAutosaveCoalescingPreserved=true;
+
+ pending();await flushChange();const failureRoot=clone(disk.get(KEY)),failurePrevious=clone(disk.get(KEY+':previous'));
+ defer();failCommit=true;await assert.rejects(()=>f.ensureNamed(),/salvamento não corresponde/);
+ assert.deepEqual(disk.get(KEY),failureRoot);assert.deepEqual(disk.get(KEY+':previous'),failurePrevious);
+ assert.equal(s.v636CoachOffers[0].status,'deferred');assert.notEqual(f.coachTimer(),0);
+ failCommit=false;matches(await f.ensureNamed());f.clearTimers();
+ report.failedOfferDecisionSavePreservesPrevious=true;report.ok=true;
+ console.log(JSON.stringify(report));
+})().catch(e=>{console.error(e.stack);process.exitCode=1;});
+'''
+
+
+def decision_save_regression(root: Path, baseline: Path, tmp: Path) -> dict:
+    # Reuse the existing real writer/codec fixture, with independent cloned disk
+    # records. Only the storage boundary is isolated; ensureSaved is extracted
+    # verbatim from each source, and all flushes execute the shipped 18.373 writer.
+    from test_save_memory_runtime_18373 import NODE
+    program = NODE.split('\n(async()=>{\n const report=', 1)[0]
+    declaration = "assert(namedStart>0&&namedEnd>namedStart);const actualEnsureSaved=source.slice(namedStart,namedEnd);"
+    program = program.replace(declaration, declaration + r'''
+const previousSource=fs.readFileSync(process.argv[3],'utf8'),previousStart=previousSource.indexOf('async function ensureSaved(){');
+const previousEnd=previousSource.indexOf('\n/* FUTBR_LONG_CAREER_SAVE_18338_END */',previousStart);
+assert(previousStart>0&&previousEnd>previousStart);
+const previousEnsure374=previousSource.slice(previousStart,previousEnd).replace('async function ensureSaved(){','async function previousEnsureSaved374(){');
+''', 1)
+    assert 'runtime+actualEnsureSaved+' in program
+    program = program.replace('runtime+actualEnsureSaved+', 'runtime+actualEnsureSaved+previousEnsure374+', 1)
+    program = program.replace('ensureNamed:()=>ensureSaved(),', 'ensureNamed:()=>ensureSaved(),ensurePrior374:()=>previousEnsureSaved374(),', 1)
+    program = program.replace('commitManifest:async(k,m,old,meta)=>{', 'commitManifest:async(k,m,old,meta)=>{\n  const captured374=clone(m);', 1)
+    program = program.replace('disk.set(KEY,clone(m));', 'disk.set(KEY,captured374);', 1)
+    test = tmp / 'decision-save.cjs'
+    test.write_text(program + SAVE_DECISION_CASES, encoding='utf-8')
+    run = subprocess.run(['node', str(test), str(root / 'src/index.html'), str(baseline)],
+                         text=True, encoding='utf-8', capture_output=True, timeout=120)
+    if run.returncode:
+        raise RuntimeError(run.stderr or run.stdout)
+    return json.loads(run.stdout.strip().splitlines()[-1])
+
+
 def main() -> None:
     root = Path(sys.argv[1])
     source = (root / 'src/index.html').read_text(encoding='utf-8')
@@ -198,6 +302,7 @@ def main() -> None:
     old = baseline.read_text(encoding='utf-8')
     assert 'FUTBR_UNEMPLOYED_CALENDAR_18374' not in old
     assert 'FUTBR_UNEMPLOYED_CALENDAR_18374' in source
+    assert 'FUTBR_COACH_DECISION_CHECKPOINT_18374' in source
     assert source.count('return E.generateUnemployedOffer18374(s,E.availableJobs(s),t=>v636ClubOVR(s,t));') == 3
     assert 'c.clubId=null;c.unemployedSince=jobMarketStamp18374(s);c.reputation=' in source
     assert source.count('E.recordJobRejection18374(state,o);') == 2
@@ -210,6 +315,7 @@ def main() -> None:
         if run.returncode:
             raise RuntimeError(run.stderr or run.stdout)
         report = json.loads(run.stdout)
+        report.update(decision_save_regression(root.resolve(), baseline.resolve(), tmp))
         # Parse every shipped inline script, including UI paths not exercised
         # by the policy fixtures; no browser fixtures are shipped in the game.
         scripts = [body for attrs, body in re.findall(r'<script\b([^>]*)>([\s\S]*?)</script>', source, flags=re.I)

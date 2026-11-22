@@ -4,6 +4,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -14,12 +15,18 @@ REQUIREMENTS = {
         "existing2031SaveRecovers", "latestSeasonStampStored", "calendarLengthChangesHandled",
         "eligibleWaitBoundedAtEightRounds", "realisticReputationCeilingPreserved",
         "freshOfferStopsGeneration", "repeatedDismissalYearsCovered", "actualCompactPacketAndDelta",
+        "legacyImmediateDeferralCheckpointBugReproduced", "immediateOfferDeferralSavedBeforeTimer",
+        "offerDecisionDuringWriterGetsFollowupCheckpoint", "explicitDecisionSaveJoinsOlderWriter",
+        "decisionAutosaveCoalescingPreserved", "decisionOnlySaveReusesPlayerChunks",
+        "unchangedDecisionCheckpointReused", "failedOfferDecisionSavePreservesPrevious",
+        "decisionComparisonDoesNotSerializeWorld", "offerRejectionAndDatedMetaSaved",
     ),
     "season-job-offers-browser-18374-tests.json": (
         "legacy2031SaveRecovered", "fullOriginalWorld", "priorRoundResultsBuiltByOriginalEngine", "actualJobSearchButtonAndWorker",
         "compactWorkerTransportPreserved", "zeroWholeWorldSaveTransfers",
         "completeWorldReturnedWithoutRecovery", "oldDismissalHistoryPreserved", "automaticOfferModal",
         "offerAndDatedClockSurviveNamedReload", "twentySavedCollectionsPreserved",
+        "immediateDeferralSurvivesSaveExitReload",
         "realOfferAcceptedAndSaved", "boardRenewalsFollowNewClub", "withinMeasuredMemoryBudget",
     ),
     "club-management-18374-tests.json": (
@@ -152,6 +159,16 @@ def verify_release_reports(project: Path, reports: Path | None = None, *, requir
             "Promotion and in-game confirmation regression failed")
 
     if require_desktop:
+        linux = read("linux-integration-18374-tests.json")
+        head = os.environ.get("GITHUB_SHA", "")
+        require(bool(head) and linux.get("ok") is True and linux.get("version") == VERSION
+                and linux.get("repository") == "marcosperuchi1/GestorFC"
+                and linux.get("workflow") == "test-career-club-season-18374.yml"
+                and linux.get("sameCommitVerified") is True
+                and linux.get("headSha") == head == linux.get("linuxHeadSha")
+                and linux.get("linuxConclusion") == "success" and linux.get("linuxRunId", 0) > 0
+                and linux.get("sourceSha256") == digest,
+                "The exact commit must pass Linux integration before desktop publication")
         desktop = read("desktop-version-18374-install.json")
         config = json.loads((project / "src-tauri/tauri.conf.json").read_text(encoding="utf-8-sig"))
         require(desktop.get("ok") is True and desktop.get("version") == VERSION
@@ -167,6 +184,7 @@ def verify_release_reports(project: Path, reports: Path | None = None, *, requir
         "priorMemoryAndPromotionRegressionsPreserved": True,
         "measuredRollOverImprovement": True, "unchangedMemoryLimits": True,
         "desktopVersionVerified": require_desktop, "reports": list(REQUIREMENTS),
+        "sameCommitLinuxIntegrationVerified": require_desktop,
     }
     (project / "artifacts/release-validation-18374.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
