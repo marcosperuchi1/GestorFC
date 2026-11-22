@@ -1,0 +1,50 @@
+name: Inspect live FutBR settings DOM for font-only control
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18376-font-settings]
+    paths: [.github/workflows/inspect-font-settings-18376.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Obtain approved complete 18.374 HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/art /tmp/game/src
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          SRC=$(find /tmp/art -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/game/src/index.html
+      - name: Inspect settings markup and CSS selector anchors
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf8')
+          patterns=['Configurações da carreira','Idioma do jogo','Velocidade padrão dos jogos',
+          'function settingsPage','function v622SettingsPage','function settingsView',
+          'function renderSettings','function settings(', 'case "settings"', "case 'settings'",
+          'page===\'settings\'','v622Settings','v375Mount','v375-open','<main','id="app"']
+          for p in patterns:
+           matches=[m.start() for m in re.finditer(re.escape(p),s,re.I)]
+           print('\n###',p,'matches',len(matches))
+           for pos in matches[-3:]:
+            print('offset',pos)
+            print(s[max(0,pos-600):pos+1800].replace('\n',' ')[:2400])
+          print('\n### CSS font rules')
+          for p in ('font-size:12px','font-size:14px','font-size:16px','font-size:18px','.card{','.sidebar{'):
+           print(p,'count',s.count(p))
+          PY
