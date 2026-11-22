@@ -25,7 +25,7 @@ function v18380CoachHonorGroups(c){
   const clubId=String(h.club||h.clubId||'').trim(),clubName=String(h.clubName||'').trim();
   const national=rawKey.startsWith('national:'),league=rawKey.startsWith('league:');
   const compKey=(rawKey||label).toLowerCase().replace(/[:/\s-]+20\d{2}$/,'');
-  const identity=[national?'national':'club',compKey,clubId||v18379ClubNameKey(clubName)||'sem-clube'].join('\u001f');
+  const identity=[national?'national':'club',String(h.type||''),compKey,String(h.category||''),clubId||v18379ClubNameKey(clubName)||'sem-clube'].join('\u001f');
   const yearLabel=String(h.year??'').trim()||'—',yearValue=Number.parseInt(yearLabel,10)||0;
   let item=groups.get(identity);
   if(!item){
@@ -115,6 +115,9 @@ STYLE = r"""
 #modal-root .v18380-grouped-honors .v18380-honor-group{
  min-width:0!important;min-height:148px!important;
  display:flex!important;flex-direction:column!important;
+}
+#modal-root .v18380-grouped-honors .v18380-honor-group h4{
+ margin-right:90px!important;
 }
 #modal-root .v18380-grouped-honors .v18380-honor-count{
  white-space:nowrap!important;font-variant-numeric:tabular-nums;
