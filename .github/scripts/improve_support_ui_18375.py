@@ -62,9 +62,9 @@ window.GestorFC.render=render;v375Schedule();
 def main():
  root=Path(sys.argv[1]).resolve();p=root/'src/index.html';s=p.read_text(encoding='utf-8')
  if MARK in s:raise RuntimeError('Already installed')
- anchor='window.GestorFC.render=render;\\n\\n})();\\n</script>'
+ anchor='window.GestorFC.render=render;\n\n})();\n</script>'
  if s.count(anchor)!=1:raise RuntimeError('Unexpected active UI closure count: '+str(s.count(anchor)))
- s=s.replace(anchor,'window.GestorFC.render=render;\\n'+UI+'\\n})();\\n</script>',1)
+ s=s.replace(anchor,'window.GestorFC.render=render;\n'+UI+'\n})();\n</script>',1)
  # Compile the inserted JS fragment before touching the source.
  check=subprocess.run(['node','--check','-'],input=UI,text=True,capture_output=True)
  if check.returncode:raise RuntimeError(check.stderr)
