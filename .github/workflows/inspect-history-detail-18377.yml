@@ -1,0 +1,43 @@
+name: Inspect archived player-career schema and Tauri capabilities
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18377-history-window-obs]
+    paths: [.github/workflows/inspect-history-detail-18377.yml]
+permissions: {contents: read, actions: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {GH_TOKEN: ${{ github.token }}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover approved source and print precise functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/approved
+          gh run download 44968669984 -R marcosperuchi1/GestorFC \
+            -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/approved
+          src=$(find /tmp/approved -name 'prepared-source-18374.html.gz' | head -1)
+          gzip -dc "$src" > /tmp/approved/game.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/approved/game.html').read_text(encoding='utf8')
+          terms=[
+           'function v555PackedRows(', 'function v94PackCurrentCareerArchive(',
+           'function v94CompactScorerArchive(', 'function v91ResetPlayers(',
+           'function v555PackedRow(', 'function v555Packed', 
+           'function v555Career', 'function v539CareerRows(',
+           'function v538CareerRows(', 'function v94RecordPlayerCareer(',
+           'function v18220Collect(','function v625SettingsPage(',
+           'const v625Style=', 'const v622Style=',
+          ]
+          for term in terms:
+           m=list(re.finditer(re.escape(term),s))
+           print('\n###',term,len(m))
+           for x in m[-2:]:
+            i=x.start()
+            print('AT',i,'\n',s[max(0,i-300):i+3900].replace('\\n',' ')[:4200])
+          PY
