@@ -1,0 +1,70 @@
+name: Validate FutBR 18.376 typography-only settings fix
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18376-font-settings]
+    paths:
+      - '.github/workflows/test-font-settings-18376.yml'
+      - '.github/scripts/fix_font_settings_18376.py'
+      - '.github/scripts/test_font_settings_18376.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recreate the actual 18.375 source from approved 18.374
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/art /tmp/game/src
+          gh run download 44968669984 --repo marcosperuchi1/GestorFC             -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          SRC=$(find /tmp/art -name 'prepared-source-18374.html.gz' | head -1)
+          test -n "$SRC"
+          gzip -dc "$SRC" > /tmp/game/src/index.html
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+          python .github/scripts/fix_font_settings_18376.py /tmp/game
+      - name: Validate all original executable scripts in the integrated HTML
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys,json,subprocess
+          from pathlib import Path
+          sys.path.insert(0,'.github/scripts')
+          from validate_support_release_18375 import extract_executable_scripts
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf8')
+          scripts,types=extract_executable_scripts(s)
+          assert len(scripts)>=129,(len(scripts),types)
+          r=subprocess.run(['node','-e',
+          'const vm=require("vm"),fs=require("fs");JSON.parse(fs.readFileSync(0,"utf8")).forEach((s,i)=>new vm.Script(s,{filename:"block-"+i+".js"}));'],
+          input=json.dumps(scripts),text=True,capture_output=True,timeout=120)
+          assert r.returncode==0,r.stderr[-2000:]
+          print('PASS: parsed',len(scripts),'executable scripts; inert roster data excluded.')
+          PY
+      - name: Install headless Chromium for behavioral UI tests
+        run: |
+          python -m pip -q install playwright
+          python -m playwright install chromium
+      - name: Exercise settings, font scaling, reload, fullscreen and layout
+        run: python .github/scripts/test_font_settings_18376.py /tmp/game
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.376-Font-Settings-Browser-Verification
+          path: |
+            /tmp/game/font-settings-18376-install.json
+            /tmp/game/font-settings-18376-tests.json
+          if-no-files-found: error
+          retention-days: 7
