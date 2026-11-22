@@ -62,9 +62,13 @@ window.GestorFC.render=render;v375Schedule();
 def main():
  root=Path(sys.argv[1]).resolve();p=root/'src/index.html';s=p.read_text(encoding='utf-8')
  if MARK in s:raise RuntimeError('Already installed')
- match=re.search(r'window\.GestorFC\.render=render;\s*\}\)\(\);\s*</script>',s)
- if not match:raise RuntimeError('Could not locate the final active UI closure')
- s=s[:match.start()]+'window.GestorFC.render=render;\n'+UI+'\n})();\n</script>'+s[match.end():]
+ uiStart=s.index('FUTBR_CLUB_MANAGEMENT_UI_18374')
+ scriptEnd=s.index('</script>',uiStart)
+ segment=s[uiStart:scriptEnd]
+ endings=list(re.finditer(r'\\n\\}\\)\\(\\);\\s*$',segment))
+ if len(endings)!=1:raise RuntimeError('UI closure could not be identified safely: '+str(len(endings)))
+ anchorIndex=uiStart+endings[0].start()
+ s=s[:anchorIndex]+'\\n'+UI+s[anchorIndex:]
  # Compile the inserted JS fragment before touching the source.
  check=subprocess.run(['node','--check','-'],input=UI,text=True,capture_output=True)
  if check.returncode:raise RuntimeError(check.stderr)
