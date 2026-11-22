@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [fix/desktop-18381-national-history-competition-filter]
-    paths: [.github/workflows/preflight-18381.yml, '.github/scripts/*18381.py']
+    paths: [.github/workflows/preflight-18381.yml]
 permissions:
   contents: read
   actions: read
@@ -78,6 +78,7 @@ jobs:
           python .github/scripts/validate_coach_honors_inline_release_18380.py /tmp/game
           python .github/scripts/fix_national_history_competition_filter_18381.py /tmp/game
           python .github/scripts/test_national_history_competition_filter_18381.py /tmp/game
+          # Regression check: same selection name must return every historical year, even with different edition IDs.
           python .github/scripts/set_desktop_version_18381.py /tmp/game
           python .github/scripts/validate_national_history_filter_release_18381.py /tmp/game
       - uses: actions/upload-artifact@v4
