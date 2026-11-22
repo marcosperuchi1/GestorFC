@@ -18,6 +18,8 @@ COPY=r"""
    Named save copies MUST be independent: never point two saved careers to
    the same mutable shard key. Four source chunks maximum per transaction. */
 const v18382CopyMetrics={batches:0,copied:0,maxReadBatch:0};
+window.GestorFC=window.GestorFC||{};
+window.GestorFC.namedSaveCopy18382={version:'18.382.0',status:()=>({...v18382CopyMetrics})};
 async function v18382CopyChunkGroup(pairs){
  if(!pairs.length)return;
  if(pairs.length>4)throw Error('Lote de cópia acima do limite de memória.');
@@ -215,7 +217,7 @@ def main():
  s=s.replace("window.GestorFC=window.GestorFC||{};\nwindow.GestorFC.vacationFinalize18360=",
  """window.GestorFC=window.GestorFC||{};
 window.GestorFC.careerThroughput18382={version:'18.382.0',status:()=>({
-  ...v18382SyncMetrics,copy:{...v18382CopyMetrics},
+  ...v18382SyncMetrics,copy:window.GestorFC?.namedSaveCopy18382?.status?.()||null,
   savedGame:window.GestorFC?.saveMemoryRuntime18373?.status?.()||null,
   vacation:window.GestorFC?.vacationFinalize18360?.status?.()||null
 })};
