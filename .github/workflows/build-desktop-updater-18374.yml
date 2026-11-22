@@ -200,7 +200,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           python .github/scripts/verify_desktop_updater_signature_18374.py "$env:FUTBR_PROJECT"
-          if ($LASTEXITCODE -ne 0) { throw 'SECURITY: Public key does not match installer or release signature.' }
+          if ($LASTEXITCODE -ne 0) { throw '18.374 release validation failed. Inspect the preceding Python error; publication is blocked.' }
           $art = Join-Path $env:FUTBR_PROJECT 'artifacts'
           $installer = Join-Path $art 'FutBR-Manager-18.374-Windows.exe'
           $sig = Join-Path $art 'FutBR-Manager-18.374-Windows.exe.sig'
@@ -482,6 +482,21 @@ jobs:
           path: ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18374-tests.json
           if-no-files-found: error
           retention-days: 7
+      - name: Retain source and validation reports after a release failure
+        if: ${{ failure() && env.FUTBR_PROJECT != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.374-Release-Failure-Diagnostics-${{ github.run_id }}
+          path: |
+            ${{ env.FUTBR_PROJECT }}/src/index.html
+            ${{ env.FUTBR_PROJECT }}/*-tests.json
+            ${{ env.FUTBR_PROJECT }}/*-install.json
+            ${{ env.FUTBR_PROJECT }}/*-prepare.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/*.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/prepared-source-18374.html.gz
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
 # 18.349 builds on verified 18.348 signed updater. New archive hashes are backward-compatible and never omit records.
 # Do not rotate the signing key or change the save store identifier.
 

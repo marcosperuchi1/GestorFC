@@ -163,6 +163,9 @@ Run-Python '.github/scripts/test_vacation_resume_browser_18369.py'
 Run-Python '.github/scripts/test_season_sync_18310.py'
 Run-Python '.github/scripts/test_new_season_vacation_18311.py'
 Run-Python '.github/scripts/test_history_incremental_18310.py'
+# Apply the inherited ranking-scope repair before the source is finalized.
+# Its legacy regression also invokes the patch; that later call must be a no-op.
+Run-Python '.github/scripts/fix_incremental_competition_scope.py'
 # 18.373 runs after the preserved baseline regression stage.
 Run-Python '.github/scripts/set_desktop_version_18373.py'
 Run-Python '.github/scripts/fix_vacation_checkpoint_18373.py'
@@ -365,6 +368,9 @@ Copy-Item 'architecture-validation.json' 'artifacts/architecture-validation.json
    Copy-Item '*18374*.json' 'artifacts/'
 "@.Trim()
 $source = $source.Replace($reportAnchor, $reportSteps)
+$preBuildAnchor = "Run-Python '.github/scripts/validate_desktop_architecture.py'"
+if ([regex]::Matches($source, [regex]::Escape($preBuildAnchor)).Count -ne 1) { throw '18.374: final architecture validation anchor is missing or duplicated.' }
+$source = $source.Replace($preBuildAnchor, "$preBuildAnchor`nRun-Python '.github/scripts/validate_career_club_season_release_18374.py'")
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_season_sync_18310.py'")) { throw 'Otimizacao de ferias ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/fix_new_season_vacation_18311.py'")) { throw 'Hotfix 18.311 ausente.' }
 if (-not $source.Contains("Run-Python '.github/scripts/optimize_rankings_finals_18312.py'")) { throw 'Arquitetura 18.312 ausente.' }
