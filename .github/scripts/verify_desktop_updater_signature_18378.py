@@ -78,7 +78,7 @@ def verify_memory_reports(artifacts):
                 raise RuntimeError('18.373 real career flow had an exception, native dialog or crash')
 
 
-from validate_history_window_release_18378 import verify_release_reports
+from validate_money_autoupdate_release_18378 import verify_release_reports
 
 def main():
     if len(sys.argv)!=2:raise SystemExit('usage: verify_desktop_updater_signature_18378.py <project-dir>')
