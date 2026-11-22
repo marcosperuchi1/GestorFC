@@ -76,7 +76,7 @@ jobs:
           if(!s.seed||star.clubId||poor.roster)throw Error('Pure policy mutated state');
           console.log(JSON.stringify({ok:true,starRejectedAtUnderdog:true,eliteNotHardBlocked:true,deterministic:true}));
           """
-          Path('/tmp/test-realism.js').write_text('const WorldCatalog={countries:[],clubs:[]},BundledRosters={};\\n'+engine+'\\n'+tests,encoding='utf8')
+          Path('/tmp/test-realism.js').write_text('const WorldCatalog={countries:[],clubs:[]},BundledRosters={};\n'+engine+'\n'+tests,encoding='utf8')
           PY
           node /tmp/test-realism.js
 
