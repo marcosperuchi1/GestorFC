@@ -11,7 +11,7 @@ function v375Zoom(){document.documentElement.style.zoom=v375Pref.scale+'%';}
 v375Zoom();
 const v375Style=document.createElement('style');v375Style.id='futbr-support-ui-style';
 v375Style.textContent=`
-.v375-open{border:1px solid var(--line,#53646d);border-radius:9px;background:var(--panel,#22313a);color:inherit;cursor:pointer;padding:10px;margin:8px 10px;display:block;width:calc(100% - 20px)}
+.sidebar>.fbr-language-control{display:none!important}.v375-open{border:1px solid var(--line,#53646d);border-radius:9px;background:var(--panel,#22313a);color:inherit;cursor:pointer;padding:10px;margin:8px 10px;display:block;width:calc(100% - 20px)}
 .v375-overlay{position:fixed;inset:0;z-index:2147483000;background:#000b;display:grid;place-items:center;padding:16px}
 .v375-dialog{max-width:480px;width:100%;padding:22px;background:var(--panel,#22313a);color:var(--text,#fff);border:1px solid var(--line,#53646d);border-radius:14px;box-shadow:0 20px 70px #0009}
 .v375-dialog h2{margin:0 0 10px}.v375-dialog p{line-height:1.5}
@@ -19,7 +19,7 @@ v375Style.textContent=`
 .v375-row button,.v375-dialog select,.v375-close{background:var(--panel-soft,#334953);border:1px solid var(--line,#53646d);color:inherit;border-radius:8px;padding:8px;cursor:pointer}
 .v375-help{display:inline-flex;align-items:center;justify-content:center;font-size:12px;min-width:18px;height:18px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:50%;margin-left:6px;cursor:help}
 `;document.head.appendChild(v375Style);
-function v375RemoveStrayText(){for(const n of [...document.body.childNodes]){if(n.nodeType!==Node.TEXT_NODE)continue;const raw=(n.nodeValue||'').trim();if(raw&&!raw.replaceAll('/n','').replaceAll(String.fromCharCode(92)+'n','').trim())n.remove();}}
+function v375RemoveStrayText(){for(const n of [...document.body.childNodes,...(document.getElementById('app')?.childNodes||[])]){if(n.nodeType!==Node.TEXT_NODE)continue;const raw=(n.nodeValue||'').trim();if(raw&&!raw.replaceAll('/n','').replaceAll(String.fromCharCode(92)+'n','').trim())n.remove();}}
 async function v375Fullscreen(set){const w=window.__TAURI__?.window?.getCurrentWindow?.();if(w?.setFullscreen)return w.setFullscreen(set);if(set&&document.documentElement.requestFullscreen)return document.documentElement.requestFullscreen();if(!set&&document.fullscreenElement&&document.exitFullscreen)return document.exitFullscreen();throw Error('Modo janela indisponível neste ambiente.');}
 function v375Close(){if(v375Dialog)v375Dialog.remove();v375Dialog=null;}
 function v375Open(){
@@ -28,9 +28,13 @@ function v375Open(){
  overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="v375-title" class="v375-dialog"><h2 id="v375-title">Configurações gerais</h2><p>Ajuste a interface sem alterar sua carreira.</p>
  <div class="v375-row"><label for="v375-scale">Tamanho dos textos e controles</label><select id="v375-scale"><option value="90">Pequeno (90%)</option><option value="100">Normal (100%)</option><option value="110">Grande (110%)</option><option value="120">Muito grande (120%)</option><option value="125">Máximo (125%)</option></select></div>
  <div class="v375-row"><span>Modo de exibição</span><span><button data-v375-full="1">Tela cheia</button> <button data-v375-full="0">Modo janela</button></span></div>
- <p>Para alterar o idioma, use o seletor existente no menu lateral.</p><button type="button" data-v375-close class="v375-close">Fechar</button></section>`;
+ <div class="v375-row"><label for="v375-lang">Idioma</label><select id="v375-lang"></select></div><button type="button" data-v375-close class="v375-close">Fechar</button></section>`;
  document.body.appendChild(overlay);v375Dialog=overlay;
  const scale=overlay.querySelector('#v375-scale');scale.value=String(v375Pref.scale);
+ const language=overlay.querySelector('#v375-lang'),baseLanguage=document.querySelector('.fbr-language-control select');
+ if(baseLanguage){language.innerHTML=baseLanguage.innerHTML;language.value=baseLanguage.value;
+  language.addEventListener('change',()=>{baseLanguage.value=language.value;baseLanguage.dispatchEvent(new Event('change',{bubbles:true}));});
+ }else{language.disabled=true;language.title='O seletor de idiomas ainda não foi carregado.';}
  scale.addEventListener('change',()=>{v375Pref.scale=Number(scale.value);try{localStorage.setItem(v375StorageKey,JSON.stringify(v375Pref));}catch(e){}v375Zoom();});
  overlay.querySelectorAll('[data-v375-full]').forEach(b=>b.addEventListener('click',async()=>{b.disabled=true;try{await v375Fullscreen(b.dataset.v375Full==='1');}catch(e){if(typeof toast==='function')toast(e.message||String(e),'warn');}finally{b.disabled=false;}}));
  overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('[data-v375-close]'))v375Close();});
@@ -39,6 +43,7 @@ function v375Open(){
 }
 const v375Tooltips={
  'Modelo de desafio financeiro':'Altera custos operacionais e juros do clube ao longo da carreira. Compare as despesas no menu Clube & Finanças.',
+ 'Responsável pelas renovações':'No modo manual você controla cada contrato. No automático a diretoria negocia e a escolha acompanha o treinador.',
  'Renovação de contratos':'Automática: diretoria negocia. Manual: você controla as renovações; a preferência acompanha a carreira.'
 };
 function v375Mount(){
@@ -55,6 +60,18 @@ function v375Mount(){
  }
 }
 function v375Schedule(){if(v375Pending)return;v375Pending=true;queueMicrotask(()=>{v375Pending=false;v375Mount();});}
+function v375NegotiateHints(){
+ for(const id of ['bid-value','bid-wage']){
+  const input=document.getElementById(id);
+  if(!input||input.closest('.field')?.querySelector('.v375-money-preview'))continue;
+  const output=document.createElement('small');output.className='v375-money-preview';
+  output.style.display='block';output.style.marginTop='6px';output.style.opacity='.85';
+  const update=()=>{const value=Number(input.value)||0;output.textContent='Valor: '+new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(value)+(id==='bid-wage'?' por jornada':'');};
+  input.insertAdjacentElement('afterend',output);input.addEventListener('input',update);input.addEventListener('change',update);update();
+ }
+}
+const v375OldShowBuy=showBuy;
+showBuy=function(...args){const result=v375OldShowBuy.apply(this,args);queueMicrotask(v375NegotiateHints);return result;};
 const v375PreviousRender=render;
 render=function(...args){const value=v375PreviousRender.apply(this,args);v375Schedule();return value;};
 window.GestorFC.render=render;v375Schedule();
