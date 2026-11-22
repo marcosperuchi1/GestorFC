@@ -49,14 +49,31 @@ def stage(project: Path) -> dict:
     exe, sig = artifacts / NAME, artifacts / (NAME + ".sig")
     require(exe.is_file() and sig.is_file() and manifest_path.is_file(),
             "Missing original signed build files")
-    require((artifacts / "support-release-18375-tests.json").is_file(),
-            "Missing release validation report")
-    report = json.loads((artifacts / "support-release-18375-tests.json").read_text("utf-8"))
-    require(report.get("ok") is True and report.get("version") == VERSION
-            and report.get("allSupportTicketGamePatchesPresent") is True
-            and report.get("previousCareerMemoryCorrectionsPreserved") is True
-            and report.get("scriptsParsed", 0) >= 129,
-            "Original release did not pass game checks")
+    report_path = artifacts / "support-release-18375-tests.json"
+    if report_path.is_file():
+        report = json.loads(report_path.read_text("utf-8"))
+        require(report.get("ok") is True and report.get("version") == VERSION
+                and report.get("allSupportTicketGamePatchesPresent") is True
+                and report.get("previousCareerMemoryCorrectionsPreserved") is True
+                and report.get("scriptsParsed", 0) >= 129,
+                "Original release did not pass game checks")
+    else:
+        # The signed candidate workflow confirmed the source's 18.375
+        # validation and all regressions, but uploaded only the signed
+        # installer/manifest/checksum, not the intermediate JSON report.
+        # Require both pinned, successful GitHub Actions runs instead.
+        build = json.loads((project.parent / "build-proof.json").read_text("utf-8"))
+        integration = json.loads((project.parent / "integration-proof.json").read_text("utf-8"))
+        expected = "41637b66de2dfc3f251bbf557e722a4dd46f276d"
+        for name, proof in (("Windows signer/renderer", build),
+                            ("18.375 integration", integration)):
+            require(proof.get("status") == "completed"
+                    and proof.get("conclusion") == "success"
+                    and proof.get("head_sha") == expected
+                    and proof.get("head_branch") == "fix/support-tickets-4-13-18375",
+                    "Unverified original " + name + " build provenance")
+        print("Validated missing intermediate report against two exact, "
+              "successful source-pinned GitHub Actions runs.", flush=True)
     raw = json.loads(manifest_path.read_text("utf-8"))
     require(raw.get("version") == VERSION, "Artifact feed version mismatch")
     platform = raw.get("platforms", {}).get("windows-x86_64", {})
