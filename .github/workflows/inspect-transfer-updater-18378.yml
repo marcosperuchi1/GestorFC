@@ -69,11 +69,11 @@ jobs:
           import re
           from pathlib import Path
           s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          keys=[r'id=["\\\x27]bid-value',r'id=["\\\x27]bid-wage',r'function showBuy\\(',r'function buy\\(',r'function v375NegotiateHints\\(',r'FUTBR_FAST_SIGNED_UPDATER_18361',r'<script id="futbr-desktop-update-ui-18339"',r'prepareSignedUpdate18339',r'function renderBuy\\(']
+          keys=['id="bid-value"','id="bid-wage"','function showBuy(','function buy(','function v375NegotiateHints(', 'FUTBR_FAST_SIGNED_UPDATER_18361','<script id="futbr-desktop-update-ui-18339"', 'prepareSignedUpdate18339', "'buy-confirm'", "'input'","'bid-value'","'bid-wage'"]
           for key in keys:
-           items=list(re.finditer(key,s,re.I))
-           print('==== KEY:',key,'COUNT',len(items))
-           for match in items[:2]:
-            at=match.start()
-            print('AT',at,'SNIPPET',repr(s[max(0,at-1800):at+2500]))
+           offsets=[m.start() for m in re.finditer(re.escape(key),s)]
+           print('==== KEY:',key,'COUNT',len(offsets))
+           for at in offsets[:4]:
+            print('AT',at,'SNIPPET',repr(s[max(0,at-500):at+1400]))
+
           PY
