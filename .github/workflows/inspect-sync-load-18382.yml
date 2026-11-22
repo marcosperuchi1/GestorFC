@@ -88,12 +88,12 @@ jobs:
           from pathlib import Path
           import re
           s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          tokens=['async function archiveCurrent(', 'async function restoreArchive(', 'async function loadSelected(', 'async function archiveMany(', 'async function getMany(', 'async function get(', 'async function set(', 'async function v18191uDecodePlayerChunk(', 'function v18360SyncUpdate(', 'function v18369PaintOnly(', 'function v18310VacationRows(', 'function v18310ReleaseOldVacationState(', 'async function streamVacationWorld125(', 'async function v18117WaitSyncAck(', 'async function v18373ReturnJobWorld(', 'async function v18310PackVacationRows(', 'async function hydrateManifest(', 'async function v18191uDecodePlayerChunk(', 'async function v18191wDecodePlayerChunk(', "kind==='vac-sync-part'", "kind==='vac-sync-collection-start'", "kind==='vac-sync-end'", "Sincronizando jogadores", "Sincronizando a carreira", 'async function loadSelected(', 'function v18119CompleteSeasonTransfer(']
+          tokens=['async function cloneChunk(', 'async function copyManifest(', 'async function archiveCurrent(', 'async function restoreArchive(']
           for token in tokens:
            pos=[m.start() for m in re.finditer(re.escape(token),s)]
            print('\n====== TERM',repr(token),'COUNT',len(pos))
            for at in pos[-3:]:
             before=1800 if ('vac-sync-' in token or token in ['Sincronizando jogadores','Sincronizando a carreira']) else 120
-            after=6000 if token in ['async function hydrateManifest(', 'function v18310VacationRows(', 'async function streamVacationWorld125(', 'async function v18373ReturnJobWorld('] else 3000
+            after=5700
             print('POS',at,'SNIP',repr(s[max(0,at-before):at+after]))
           PY
