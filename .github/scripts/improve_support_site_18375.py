@@ -55,7 +55,7 @@ JS=r'''
   const title=document.createElement('h3');title.textContent='Arquivos e capturas de tela';
   const list=document.createElement('div');list.id='v375-attachment-list';list.textContent='Carregando anexos...';
   section.append(title,list);
-  if(t.status!=='closed'){
+  if(t.status!=='closed'&&String(t.user_id)===String(state.user?.id)){
    const field=v375Input('v375-reply-attachments'),input=field.querySelector('input');
    const button=document.createElement('button');button.type='button';button.className='btn btn-primary';button.textContent='Enviar arquivos';
    button.addEventListener('click',async()=>{
