@@ -85,3 +85,5 @@ jobs:
 # Test after in-scope closure insertion correction.
 
 # Anchor correction recheck.
+
+# Validate corrected orphan-newline handling.
