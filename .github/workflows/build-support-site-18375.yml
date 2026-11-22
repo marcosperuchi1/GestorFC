@@ -23,7 +23,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           s=Path('site/suporte.html').read_text()
-          for required in ('FUTBR_SUPPORT_ATTACHMENTS_18375','support_tickets','support_messages','support_attachments','futbr-support','5242880','v375MountTicket','v375Upload'):
+          for required in ('FUTBR_SUPPORT_ATTACHMENTS_18375','support_tickets','support_messages','support_attachments','futbr-support','5*1024*1024','v375MountTicket','v375Upload'):
            if required not in s:raise AssertionError('Missing '+required)
           if 'service_role' in s:raise AssertionError('Never place service role in frontend')
           print('PASS: support attachments integrated into live support controller')
