@@ -72,6 +72,8 @@ jobs:
           python .github/scripts/validate_scorer_identity_release_18379.py /tmp/game
           python .github/scripts/fix_coach_honors_inline_scorers_18380.py /tmp/game
           python .github/scripts/test_coach_honors_inline_scorers_18380.py /tmp/game
+          # Regression isolation: legacy scorer harness must also work after 18.380 is injected.
+          python .github/scripts/test_scorer_identity_18379.py /tmp/game
           python .github/scripts/set_desktop_version_18380.py /tmp/game
           python .github/scripts/validate_coach_honors_inline_release_18380.py /tmp/game
       - uses: actions/upload-artifact@v4
