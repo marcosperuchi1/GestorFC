@@ -1,0 +1,86 @@
+name: Validate FutBR 18.379 historical scorer identities and crest links
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/desktop-18379-scorer-identity]
+    paths: [.github/workflows/preflight-18379.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Restore approved complete game and its original Tauri ACL
+        shell: bash
+        run: |
+          mkdir -p /tmp/art /tmp/game/src /tmp/game/src-tauri/capabilities
+          gh run download 44968669984 -R marcosperuchi1/GestorFC \
+           -n FutBR-18.374-Career-Club-Season-Real-Engine-44968669984 -D /tmp/art
+          src=$(find /tmp/art -name 'prepared-source-18374.html.gz'|head -1)
+          test -n "$src"
+          gzip -dc "$src" > /tmp/game/src/index.html
+          cat FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part* > /tmp/base.zip
+          python - <<'PY'
+          import zipfile,base64,json,os
+          from pathlib import Path
+          z=zipfile.ZipFile('/tmp/base.zip')
+          Path('/tmp/game/src-tauri/capabilities/default.json').write_bytes(z.read('FutBR_Manager_Desktop_RC1/src-tauri/capabilities/default.json'))
+          raw=b'Ed'+bytes(range(8))+bytes(range(32))
+          key=base64.b64encode(b'untrusted comment: synthetic testing only\n'+base64.b64encode(raw)+b'\n').decode()
+          cfg={'version':'18.374.0','bundle':{'createUpdaterArtifacts':True},'plugins':{'updater':{'pubkey':key,'endpoints':['https://download.futbrmanager.com.br/updates/latest.json']}}}
+          Path('/tmp/game/src-tauri/tauri.conf.json').write_text(json.dumps(cfg))
+          with open(os.environ['GITHUB_ENV'],'a') as env:env.write('FUTBR_UPDATER_PUBLIC_KEY='+key+'\n')
+          PY
+      - name: Apply and validate the already-approved 18.375 and 18.376 fixes
+        shell: bash
+        run: |
+          python -m pip -q install playwright
+          python -m playwright install chromium
+          python .github/scripts/fix_calendar_translations_18375.py /tmp/game
+          python .github/scripts/fix_transfer_realism_18375.py /tmp/game
+          python .github/scripts/improve_support_ui_18375.py /tmp/game
+          python .github/scripts/set_desktop_version_18375.py /tmp/game
+          python .github/scripts/validate_support_release_18375.py /tmp/game
+          python .github/scripts/fix_font_settings_18376.py /tmp/game
+          python .github/scripts/test_font_settings_18376.py /tmp/game
+          python .github/scripts/set_desktop_version_18376.py /tmp/game
+          python .github/scripts/validate_font_settings_release_18376.py /tmp/game
+      - name: Test 2026 historical leaderboard, Tauri ACL and final signed app version
+        shell: bash
+        run: |
+          python .github/scripts/fix_legacy_scorers_18377.py /tmp/game
+          python .github/scripts/fix_window_capture_18377.py /tmp/game
+          python .github/scripts/test_historical_scorers_18377.py /tmp/game
+          python .github/scripts/set_desktop_version_18377.py /tmp/game
+          python .github/scripts/validate_history_window_release_18377.py /tmp/game
+          python .github/scripts/fix_money_autoupdate_18378.py /tmp/game
+          python .github/scripts/set_desktop_version_18378.py /tmp/game
+          python .github/scripts/validate_money_autoupdate_release_18378.py /tmp/game
+          python .github/scripts/test_money_autoupdate_runtime_18378.py /tmp/game
+          python .github/scripts/fix_scorer_identity_18379.py /tmp/game
+          python .github/scripts/test_scorer_identity_18379.py /tmp/game
+          python .github/scripts/set_desktop_version_18379.py /tmp/game
+          python .github/scripts/validate_scorer_identity_release_18379.py /tmp/game
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-18.379-Scorer-Club-Links-and-Flags-Preflight
+          path: |
+            /tmp/game/history-window-release-18377-tests.json
+            /tmp/game/historical-scorers-18377-tests.json
+            /tmp/game/window-capture-18377-install.json
+            /tmp/game/money-autoupdate-18378-tests.json
+            /tmp/game/money-autoupdate-release-18378-tests.json
+            /tmp/game/money-autoupdate-runtime-18378-tests.json
+            /tmp/game/scorer-identity-18379-tests.json
+            /tmp/game/scorer-identity-18379-install.json
+            /tmp/game/scorer-identity-release-18379-tests.json
+          retention-days: 14
