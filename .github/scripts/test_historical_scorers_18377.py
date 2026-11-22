@@ -67,7 +67,7 @@ assert(v18220Collect(big,f).some(p=>p.id==='star'&&p.goals===42));
 console.log(JSON.stringify({ok:true,version:'18.377.0',recoveredYear:2026,
  firstTopScorerGoals:35,leaderboard:['p1','p2','p3'],recentArchivePreserved:true,
  legacyArchiveSupported:true,historicalClubsCorrect:true,
- noStateMutation:true,80kUnscoredPlayersExcluded:true}));
+ noStateMutation:true,largeUnscoredPlayersExcluded:true}));
 '''
  js=mock+'\n'+original+'\n'+patch+'\n'+test
  check=subprocess.run(['node','--input-type=commonjs','-'],input=js,text=True,capture_output=True,timeout=75)
