@@ -85,39 +85,38 @@ jobs:
           python .github/scripts/test_career_sync_load_18382.py /tmp/game
           python .github/scripts/set_desktop_version_18382.py /tmp/game
           python .github/scripts/validate_career_sync_load_release_18382.py /tmp/game
-      - name: Inspect precise annual aging, star and national manager flow
+      - name: Inspect exact player aging and national manager reappointment code
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-          source=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          full=[
-           ('function v91FastNextSeasonCore(', 14500),('function v640EnsureState(',6500),
-           ('function v640MakeAiCoach(',2500),('function v640FinishTournament(',6500),
-           ('function v640ApplyEffects(',5000),('function v640Ranking(',2200),
-           ('function v640PrepareNationalStage(',4500),
-           ('function v91SeasonFinal',3500),('function v640NewYear',3500),
-           ('function v91FastNextSeason',6000),('function retirementChance549(',1800),
-           ('function v18141StarForEditor(',2500)
+          s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
+          names=[
+            ('function v91ResetPlayers(',18000),('function v91NationalNewSeason(',8500),
+            ('function v91CoachNewSeason(',7200),
+            ('function reviewWorldStars58(',10000),
+            ('reviewWorldStars58(',8500),('function v640MakeAiCoach(',1100),
+            ('function v640EnsureState(',2100),('const V640_EXTRA_ASSOC=',6000),
+            ('const NAT=',1700),('function v58',1200),
+            ('function v640FinishTournament(',1200),
+            ('function v640Season',6500)
           ]
-          for term,size in full:
-           items=list(re.finditer(re.escape(term),source))
-           print('\n==== FUNCTION',repr(term),'COUNT',len(items))
-           if items:
-            p=items[-1].start();print('POS',p,'SOURCE',repr(source[p:p+size]))
-          patterns=[
-            r'\bp\.age\s*(?:\+\+|\+=|=\s*Number\(p\.age\))',
-            r'\bp\.star\s*=', r'\bstar\s*:\s*(?:true|false)', r'\bp\.skills\.',
-            r'\bcoach\s*:\s*v640MakeAiCoach', r'\bt\.coach\s*=',
-            r'\bteam\.coach\s*=',r'\bcoachId\s*=',r'\bmanager\s*=',
-            r'\bv640National\.teams\b',r'\bE\.nextSeason\s*=',
-            r'v640.*[Yy]ear',r'v640.*[Cc]oach',
-            r'v91FastNextSeasonCore\('
-          ]
-          for pattern in patterns:
-           matches=list(re.finditer(pattern,source))
-           print('\n==== PATTERN',repr(pattern),'COUNT',len(matches))
-           for m in (matches[:2]+matches[-6:] if len(matches)>8 else matches):
-            p=m.start();print('POS',p,'SOURCE',repr(source[max(0,p-230):p+800]))
+          for term,size in names:
+           hits=list(re.finditer(re.escape(term),s))
+           print('\n==== ORIGINAL',repr(term),'COUNT',len(hits))
+           for m in hits[-2:]:
+            a=m.start()
+            print('POS',a,'SOURCE',repr(s[a:a+size]))
+          for pattern in [
+             r'v640MakeAiCoach\(',r'root\.teams\[[^\]]+\]\.coach',
+             r'\.coach\s*=\s*v640MakeAiCoach',r'coach\.startedYear',
+             r'v91NationalNewSeason\(',r'v91ResetPlayers\(',
+             r'v92PendingStarReviewYear',r'\bp\.age\+\+',
+             r'\bE\.reviewWorldStars58',r'v58.*[Ss]tar'
+          ]:
+           hits=list(re.finditer(pattern,s))
+           print('\n==== PATTERN',repr(pattern),'COUNT',len(hits))
+           for m in hits[-7:]:
+            p=m.start();print('POS',p,'SOURCE',repr(s[max(0,p-250):p+1200]))
           PY
