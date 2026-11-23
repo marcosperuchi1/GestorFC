@@ -13,7 +13,15 @@ def main():
  s=(root/'src/index.html').read_text(encoding='utf-8')
  start=s.index('/* FUTBR_COACH_HONORS_INLINE_SCORERS_18380')
  end=s.index('window.GestorFC.render=render;',start)
+ # Later versions may add independent, adjacent renderers before the shared
+ # render registration. This legacy 18.380 regression must execute ONLY its
+ # own coach-title patch, not the 18.384 player-title wrapper, which relies on
+ # the live v123Honors runtime outside this isolated Node fixture.
+ next_patch=s.find('/* FUTBR_PLAYER_TROPHIES_GROUPED_18384',start,end)
+ if next_patch>=0:end=next_patch
  script=s[start:end]
+ if 'const v18384OriginalPlayerHonors=' in script:
+  raise RuntimeError('18.380 test incorrectly includes the 18.384 player honors renderer')
  m=re.search(r'<style id="futbr-coach-honors-scorer-inline-18380">([\s\S]*?)</style>',s)
  if not m:raise RuntimeError('Real production CSS missing from 18.380 HTML')
  css=m.group(1)
