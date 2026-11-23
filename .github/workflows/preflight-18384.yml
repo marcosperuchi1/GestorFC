@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [fix/desktop-18384-roster-balance-player-trophies]
-    paths: [.github/workflows/preflight-18384.yml, '.github/scripts/*18384.py', '.github/scripts/*18384.ps1']
+    paths: [.github/workflows/preflight-18384.yml, '.github/scripts/*18384.py', '.github/scripts/*18384.ps1', '.github/scripts/test_coach_honors_inline_scorers_18380.py']
 permissions:
   contents: read
   actions: read
@@ -125,6 +125,9 @@ jobs:
           python .github/scripts/test_player_honors_18384.py /tmp/game
           python .github/scripts/set_desktop_version_18384.py /tmp/game
           python .github/scripts/validate_season_roster_honors_release_18384.py /tmp/game
+          # Repeat the legacy coach UI regression on the final combined 18.384
+          # source to catch accidental inclusion of newer player honor wrappers.
+          python .github/scripts/test_coach_honors_inline_scorers_18380.py /tmp/game
       - uses: actions/upload-artifact@v4
         with:
           name: FutBR-18.384-Season-Squads-Player-Titles-Preflight
