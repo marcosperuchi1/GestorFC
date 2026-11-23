@@ -1,0 +1,160 @@
+name: FutBR Windows 18.383 - nine national flags, coach rotation, stars and aging
+on:
+  push:
+    branches: [fix/desktop-18383-flags-national-coaches-aging-stars]
+    paths:
+      - '.github/workflows/build-desktop-updater-18383.yml'
+      - '.github/workflows/preflight-18383.yml'
+      - '.github/scripts/*18383.py'
+      - '.github/scripts/flags_18383_*.b64'
+      - '.github/scripts/build_desktop_support_18383.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: futbr-18383-windows-candidate
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: '1'
+      FUTBR_MEMORY_HEAP_MB: '1024'
+      FUTBR_MEMORY_RSS_BUDGET_MIB: '3072'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_UPDATE_PREFIX: updates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm patch and signing environment
+        shell: pwsh
+        run: |
+          python -c "import glob,py_compile; [py_compile.compile(p,doraise=True) for p in glob.glob('.github/scripts/*1837[5-9].py')+glob.glob('.github/scripts/*18380.py')+glob.glob('.github/scripts/*18381.py')+glob.glob('.github/scripts/*18382.py')+glob.glob('.github/scripts/*18383.py')]"
+          if ($LASTEXITCODE -ne 0) { throw 'Python syntax invalid' }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Original Tauri signer unavailable' }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Derive current public key from private signer
+        shell: pwsh
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'futbr-18383-pubkey.b64'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- $path
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $path)) { throw 'Signer public key derivation failed' }
+          $pub = (Get-Content $path -Raw).Trim()
+          "FUTBR_UPDATER_PUBLIC_KEY=$pub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FUTBR_DERIVED_PUBKEY_FILE=$path" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install browser regression prerequisites
+        shell: pwsh
+        run: |
+          python -m pip install playwright psutil
+          if ($LASTEXITCODE -ne 0) { throw 'Playwright install failed' }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium install failed' }
+      - name: Build 18.383 with flags and stable national coach/star/age rules
+        shell: pwsh
+        run: .github/scripts/build_desktop_support_18383.ps1
+      - name: Chromium UI regression for grouped monetary fields and automatic startup install
+        shell: pwsh
+        run: |
+          python .github/scripts/test_money_autoupdate_runtime_18378.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Inherited 18.378 money formatting or auto-install regression failed' }
+      - name: Verify historical scorer team links, crests and country flags on the final source
+        shell: pwsh
+        run: |
+          python .github/scripts/test_scorer_identity_18379.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Inherited 18.379 scorer identity regression failed' }
+      - name: Verify grouped coach trophy cards and scorer club row in Chromium
+        shell: pwsh
+        run: |
+          python .github/scripts/test_coach_honors_inline_scorers_18380.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw '18.380 coach honors or club row regression failed' }
+      - name: Verify one national competition option with all historical editions
+        shell: pwsh
+        run: |
+          python .github/scripts/test_national_history_competition_filter_18381.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw '18.381 national history competition filter regression failed' }
+      - name: Verify 225343-player sync and lossless 452-shard save switching
+        shell: pwsh
+        run: |
+          python .github/scripts/test_career_sync_load_18382.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw '18.382 lossless sync/save-load regression failed' }
+      - name: Validate attached flags, 12-season AI national managers and elite stars
+        shell: pwsh
+        run: |
+          python .github/scripts/test_flags_coaches_stars_aging_18383.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw '18.383 flags, coaches or player aging regression failed' }
+      - name: Package signed update candidate
+        shell: pwsh
+        run: |
+          python .github/scripts/make_desktop_update_release_18383.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot package signed installer' }
+      - name: Verify signature and fail closed
+        shell: pwsh
+        run: |
+          python .github/scripts/verify_desktop_updater_signature_18383.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Signed update verification failed' }
+          $root = Join-Path $env:FUTBR_PROJECT 'artifacts'
+          cargo run --release --quiet --manifest-path '.github/tools/derive_tauri_pubkey/Cargo.toml' -- verify "$env:FUTBR_DERIVED_PUBKEY_FILE" (Join-Path $root 'FutBR-Manager-18.383-Windows.exe') (Join-Path $root 'FutBR-Manager-18.383-Windows.exe.sig')
+          if ($LASTEXITCODE -ne 0) { throw 'Minisign verification failed' }
+      - name: Publish the signed 18.383 installer to R2, latest.json last
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID) -or [string]::IsNullOrWhiteSpace($env:R2_BUCKET) -or [string]::IsNullOrWhiteSpace($env:R2_ACCESS_KEY_ID) -or [string]::IsNullOrWhiteSpace($env:R2_SECRET_ACCESS_KEY)) { throw 'R2 credentials missing; cannot publish automatic updater' }
+          python -m pip install boto3
+          if ($LASTEXITCODE -ne 0) { throw 'boto3 installation failed' }
+          python .github/scripts/publish_signed_update_r2_18383.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Signed 18.383 publication failed' }
+      - name: Verify public feed, signature and complete Windows installer
+        shell: pwsh
+        run: |
+          python .github/scripts/verify_public_update_18383.py "$env:FUTBR_PROJECT"
+          if ($LASTEXITCODE -ne 0) { throw 'Public 18.383 updater file differs from the verified signed installer' }
+      - name: Retain verified signed installer and validation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutBR-Manager-18.383-Windows-Long-Career-Realism-Signed-Update
+          path: |
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.383-Windows.exe
+            ${{ env.FUTBR_PROJECT }}/artifacts/FutBR-Manager-18.383-Windows.exe.sig
+            ${{ env.FUTBR_PROJECT }}/artifacts/latest.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/SHA256SUMS.txt
+            ${{ env.FUTBR_PROJECT }}/artifacts/support-release-18375-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/updater-18383-signature-tests.json
+            ${{ env.FUTBR_PROJECT }}/artifacts/public-updater-18383-tests.json
+            ${{ env.FUTBR_PROJECT }}/font-settings-18376-tests.json
+            ${{ env.FUTBR_PROJECT }}/font-settings-release-18376-tests.json
+            ${{ env.FUTBR_PROJECT }}/history-window-release-18377-tests.json
+            ${{ env.FUTBR_PROJECT }}/historical-scorers-18377-tests.json
+            ${{ env.FUTBR_PROJECT }}/window-capture-18377-install.json
+            ${{ env.FUTBR_PROJECT }}/money-autoupdate-18378-tests.json
+            ${{ env.FUTBR_PROJECT }}/money-autoupdate-release-18378-tests.json
+            ${{ env.FUTBR_PROJECT }}/money-autoupdate-runtime-18378-tests.json
+            ${{ env.FUTBR_PROJECT }}/scorer-identity-18379-install.json
+            ${{ env.FUTBR_PROJECT }}/scorer-identity-18379-tests.json
+            ${{ env.FUTBR_PROJECT }}/scorer-identity-release-18379-tests.json
+            ${{ env.FUTBR_PROJECT }}/coach-honors-inline-18380-install.json
+            ${{ env.FUTBR_PROJECT }}/coach-honors-inline-18380-tests.json
+            ${{ env.FUTBR_PROJECT }}/coach-honors-inline-release-18380-tests.json
+            ${{ env.FUTBR_PROJECT }}/national-history-filter-18381-install.json
+            ${{ env.FUTBR_PROJECT }}/national-history-filter-18381-tests.json
+            ${{ env.FUTBR_PROJECT }}/national-history-filter-release-18381-tests.json
+            ${{ env.FUTBR_PROJECT }}/career-sync-load-18382-install.json
+            ${{ env.FUTBR_PROJECT }}/career-sync-load-18382-tests.json
+            ${{ env.FUTBR_PROJECT }}/career-sync-load-release-18382-tests.json
+            ${{ env.FUTBR_PROJECT }}/career-realism-18383-install.json
+            ${{ env.FUTBR_PROJECT }}/career-realism-18383-tests.json
+            ${{ env.FUTBR_PROJECT }}/career-realism-release-18383-tests.json
+          if-no-files-found: error
+          retention-days: 14
