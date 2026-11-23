@@ -22,7 +22,7 @@ const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"
 const badge=t=>'<span class="shield" data-club="'+esc(t.id)+'"></span>';
 const countryName=c=>c==='ger'?'Alemanha':'';
 const v123HonorsRows=id=>players[id]?.honors538||[];
-const v123Honors=p=>'ORIGINAL_EMPTY';
+function v123Honors(p){return 'ORIGINAL_EMPTY';}
 const rows=[
  {kind:'club',key:'league:ger:1',name:'Alemanha · 1ª divisão',year:2036,teamId:'hof',teamName:'TSG Hoffenheim'},
  {kind:'club',key:'league:ger:1',name:'Alemanha · 1ª divisão',year:2033,teamId:'hof',teamName:'TSG Hoffenheim'},
