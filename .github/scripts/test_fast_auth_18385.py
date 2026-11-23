@@ -128,7 +128,8 @@ async function v580Fetch(path,opts){
 """
  bootMock=r"""
 const assert=require('node:assert/strict');
-const defer=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve=r;reject=j});return {resolve,reject,promise}};
+const defer=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve=r,reject=j});return {resolve,reject,promise}};
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
 let localCalls=0,rosterCalls=0,welcomeCalls=0;
 const local=defer(),roster=defer(),session=defer();
 const state=null,document={getElementById:id=>{
@@ -150,15 +151,15 @@ function v580RestoreRemoteSession(){return session.promise}
  bootChecks=r"""
 (async()=>{
  const bootPromise=v548Boot();
- await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ await tick();
  assert.equal(localCalls,1,'Local metadata starts once at boot');
  assert.equal(rosterCalls,0,'No world asset before valid remote session');
  session.resolve({serverValidated:true,plan:'premium'});
- await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ await tick();
  assert.equal(rosterCalls,1,'Roster starts as soon as online auth returns');
  assert.equal(welcomeCalls,0,'No welcome before data has finished');
  local.resolve(null);
- await Promise.resolve();await Promise.resolve();
+ await tick();
  assert.equal(welcomeCalls,0,'Roster still awaited despite local completion');
  roster.resolve('packed-base');
  await bootPromise;
