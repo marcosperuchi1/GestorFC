@@ -43,8 +43,9 @@ function v18384BalanceAiSquads(s){
   const c=v18384RosterCount(s,t);counts.set(t.id,c);
   for(const pos of ROLES){
    const n=c[pos]||0,min=v18384RoleMin(s,t,pos),max=v18384RoleMax(s,t,pos);
-   if(n<min&&t.balance>800000&&(t.roster?.length||0)<37){
-    requests[pos].push({t,needed:Math.min(3,min-n),depth:min-n});
+   const desired=pos==='GOL'?3:min;
+   if(n<desired&&t.balance>800000&&(t.roster?.length||0)<37){
+    requests[pos].push({t,needed:Math.min(3,desired-n),depth:desired-n});
    }
    if(n<=max||t.roster.length<=19)continue;
    const lineup=new Set((t.lineup||[]).filter(Boolean));
