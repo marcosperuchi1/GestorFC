@@ -117,34 +117,28 @@ jobs:
           python .github/scripts/test_flags_coaches_stars_aging_18383.py /tmp/game
           python .github/scripts/set_desktop_version_18383.py /tmp/game
           python .github/scripts/validate_career_realism_release_18383.py /tmp/game
-      - name: Inspect roster and player trophy functions with bounded output
+      - name: Inspect exact AI transfer and player honor live implementations
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          targets=['function v91EnsureMinimumSquad(','function v91ResetTeams(','function v91FastNextSeasonCore(',
-           'function aiTransfers(','function marketAI(','function aiMarket(','function aiBuy(','function aiSell(',
-           'function saleOffer(','function buy(','function v126PlayerHonors(','function v126CoachHonors(',
-           'function v538PlayerHonors(','function v538PlayerTitles(','function v538PlayerAwards(',
-           'function v126PlayerProfile(','function v538PlayerProfile(','function v538Trophies(',
-           'function v538AwardSeasonHonors(','function playerTrophies(', 'function v538Player',
-           'TÍTULO DO CLUBE','ARTILHARIA','function v91PromoteAgedYouth(',
-           'function v18380CoachHonorGroups(']
-          for word in targets:
-           at=s.find(word);last=s.rfind(word)
-           print('==== TOKEN',repr(word),'FIRST',at,'LAST',last,'COUNT',s.count(word))
-           if at>=0:
-            pos=last if word.lower() not in ('título do clube','artilharia') else at
-            print('SNIP',repr(s[max(0,pos-90):pos+min(6500,2200 if word.startswith('function v91') else 3400)]))
-          # Function declarations relevant to AI trading; hard cap output.
-          rx=re.compile(r'(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)(?:\s*)\(')
-          matches=[]
-          for m in rx.finditer(s):
-           name=m.group(1)
-           if any(t in name.lower() for t in ['transfer','market','trade','buy','sell','roster','squad','honor','troph','title','award','release','sign','maintain']):
-            matches.append((m.start(),name))
-          print('==== DECLARATIONS',len(matches))
-          for at,name in matches[-140:]:print('FN',at,name)
+          # The last aiMarket is the effective day-to-day market implementation.
+          items=[
+           ('function aiMarket(s){',11000,'last'),
+           ('function roleNeeds(',3600,'last'),
+           ('function executeTransfer(',4200,'last'),
+           ('function v123HonorsRows(',9600,'last'),
+           ('function v123Honors(',4600,'last'),
+           ('function v163PlayerHonorsPagination(',2100,'last'),
+           ('function v538HonorsHTML(',3600,'last'),
+           ('function v96RetiredHonorsHTML(',3600,'last'),
+           ('function v91EnsureMinimumSquad(',2100,'last'),
+           ('function v91PromoteAgedYouth(',1350,'last'),
+           ('function v91ResetTeams(',2550,'last')
+          ]
+          for needle,n,side in items:
+           at=s.rfind(needle) if side=='last' else s.find(needle)
+           print('\n==== EXACT',repr(needle),'POS',at,'COUNT',s.count(needle))
+           if at>=0:print('SRC',repr(s[at:at+n]))
           PY
