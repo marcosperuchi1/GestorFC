@@ -24,7 +24,7 @@ function v18383AgePlayer(s,p){
    p.skills[k]=Math.max(12,before-delta);drop+=delta;
    continue;
   }
-  const base=age>=40?4:age>=38?3:age>=36?2:1;
+  const base=age>=40?4:age>=38?3:age>=35?2:1;
   let delta=base;
   if(k==='pace'&&['ATA','LAT'].includes(p.pos)&&age>=36)delta++;
   if(k==='gk'&&p.pos==='GOL')delta=Math.max(1,base-1);
