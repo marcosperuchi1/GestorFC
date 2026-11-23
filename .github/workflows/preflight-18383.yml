@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [fix/desktop-18383-flags-national-coaches-aging-stars]
-    paths: [.github/workflows/preflight-18383.yml]
+    paths: [.github/workflows/preflight-18383.yml, '.github/scripts/flags_18383_*.b64']
 permissions:
   contents: read
   actions: read
@@ -19,6 +19,34 @@ jobs:
         with: {python-version: '3.12'}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
+      - name: Verify supplied national flag image bytes are complete
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64,struct,zlib
+          flags={}
+          for file in sorted(Path('.github/scripts').glob('flags_18383_*.b64')):
+           for line in file.read_text().splitlines():
+            if not line.strip():continue
+            code,raw=line.split(' ',1)
+            data=base64.b64decode(raw,validate=True)
+            assert data.startswith(b'\x89PNG\r\n\x1a\n'),code
+            at=8;ids=[];found=False
+            while at<len(data):
+             n=struct.unpack('>I',data[at:at+4])[0]
+             name=data[at+4:at+8];part=data[at+8:at+8+n]
+             crc=struct.unpack('>I',data[at+8+n:at+12+n])[0]
+             assert zlib.crc32(name+part)&0xffffffff==crc,(code,name)
+             if name==b'IDAT':ids.append(part)
+             if name==b'IEND':found=True
+             at+=12+n
+            assert found and at==len(data),(code,'incomplete file')
+            assert len(zlib.decompress(b''.join(ids)))>100,code
+            flags[code]=len(data)
+          assert set(flags)=={'SAM','FIJ','SOL','SGP','HKG','PNG','VUT','TAH','NCL'},flags
+          print('9 uploaded flags verified as intact PNGs:',flags)
+          PY
       - name: Restore approved complete game and its original Tauri ACL
         shell: bash
         run: |
