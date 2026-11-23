@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [fix/desktop-18383-flags-national-coaches-aging-stars]
-    paths: [.github/workflows/preflight-18383.yml, '.github/scripts/flags_18383_*.b64']
+    paths: [.github/workflows/preflight-18383.yml, '.github/scripts/flags_18383_*.b64', '.github/scripts/*18383.py']
 permissions:
   contents: read
   actions: read
