@@ -56,6 +56,8 @@ const native={
 };
 const window={FutBRDesktop:native};
 const V580_DEVICE_KEY='futbr_device_id';
+// Returning customers already have a valid device id in the local mirror.
+storage.set(V580_DEVICE_KEY,'device-win-18385-abcdef');
 function v548SafeGet(key){return storage.get(key)||null;}
 function v548SafeSet(k,v){storage.set(k,v);return true;}
 function v548SafeRemove(k){storage.delete(k);}
