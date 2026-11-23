@@ -6,6 +6,7 @@ on:
       - '.github/workflows/build-desktop-updater-18384.yml'
       - '.github/workflows/preflight-18384.yml'
       - '.github/scripts/*18384.py'
+      - '.github/scripts/test_coach_honors_inline_scorers_18380.py'
       - '.github/scripts/flags_18383_*.b64'
       - '.github/scripts/build_desktop_support_18384.ps1'
   workflow_dispatch:
