@@ -117,53 +117,34 @@ jobs:
           python .github/scripts/test_flags_coaches_stars_aging_18383.py /tmp/game
           python .github/scripts/set_desktop_version_18383.py /tmp/game
           python .github/scripts/validate_career_realism_release_18383.py /tmp/game
-      - name: Locate real player trophy renderer and authoritative market and roster rules
+      - name: Inspect roster and player trophy functions with bounded output
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
           s=Path('/tmp/game/src/index.html').read_text(encoding='utf-8')
-          terms=[
-           'function v91EnsureMinimumSquad(', 'function v91ResetTeams(',
-           'function v95EnsureAcademyTarget(', 'function v91PromoteAgedYouth(',
-           'function aiTransfers(', 'function marketAI(', 'function aiMarket(',
-           'function transferAI(', 'function marketTick(', 'function marketPulse(',
-           'function aiBuy(', 'function aiSell(', 'function saleOffer(',
-           'function v91ApplyMovements(', 'function v4Market(', 'function v58',
-           'function v126Player', 'function v126CoachHonors(', 'function v18380CoachHonorGroups(',
-           'function playerHonors(', 'function playerTitles(', 'function v538Player',
-           'function v538AwardSeasonHonors(', 'function v18322CaptureSeason(',
-           'function v126PlayerProfile(', 'function showPlayer(', 'TÍTULO DO CLUBE',
-           'ARTILHARIA', 'Artileiro ·', 'Artilheiro ·',
-           'function v95', 'function v570', 'function v118',
-           'function automated(', 'function v91ResetPlayers(',
-           'function v18374', 'function v581', 'function v533',
-           'function v18179', 'function v522', 'function v555', 'function v18141',
-          ]
-          for term in terms:
-           hits=list(re.finditer(re.escape(term),s,re.I))
-           print('\n==== TERM',repr(term),'COUNT',len(hits))
-           if len(hits):
-            for m in (hits[:2]+hits[-2:] if len(hits)>4 else hits):
-             a=m.start()
-             print('POS',a,'SRC',repr(s[max(0,a-120):a+(3000 if len(hits)<=2 else 1150)]))
-          patterns=[
-           r'function\s+[\w$]*(?:[Mm]arket|[Tt]ransfer|[Ss]quad|[Rr]oster|[Bb]uy|[Ss]ell|[Hh]onor|[Tt]itle)[\w$]*\s*\(',
-           r'\b(?:ai|AI)[A-Za-z]*Transfer[\w]*',
-           r'\b[A-Za-z_$]*\.roster\.push\(',
-           r'\b(?:players|roster).*(?:limit|max).*(?:count|length)',
-           r'\bplayer.*[Hh]onors\b',
-           r'\b(?:title|honor|trophy)[A-Za-z_]*(?:group|page|card)\b',
-           r'\b(?:worldTransfer|marketAutomation|autoTransfer|dailyMarket|transferWindow)\b',
-           r'\bsaleOffer\(',r'\bbuy\(',
-          ]
-          for pattern in patterns:
-           hits=list(re.finditer(pattern,s))
-           print('\n==== PATTERN',repr(pattern),'COUNT',len(hits))
-           if 'function' in pattern:
-            for m in hits[-90:]:print('FN',m.start(),m.group(0))
-           else:
-            for m in hits[-10:]:
-             a=m.start();print('POS',a,'SRC',repr(s[max(0,a-130):a+370]))
+          targets=['function v91EnsureMinimumSquad(','function v91ResetTeams(','function v91FastNextSeasonCore(',
+           'function aiTransfers(','function marketAI(','function aiMarket(','function aiBuy(','function aiSell(',
+           'function saleOffer(','function buy(','function v126PlayerHonors(','function v126CoachHonors(',
+           'function v538PlayerHonors(','function v538PlayerTitles(','function v538PlayerAwards(',
+           'function v126PlayerProfile(','function v538PlayerProfile(','function v538Trophies(',
+           'function v538AwardSeasonHonors(','function playerTrophies(', 'function v538Player',
+           'TÍTULO DO CLUBE','ARTILHARIA','function v91PromoteAgedYouth(',
+           'function v18380CoachHonorGroups(']
+          for word in targets:
+           at=s.find(word);last=s.rfind(word)
+           print('==== TOKEN',repr(word),'FIRST',at,'LAST',last,'COUNT',s.count(word))
+           if at>=0:
+            pos=last if word.lower() not in ('título do clube','artilharia') else at
+            print('SNIP',repr(s[max(0,pos-90):pos+min(6500,2200 if word.startswith('function v91') else 3400)]))
+          # Function declarations relevant to AI trading; hard cap output.
+          rx=re.compile(r'(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)(?:\s*)\(')
+          matches=[]
+          for m in rx.finditer(s):
+           name=m.group(1)
+           if any(t in name.lower() for t in ['transfer','market','trade','buy','sell','roster','squad','honor','troph','title','award','release','sign','maintain']):
+            matches.append((m.start(),name))
+          print('==== DECLARATIONS',len(matches))
+          for at,name in matches[-140:]:print('FN',at,name)
           PY
