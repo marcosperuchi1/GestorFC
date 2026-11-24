@@ -117,7 +117,7 @@ function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML
   """)
   page.wait_for_selector('#v18386-startup',timeout=5000)
   page.evaluate("""v548Session=null;window.__slowLocal.resolve(null);window.__slowRoster.resolve('good');""")
-  page.wait_for_function('v18386Startup.stage==="ready"',timeout=5000)
+  page.evaluate('() => window.__secondPromise')
   if page.locator('#real-welcome').count():raise RuntimeError('Logout reopened career with stale session')
   browser_checks['logoutDuringLoadNeverOpensGame']=True
   context.close();browser.close()
