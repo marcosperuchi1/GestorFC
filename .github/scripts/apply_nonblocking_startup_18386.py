@@ -193,7 +193,12 @@ def main():
  if len(re.findall(r'\bload_player_base\s*,',lib))!=1:
   raise RuntimeError('Cannot identify exactly one Tauri command registration for original roster')
  lib=lib.rstrip()+'\n\n'+RUST+'\n'
- lib=re.sub(r'(?m)^(\s*)load_player_base,(\s*)
+ handler=list(re.finditer(r'(?m)^([ \t]*)load_player_base,[ \t]*$',lib))
+ if len(handler)!=1:raise RuntimeError('Original Tauri command registration not unique')
+ match=handler[0]
+ lib=lib[:match.end()]+'\n'+match.group(1)+'load_player_base_gzip_b64,'+lib[match.end():]
+ if len(re.findall(r'\bload_player_base_gzip_b64\s*,',lib))!=1:
+  raise RuntimeError('Compressed loader was not registered in the same Tauri handler')
  lib_path.write_text(lib,encoding='utf-8')
  # JS bridge is populated by 18.385 native setup stage before this patch.
  s=once(s,"  loadPlayerBase:()=>call('load_player_base'),",
