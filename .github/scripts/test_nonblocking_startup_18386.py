@@ -17,9 +17,11 @@ def main():
  if not packed.startswith(b'\x1f\x8b') or len(packed)>=len(raw):raise RuntimeError('Compression ineffective')
  if cfg['bundle']['resources'].get('../src/assets/data/rosters.v310.bin.gz')!='rosters.v310.bin.gz':
   raise RuntimeError('Bundled GZIP asset not registered')
- for x in ['fn load_player_base_gzip_b64','fn load_player_base(app: AppHandle)',
+ if not re.search(r'\b(?:async\s+)?fn\s+load_player_base\s*\(',rust):
+  raise RuntimeError('Original native roster loader missing')
+ for x in ['fn load_player_base_gzip_b64',
            'if dir.join("rosters.v310.bin").exists()','base64::engine::general_purpose::STANDARD.encode(packed)',
-           '            load_player_base_gzip_b64,']:
+           'load_player_base_gzip_b64,']:
   if x not in rust:raise RuntimeError('Original or compressed native loader missing: '+x)
  if 'base64 = "0.22"' not in cargo:raise RuntimeError('Rust compression dependency absent')
  for x in ['FUTBR_FAST_SECURE_LOGIN_18385','FUTBR_DEVICE_SESSION_18329_START',
