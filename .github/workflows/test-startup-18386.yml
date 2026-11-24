@@ -1,0 +1,23 @@
+name: Validate 18.386 post-login fast screen and gzip reader in Chromium
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/18386-fast-startup-browser]
+    paths: [.github/workflows/test-startup-18386.yml, .github/scripts/test_startup_frontend_only_18386.py]
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Chromium
+        run: |
+          python -m pip -q install playwright
+          python -m playwright install chromium
+      - name: Verify first paint and compressed reader in the actual browser engine
+        run: python .github/scripts/test_startup_frontend_only_18386.py
