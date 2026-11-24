@@ -57,6 +57,48 @@ jobs:
           test -n "$src"
           gzip -dc "$src" > /tmp/game/src/index.html
           cat FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.part* > /tmp/base.zip
+          # Recreate the exact original roster and native command source using the
+          # same initial preparation sequence as the signed Windows build.
+          # The retained 18.374 HTML already has the roster externalized.
+          python - <<'PY'
+          import base64,gzip,hashlib,zipfile
+          from pathlib import Path
+          archive=Path('/tmp/base.zip')
+          checksum=Path('FutBR_Manager_Desktop_RC1_TAURI_SOURCE.zip.sha256.txt')
+          if checksum.is_file():
+           assert hashlib.sha256(archive.read_bytes()).hexdigest()==checksum.read_text(encoding='utf-8-sig').split()[0].lower(), 'Source ZIP checksum mismatch'
+          with zipfile.ZipFile(archive) as z:
+           z.extractall('/tmp/futbr-native-base')
+          scripts=Path('.github/scripts')
+          parts=sorted(scripts.glob('consolidate_initial_database.py.gz.b64.part*'))
+          assert parts, 'Missing compressed database builder'
+          packed=base64.b64decode(''.join(p.read_text(encoding='utf-8-sig') for p in parts))
+          (scripts/'consolidate_initial_database.py').write_bytes(gzip.decompress(packed))
+          PY
+          base=/tmp/futbr-native-base/FutBR_Manager_Desktop_RC1
+          for script in prepare_desktop_project fix_root_gameplay fix_gameplay_parity fix_national_match_parity hide_how_to_play_ui externalize_crests externalize_player_base fix_initial_nationalities_18340 consolidate_initial_database; do
+            python ".github/scripts/$script.py" "$base"
+          done
+          mkdir -p /tmp/game/src/assets/data /tmp/game/src-tauri/src
+          cp "$base/src/assets/data/rosters.v310.bin" /tmp/game/src/assets/data/
+          cp "$base/src-tauri/src/lib.rs" /tmp/game/src-tauri/src/
+          cp "$base/src-tauri/Cargo.toml" /tmp/game/src-tauri/
+          # Compare against the authoritative roster metadata embedded in the
+          # approved 18.374 HTML, not a synthetic or substitute player database.
+          python - <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          sys.path.insert(0,'.github/scripts')
+          from externalize_player_base import script_block
+          root=Path('/tmp/game')
+          html=(root/'src/index.html').read_text(encoding='utf-8')
+          start,end=script_block(html,'gfc-roster-blob')
+          manifest=json.loads(html[start:end])
+          raw=(root/'src/assets/data/rosters.v310.bin').read_bytes()
+          assert len(raw)==manifest['bytes'], 'Restored roster byte length differs from approved HTML'
+          assert hashlib.sha256(raw).hexdigest()==manifest['sha256'], 'Restored roster hash differs from approved HTML'
+          print('Approved player base verified:',len(raw),manifest['sha256'])
+          PY
           python - <<'PY'
           import zipfile,base64,json,os
           from pathlib import Path
@@ -64,7 +106,7 @@ jobs:
           Path('/tmp/game/src-tauri/capabilities/default.json').write_bytes(z.read('FutBR_Manager_Desktop_RC1/src-tauri/capabilities/default.json'))
           raw=b'Ed'+bytes(range(8))+bytes(range(32))
           key=base64.b64encode(b'untrusted comment: synthetic testing only\n'+base64.b64encode(raw)+b'\n').decode()
-          cfg={'version':'18.374.0','bundle':{'createUpdaterArtifacts':True},'plugins':{'updater':{'pubkey':key,'endpoints':['https://download.futbrmanager.com.br/updates/latest.json']}}}
+          cfg={'version':'18.374.0','bundle':{'createUpdaterArtifacts':True,'resources':{'../src/assets/data/rosters.v310.bin':'rosters.v310.bin'}},'plugins':{'updater':{'pubkey':key,'endpoints':['https://download.futbrmanager.com.br/updates/latest.json']}}}
           Path('/tmp/game/src-tauri/tauri.conf.json').write_text(json.dumps(cfg))
           with open(os.environ['GITHUB_ENV'],'a') as env:env.write('FUTBR_UPDATER_PUBLIC_KEY='+key+'\n')
           PY

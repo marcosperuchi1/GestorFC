@@ -98,9 +98,21 @@ function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML
   decoded=page.evaluate('v18386LoadCompressedRoster()')
   if decoded!=orig:raise RuntimeError('WebView gzip decoder did not preserve Unicode content')
   browser_checks['actualChromiumGzipRoundTripLossless']=True
-  page.evaluate("""window.FutBRDesktop.loadPlayerBaseCompressed=()=>Promise.reject(Error('native unavailable'))""")
+  # Evaluate a block returning undefined: Playwright auto-invokes a returned
+  # function, which previously rejected before the real fallback was exercised.
+  page.evaluate("""() => {
+   window.__compressedFailures=0;window.__legacyLoads=0;
+   window.FutBRDesktop.loadPlayerBaseCompressed=()=>{
+    window.__compressedFailures++;return Promise.reject(Error('native unavailable'));
+   };
+   window.FutBRDesktop.loadPlayerBase=()=>{
+    window.__legacyLoads++;return Promise.resolve('UNCOMPRESSED_FALLBACK');
+   };
+  }""")
   fallback=page.evaluate('v18386LoadCompressedRoster()')
-  if fallback!='UNCOMPRESSED_FALLBACK':raise RuntimeError('Legacy uncompressed source not honored')
+  attempts=page.evaluate('({compressed:window.__compressedFailures,legacy:window.__legacyLoads})')
+  if fallback!='UNCOMPRESSED_FALLBACK' or attempts!={'compressed':1,'legacy':1}:
+   raise RuntimeError('Legacy uncompressed source not honored exactly once: '+str(attempts))
   browser_checks['nativeFailureFallsBackToOriginalBase']=True
   # New authenticated entry must NEVER appear for anonymous state.
   page.evaluate('v548Session=null')
