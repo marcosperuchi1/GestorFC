@@ -60,7 +60,7 @@ function v310StartRosterLoad(){rosterCalls++;return roster.promise;}
 function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML='<div id="real-welcome">Nova carreira · Carregar carreira</div>';}
 """
  orig='Ola, Mundo! Futebol europeu e mundial \u00e9 real. 2026'
- orig=(orig+' |\n')*12000
+ orig=(orig+' |\n')*24000
  gz=base64.b64encode(gzip.compress(orig.encode('utf-8'),compresslevel=6,mtime=0)).decode('ascii')
  browser_checks={}
  with sync_playwright() as playwright:
@@ -86,10 +86,13 @@ function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML
   if state['welcome']!=1 or state['stage']!='ready':raise RuntimeError('Original career welcome not restored '+str(state))
   browser_checks['realWelcomePaintedAfterDataComplete']=True
   browser_checks['exactlyOneLocalAndRosterLoad']=state['local']==1 and state['roster']==1
-  page.evaluate("""window.FutBRDesktop={
-   loadPlayerBaseCompressed:()=>Promise.resolve(window.__gzip),
-   loadPlayerBase:()=>Promise.resolve('UNCOMPRESSED_FALLBACK')
-  };window.__gzip=arguments[0]""",gz)
+  page.evaluate("""value => {
+   window.__gzip=value;
+   window.FutBRDesktop={
+    loadPlayerBaseCompressed:()=>Promise.resolve(window.__gzip),
+    loadPlayerBase:()=>Promise.resolve('UNCOMPRESSED_FALLBACK')
+   };
+  }""",gz)
   decoded=page.evaluate('v18386LoadCompressedRoster()')
   if decoded!=orig:raise RuntimeError('WebView gzip decoder did not preserve Unicode content')
   browser_checks['actualChromiumGzipRoundTripLossless']=True
