@@ -17,17 +17,26 @@ def main():
   raise RuntimeError('Old unconditional native pending release query still serializes login')
  if 'await native.write(V18329_DEVICE_NATIVE,durable)' in devices:
   raise RuntimeError('Redundant device identity mirror still blocks login')
- if "await v18385LocalOnce();" not in enter or "const v18385RosterPending=v310StartRosterLoad();" not in enter:
-  raise RuntimeError('Manual login still serializes local reads and roster access')
+ final_startup='FUTBR_NONBLOCKING_STARTUP_18386' in s
+ shell=''
+ if final_startup:
+  shell=section(s,'/* FUTBR_NONBLOCKING_STARTUP_18386','async function v548EnterGame(){')
+  if 'return v18386StartEntry();' not in enter or 'await v18386StartEntry();' not in localboot:
+   raise RuntimeError('Final login or restored session no longer uses the authorized startup')
+  for marker in ['if(!v548Session?.serverValidated)return Promise.reject','const roster=v310StartRosterLoad().then','const local=v18385LocalOnce().then','await Promise.all([local,roster]);']:
+   if marker not in shell:raise RuntimeError('Final startup lost secure concurrent entry: '+marker)
+ else:
+  if "await v18385LocalOnce();" not in enter or "const v18385RosterPending=v310StartRosterLoad();" not in enter:
+   raise RuntimeError('Manual login still serializes local reads and roster access')
  if "if(authenticated&&!v18385ManualAuthInProgress)" not in localboot:
   raise RuntimeError('Automatic session restore could race manual sign-in')
  if "const localPreload=Promise.resolve().then(()=>v18385LocalOnce())" not in localboot:
   raise RuntimeError('Boot metadata not memoized')
- if "const v18385RosterPending=v310StartRosterLoad();" not in localboot:
+ if not final_startup and "const v18385RosterPending=v310StartRosterLoad();" not in localboot:
   raise RuntimeError('Boot still waits local metadata before roster source')
  if "e.preventDefault();v18385ManualAuthInProgress=true;" not in s:
   raise RuntimeError('Manual login race suppression listener absent')
- if "Verificando suas credenciais..." not in s or "Conta verificada. Abrindo o FutBR Manager..." not in enter:
+ if "Verificando suas credenciais..." not in s or (not final_startup and "Conta verificada. Abrindo o FutBR Manager..." not in enter) or (final_startup and 'v18386ShowStartup();' not in shell):
   raise RuntimeError('No immediate user-visible progress during online auth')
  deviceMock=r"""
 const assert=require('node:assert/strict');
@@ -132,8 +141,10 @@ const defer=()=>{let resolve,reject;const promise=new Promise((r,j)=>{resolve=r,
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 let localCalls=0,rosterCalls=0,welcomeCalls=0;
 const local=defer(),roster=defer(),session=defer();
-const state=null,document={getElementById:id=>{
- if(id==='app')return {querySelector:()=>null};
+const state=null,window={},esc=x=>String(x),startupRoot={innerHTML:'',querySelector:()=>null};
+let v548Session=null;
+const document={title:'',head:{append:()=>{}},createElement:()=>({}),getElementById:id=>{
+ if(id==='app')return startupRoot;
  if(id==='v548-auth-error')return {textContent:''};
  return null;
 }};
@@ -146,7 +157,7 @@ function v310StartRosterLoad(){
 }
 function renderWelcome(){welcomeCalls++}
 function v548RenderAuth(mode){assert.equal(mode,'login')}
-function v580RestoreRemoteSession(){return session.promise}
+function v580RestoreRemoteSession(){return session.promise.then(value=>{v548Session=value;return value;})}
 """
  bootChecks=r"""
 (async()=>{
@@ -154,8 +165,12 @@ function v580RestoreRemoteSession(){return session.promise}
  await tick();
  assert.equal(localCalls,1,'Local metadata starts once at boot');
  assert.equal(rosterCalls,0,'No world asset before valid remote session');
- session.resolve({serverValidated:true,plan:'premium'});
+ session.resolve({serverValidated:true,plan:'premium',userId:'test-account'});
  await tick();
+ if(__finalStartup){
+  assert(startupRoot.innerHTML.includes('v18386-startup'),'Verified shell visible before data completion');
+  for(let i=0;i<100&&rosterCalls===0;i++)await new Promise(resolve=>setTimeout(resolve,5));
+ }
  assert.equal(rosterCalls,1,'Roster starts as soon as online auth returns');
  assert.equal(welcomeCalls,0,'No welcome before data has finished');
  local.resolve(null);
@@ -184,7 +199,7 @@ function v580RestoreRemoteSession(){return session.promise}
   if a.returncode:raise RuntimeError(name+' full source regression: '+(a.stderr or a.stdout)[-5000:])
   return json.loads(a.stdout.strip().splitlines()[-1])
  a=run('auth-device',deviceMock+'\n'+devices+'\n'+deviceChecks)
- b=run('auth-boot',bootMock+'\n'+localboot+'\n'+enter+'\n'+bootChecks)
+ b=run('auth-boot',bootMock+'\nconst __finalStartup='+str(final_startup).lower()+';\n'+localboot+'\n'+shell+'\n'+enter+'\n'+bootChecks)
  report={'ok':True,'version':'18.385.0',
          **{k:v for k,v in a.items() if k not in ('ok','version')},
          **{k:v for k,v in b.items() if k not in ('ok','version')},

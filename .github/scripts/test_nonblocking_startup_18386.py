@@ -4,7 +4,7 @@ Tests run on prepared exact final HTML, actual generated gzip asset, Rust comman
 and Chromium. Never test by disabling the Supabase license check in production.
 """
 from pathlib import Path
-import base64,gzip,json,hashlib,re,subprocess,sys,time
+import base64,faulthandler,gzip,json,hashlib,re,subprocess,sys,time
 def main():
  if len(sys.argv)!=2:raise SystemExit('usage: test_nonblocking_startup_18386.py <prepared-root>')
  root=Path(sys.argv[1]);s=(root/'src/index.html').read_text(encoding='utf-8')
@@ -119,20 +119,37 @@ function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML
   status=page.evaluate('v18386StartEntry().then(()=> "bad").catch(()=> "rejected")')
   if status!='rejected':raise RuntimeError('Anonymous entry allowed')
   browser_checks['unvalidatedSessionCannotEnter']=True
-  # Sign-out while waiting invalidates UI completion.
-  page.evaluate("""document.getElementById('app').innerHTML='<div id="login-screen">Login</div>';
+  # Start without returning the pending promise to Playwright. A raw
+  # assignment expression returns that promise, so evaluate() would await
+  # it forever before Python could release the two deferred data sources.
+  page.evaluate("""() => {
+    document.getElementById('app').innerHTML='<div id="login-screen">Login</div>';
     v548Session={serverValidated:true,userId:'second-user',username:'second@example.com'};
     window.__slowLocal={};window.__slowRoster={};
     window.__slowLocal.promise=new Promise(r=>window.__slowLocal.resolve=r);
     window.__slowRoster.promise=new Promise(r=>window.__slowRoster.resolve=r);
-    v18385LocalOnce=()=>window.__slowLocal.promise;
-    v310StartRosterLoad=()=>window.__slowRoster.promise;
+    window.__secondCalls={local:0,roster:0};
+    v18385LocalOnce=()=>{window.__secondCalls.local++;return window.__slowLocal.promise;};
+    v310StartRosterLoad=()=>{window.__secondCalls.roster++;return window.__slowRoster.promise;};
     window.__secondPromise=v18386StartEntry();
-  """)
+  }""")
   page.wait_for_selector('#v18386-startup',timeout=5000)
-  page.evaluate("""v548Session=null;window.__slowLocal.resolve(null);window.__slowRoster.resolve('good');""")
-  page.evaluate('() => window.__secondPromise')
-  if page.locator('#real-welcome').count():raise RuntimeError('Logout reopened career with stale session')
+  page.wait_for_function('window.__secondCalls.local===1 && window.__secondCalls.roster===1',timeout=5000)
+  page.evaluate("""() => {
+    v548Session=null;
+    document.getElementById('app').innerHTML='<div id="login-screen">Login</div>';
+    window.__slowLocal.resolve(null);window.__slowRoster.resolve('good');
+  }""")
+  page.evaluate("""async () => {
+    let timeout;
+    try {
+      await Promise.race([window.__secondPromise,new Promise((_,reject)=>{
+        timeout=setTimeout(()=>reject(Error('Entry failed to settle after logout')),5000);
+      })]);
+    } finally {clearTimeout(timeout);}
+  }""")
+  if page.locator('#real-welcome').count() or page.locator('#login-screen').count()!=1 or page.evaluate('welcomeCalls')!=1:
+   raise RuntimeError('Logout reopened career with stale session')
   browser_checks['logoutDuringLoadNeverOpensGame']=True
   context.close();browser.close()
  if not all(browser_checks.values()):raise RuntimeError('Failed one or more webview regressions '+str(browser_checks))
@@ -147,4 +164,8 @@ function renderWelcome(){welcomeCalls++;document.getElementById('app').innerHTML
  **browser_checks,'sourceSha256':hashlib.sha256(s.encode()).hexdigest()}
  (root/'nonblocking-startup-18386-tests.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
  print(json.dumps(report,ensure_ascii=False))
-if __name__=='__main__':main()
+if __name__=='__main__':
+ # Independent hard deadline even if a browser evaluation stops responding.
+ faulthandler.dump_traceback_later(120,exit=True)
+ try:main()
+ finally:faulthandler.cancel_dump_traceback_later()
